@@ -138,6 +138,29 @@ const ViewProfileModal = ({ isOpen, onClose }) => {
                         </div>
                     </div>
 
+                    {/* AI Extracted Skills */}
+                    <div className="mt-6 bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
+                        <div className="flex items-center gap-2 mb-4 border-b border-gray-50 pb-3">
+                            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Candidate Skills</h3>
+                            <span className="bg-purple-100 text-purple-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-purple-200 shadow-sm flex items-center gap-1">✨ AI Extracted</span>
+                        </div>
+                        
+                        {userData?.skills && (Array.isArray(userData.skills) ? userData.skills : typeof userData.skills === 'string' ? userData.skills.split(',') : []).length > 0 ? (
+                            <div className="flex flex-wrap gap-2">
+                                {(Array.isArray(userData.skills) ? userData.skills : typeof userData.skills === 'string' ? userData.skills.split(',').map(s=>s.trim()) : []).map((skill, index) => (
+                                    <span key={index} className="px-3 py-1.5 bg-gray-50 border border-gray-200 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-100 transition">
+                                        {skill}
+                                    </span>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center p-6 border border-dashed border-gray-200 rounded-xl bg-gray-50/50">
+                                <p className="text-sm text-gray-500 mb-1">No skills detected yet.</p>
+                                <p className="text-xs text-gray-400">Upload a new resume to auto-extract your skills.</p>
+                            </div>
+                        )}
+                    </div>
+
                 </div>
             </div>
         </div>

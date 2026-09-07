@@ -7,6 +7,7 @@ import 'react-toastify/dist/ReactToastify.css';
 
 // Loading Component
 import Loading from './components/Loading'
+import ErrorBoundary from './components/ErrorBoundary'
 
 // Lazy Load Components
 const Home = lazy(() => import('./pages/Home'))
@@ -32,6 +33,7 @@ const App = () => {
 
   return (
     <div>
+      <ErrorBoundary>
       <Suspense fallback={<Loading />}>
         {showRecruiterLogin && <RecruiterLogin />}
         <ToastContainer />
@@ -62,6 +64,7 @@ const App = () => {
           </Route>
         </Routes>
       </Suspense>
+      </ErrorBoundary>
     </div>
   )
 }

@@ -11,13 +11,16 @@ const CompleteProfileModal = ({ isOpen, onClose }) => {
     const [step, setStep] = useState(1);
     const [loadingState, setLoadingState] = useState(''); // '', 'uploading', 'saving', 'done'
     
-    // Form Data
     const [formData, setFormData] = useState({
         phone: '',
         address: '',
         city: '',
         college: '',
+        skills: [],
     });
+    
+    // Debug log to trace render and HMR
+    console.log("CompleteProfileModal Render, isOpen:", isOpen, "userData.skills:", userData?.skills);
 
     React.useEffect(() => {
         if (isOpen && userData) {
@@ -26,6 +29,7 @@ const CompleteProfileModal = ({ isOpen, onClose }) => {
                 address: userData.address || '',
                 city: userData.city || '',
                 college: userData.college || '',
+                skills: Array.isArray(userData.skills) ? userData.skills : (typeof userData.skills === 'string' && userData.skills ? userData.skills.split(',').map(s => s.trim()) : []),
             });
             setStep(1);
             setLoadingState('');
@@ -40,6 +44,9 @@ const CompleteProfileModal = ({ isOpen, onClose }) => {
     const resumeRef = useRef(null);
     const imageRef = useRef(null);
 
+    const [newSkill, setNewSkill] = useState('');
+    const [isExtractingSkills, setIsExtractingSkills] = useState(false);
+
     if (!isOpen) return null;
 
     const handleInputChange = (e) => {
@@ -48,6 +55,49 @@ const CompleteProfileModal = ({ isOpen, onClose }) => {
 
     const handleNext = () => setStep(step + 1);
     const handlePrev = () => setStep(step - 1);
+
+    const handleAddSkill = (e) => {
+        if (e.key === 'Enter' && newSkill.trim()) {
+            e.preventDefault();
+            if (!formData.skills.includes(newSkill.trim())) {
+                setFormData({ ...formData, skills: [...formData.skills, newSkill.trim()] });
+            }
+            setNewSkill('');
+        }
+    };
+
+    const handleRemoveSkill = (skillToRemove) => {
+        setFormData({ ...formData, skills: formData.skills.filter(s => s !== skillToRemove) });
+    };
+
+    const handleExtractSkills = async () => {
+        if (!resumeFile) return toast.warning("Please select a resume file first.");
+        setIsExtractingSkills(true);
+        try {
+            const token = await getToken();
+            const data = new FormData();
+            data.append('resume', resumeFile);
+            
+            const response = await axios.post(`${backendUrl}/api/users/extract-resume-skills`, data, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.data.success && response.data.skills) {
+                const merged = [...new Set([...formData.skills, ...response.data.skills])];
+                setFormData({ ...formData, skills: merged });
+                toast.success("Skills extracted successfully!");
+            } else {
+                toast.error("Could not extract skills.");
+            }
+        } catch (error) {
+            toast.error(error.message || "Failed to extract skills.");
+        } finally {
+            setIsExtractingSkills(false);
+        }
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -61,6 +111,7 @@ const CompleteProfileModal = ({ isOpen, onClose }) => {
             data.append('address', formData.address);
             data.append('city', formData.city);
             data.append('college', formData.college);
+            data.append('skills', JSON.stringify(formData.skills));
             
             if (resumeFile) data.append('resume', resumeFile);
             if (imageFile) data.append('image', imageFile);
@@ -193,17 +244,38 @@ const CompleteProfileModal = ({ isOpen, onClose }) => {
 
                     {step === 3 && (
                         <div className="space-y-6 animate-slide-up">
-                            <h3 className="text-lg font-bold text-gray-800 mb-2 flex items-center gap-2"><Upload className="text-blue-500"/> Upload Documents</h3>
+                            <h3 className="text-lg font-bold text-gray-800 mb-2 flex items-center gap-2"><Upload className="text-blue-500"/> Skills & Documents</h3>
+                            
+                            {/* Skills Section */}
+                            <div className="bg-gray-50 border border-gray-200 p-4 rounded-xl">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Technical Skills (Tags)</label>
+                                <div className="flex flex-wrap gap-2 mb-3">
+                                    {Array.isArray(formData.skills) && formData.skills.map((skill, idx) => (
+                                        <span key={idx} className="flex items-center gap-1.5 px-3 py-1 bg-white border border-gray-300 text-gray-700 text-xs font-semibold rounded-lg shadow-sm">
+                                            {skill}
+                                            <button type="button" onClick={() => handleRemoveSkill(skill)} className="text-gray-400 hover:text-red-500 transition"><X size={12}/></button>
+                                        </span>
+                                    ))}
+                                </div>
+                                <input 
+                                    type="text"
+                                    value={newSkill}
+                                    onChange={(e) => setNewSkill(e.target.value)}
+                                    onKeyDown={handleAddSkill}
+                                    placeholder="Type a skill and press Enter..."
+                                    className="w-full px-4 py-2 text-sm bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
+                                />
+                            </div>
                             
                             {/* Profile Photo Upload */}
                             <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center hover:border-blue-500 transition cursor-pointer bg-gray-50 group" onClick={() => imageRef.current.click()}>
                                 <input type="file" ref={imageRef} hidden accept="image/*" onChange={(e) => setImageFile(e.target.files[0])} />
-                                {imageFile ? (
+                                {imageFile || userData?.image ? (
                                     <div className="flex flex-col items-center">
                                         <div className="w-16 h-16 rounded-full overflow-hidden mb-2 border-2 border-blue-500">
-                                            <img src={URL.createObjectURL(imageFile)} alt="Preview" className="w-full h-full object-cover" />
+                                            <img src={imageFile ? URL.createObjectURL(imageFile) : userData.image} alt="Preview" className="w-full h-full object-cover" />
                                         </div>
-                                        <p className="text-sm font-medium text-gray-800">{imageFile.name}</p>
+                                        <p className="text-sm font-medium text-gray-800">{imageFile ? imageFile.name : 'Existing Photo'}</p>
                                         <p className="text-xs text-blue-600 mt-1 hover:underline">Change Photo</p>
                                     </div>
                                 ) : (
@@ -220,11 +292,11 @@ const CompleteProfileModal = ({ isOpen, onClose }) => {
                             {/* Resume Upload */}
                             <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center hover:border-blue-500 transition cursor-pointer bg-gray-50 group" onClick={() => resumeRef.current.click()}>
                                 <input type="file" ref={resumeRef} hidden accept=".pdf,.doc,.docx" onChange={(e) => setResumeFile(e.target.files[0])} />
-                                {resumeFile ? (
+                                {resumeFile || userData?.resume ? (
                                     <div className="flex flex-col items-center">
                                         <FileText size={32} className="text-blue-600 mb-2" />
-                                        <p className="text-sm font-medium text-gray-800">{resumeFile.name}</p>
-                                        <p className="text-xs text-blue-600 mt-1 hover:underline">Change Resume</p>
+                                        <p className="text-sm font-medium text-gray-800">{resumeFile ? resumeFile.name : 'Existing Resume Uploaded'}</p>
+                                        <p className="text-xs text-blue-600 mt-1 hover:underline">{resumeFile ? 'Change Resume' : 'Upload New Resume'}</p>
                                     </div>
                                 ) : (
                                     <div className="py-2">
@@ -236,6 +308,21 @@ const CompleteProfileModal = ({ isOpen, onClose }) => {
                                     </div>
                                 )}
                             </div>
+
+                            {/* Extract AI Button */}
+                            {resumeFile && (
+                                <div className="flex justify-center mt-2">
+                                    <button 
+                                        type="button" 
+                                        onClick={handleExtractSkills}
+                                        disabled={isExtractingSkills}
+                                        className="flex items-center gap-2 px-4 py-2 bg-purple-50 text-purple-700 border border-purple-200 rounded-lg text-sm font-bold hover:bg-purple-100 transition disabled:opacity-50"
+                                    >
+                                        {isExtractingSkills ? <div className="w-4 h-4 border-2 border-purple-700 border-t-transparent rounded-full animate-spin"></div> : <span>✨</span>}
+                                        {isExtractingSkills ? 'Extracting...' : 'AI Extract Skills from Resume'}
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>

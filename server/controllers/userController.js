@@ -8,6 +8,11 @@ import Batch from '../models/Batch.js';
 import Notification from '../models/Notification.js';
 import { v2 as cloudinary } from "cloudinary"
 import fs from 'fs';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const pdfParse = require('pdf-parse');
+const mammoth = require('mammoth');
+import { extractSkillsFromResume } from '../services/geminiAiService.js';
 
 // Get User Data
 export const getUserData = async (req, res) => {
@@ -133,6 +138,29 @@ export const updateUserResume = async (req, res) => {
 
         if (resumeFile) {
             try {
+                let extractedText = "";
+                const dataBuffer = fs.readFileSync(resumeFile.path);
+                
+                if (resumeFile.mimetype === 'application/pdf' || resumeFile.originalname.toLowerCase().endsWith('.pdf')) {
+                    const pdfData = await pdfParse(dataBuffer);
+                    if (pdfData && pdfData.text) extractedText = pdfData.text;
+                } else if (resumeFile.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || resumeFile.originalname.toLowerCase().endsWith('.docx')) {
+                    const docxData = await mammoth.extractRawText({ buffer: dataBuffer });
+                    if (docxData && docxData.value) extractedText = docxData.value;
+                }
+                
+                if (extractedText) {
+                    const extractedSkills = await extractSkillsFromResume(extractedText);
+                    if (extractedSkills.length > 0) {
+                        const existingSkills = userData.skills || [];
+                        userData.skills = [...new Set([...existingSkills, ...extractedSkills])];
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to parse resume for skills:", err.message);
+            }
+
+            try {
                 const resumeUpload = await cloudinary.uploader.upload(resumeFile.path, { resource_type: 'raw' })
                 userData.resume = resumeUpload.secure_url
                 fs.unlink(resumeFile.path, (err) => {
@@ -171,6 +199,16 @@ export const completeUserProfile = async (req, res) => {
         if (address) userData.address = address;
         if (city) userData.city = city;
         if (college) userData.college = college;
+        if (req.body.skills) {
+            try {
+                const parsedSkills = JSON.parse(req.body.skills);
+                if (Array.isArray(parsedSkills)) {
+                    userData.skills = parsedSkills;
+                }
+            } catch (e) {
+                console.warn("Could not parse skills JSON");
+            }
+        }
 
         // Handle File Uploads (resume and image) via req.files
         if (req.files) {
@@ -381,5 +419,42 @@ export const enrollInBatch = async (req, res) => {
     } catch (error) {
         console.error("ENROLLMENT ERROR:", error);
         res.status(500).json({ success: false, message: error.message || 'Server Error' });
+    }
+};
+
+export const extractResumeSkillsAPI = async (req, res) => {
+    try {
+        const resumeFile = req.file;
+        if (!resumeFile) return res.status(400).json({ success: false, message: 'No file uploaded' });
+
+        const dataBuffer = fs.readFileSync(resumeFile.path);
+        let extractedText = "";
+        
+        if (resumeFile.mimetype === 'application/pdf' || resumeFile.originalname.toLowerCase().endsWith('.pdf')) {
+            const pdfData = await pdfParse(dataBuffer);
+            if (pdfData && pdfData.text) extractedText = pdfData.text;
+        } else if (resumeFile.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || resumeFile.originalname.toLowerCase().endsWith('.docx')) {
+            const docxData = await mammoth.extractRawText({ buffer: dataBuffer });
+            if (docxData && docxData.value) extractedText = docxData.value;
+        } else {
+            // Unlink early if not supported
+            fs.unlink(resumeFile.path, () => {});
+            return res.status(400).json({ success: false, message: 'Unsupported file type. Please upload a PDF or DOCX file.' });
+        }
+        
+        let extractedSkills = [];
+        if (extractedText) {
+            extractedSkills = await extractSkillsFromResume(extractedText);
+        }
+
+        // Delete temp file
+        fs.unlink(resumeFile.path, (err) => {
+            if (err) console.error("Failed to delete local temp file:", err);
+        });
+
+        res.json({ success: true, skills: extractedSkills });
+    } catch (error) {
+        console.error("API EXTRACT SKILLS ERROR:", error.message);
+        res.status(500).json({ success: false, message: error.message });
     }
 };

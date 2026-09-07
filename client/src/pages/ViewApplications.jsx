@@ -162,15 +162,18 @@ const ViewApplications = () => {
 
   // Calculate Match Percentage
   const calculateMatch = (userSkills, jobSkills) => {
-    if (!jobSkills || !Array.isArray(jobSkills) || jobSkills.length === 0) return 0;
-    if (!userSkills || !Array.isArray(userSkills) || userSkills.length === 0) return 0;
+    if (!jobSkills || jobSkills.length === 0) return 0;
+    if (!userSkills || userSkills.length === 0) return 0;
     
-    const validUserSkills = userSkills.filter(s => typeof s === 'string').map(s => s.toLowerCase());
-    const validJobSkills = jobSkills.filter(s => typeof s === 'string');
+    const uSkillsArray = Array.isArray(userSkills) ? userSkills : (typeof userSkills === 'string' ? userSkills.split(',') : []);
+    const jSkillsArray = Array.isArray(jobSkills) ? jobSkills : (typeof jobSkills === 'string' ? jobSkills.split(',') : []);
+
+    const validUserSkills = uSkillsArray.map(s => typeof s === 'string' ? s.trim().toLowerCase() : '').filter(s => s !== '');
+    const validJobSkills = jSkillsArray.map(s => typeof s === 'string' ? s.trim().toLowerCase() : '').filter(s => s !== '');
     
     if (validJobSkills.length === 0 || validUserSkills.length === 0) return 0;
 
-    const matchCount = validJobSkills.filter(js => validUserSkills.some(us => us.includes(js.toLowerCase()) || js.toLowerCase().includes(us))).length;
+    const matchCount = validJobSkills.filter(js => validUserSkills.some(us => us === js || us.includes(js) || js.includes(us))).length;
     return Math.round((matchCount / validJobSkills.length) * 100);
   }
 
@@ -219,7 +222,8 @@ const ViewApplications = () => {
             {filteredApplicants.filter(item => item.jobId && item.userId).map((applicant, index) => {
               const next = getNextStage(applicant.status)
               const isFinal = isFinalStage(applicant.status)
-              const match = calculateMatch(applicant.userId.skills, applicant.jobId.skills);
+              const jSkills = applicant.jobId.skills && applicant.jobId.skills.length > 0 ? applicant.jobId.skills : [applicant.jobId.category || 'Problem Solving'];
+              const match = calculateMatch(applicant.userId.skills, jSkills);
               
               return (
                 <tr key={index} className='text-gray-700 hover:bg-gray-50/50 transition-colors group'>

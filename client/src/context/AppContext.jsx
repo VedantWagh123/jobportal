@@ -31,6 +31,18 @@ export const AppContextProvider = (props) => {
 
     const [userData, setUserData] = useState(null)
     const [userApplications, setUserApplications] = useState([])
+    const [savedJobs, setSavedJobs] = useState([])
+
+    // Function to handle saved jobs
+    const toggleSaveJob = (jobId) => {
+        setSavedJobs(prev => {
+            const updated = prev.includes(jobId) 
+                ? prev.filter(id => id !== jobId)
+                : [...prev, jobId];
+            localStorage.setItem('savedJobs', JSON.stringify(updated));
+            return updated;
+        });
+    }
 
     // Function to Fetch Jobs 
     const fetchJobs = async () => {
@@ -132,6 +144,15 @@ export const AppContextProvider = (props) => {
             setInstituteToken(storedInstituteToken)
         }
 
+        const storedSavedJobs = localStorage.getItem('savedJobs')
+        if (storedSavedJobs) {
+            try {
+                setSavedJobs(JSON.parse(storedSavedJobs))
+            } catch (e) {
+                console.error("Failed to parse saved jobs", e)
+            }
+        }
+
     }, [])
 
     // Fetch Company Data if Company Token is Available
@@ -164,6 +185,7 @@ export const AppContextProvider = (props) => {
         userApplications, setUserApplications,
         fetchUserData,
         fetchUserApplications,
+        savedJobs, toggleSaveJob,
 
     }
 

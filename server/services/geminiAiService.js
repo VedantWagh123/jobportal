@@ -98,3 +98,50 @@ export const generateResponse = async (prompt, fallback = "") => {
         return fallback;
     }
 };
+
+export const extractSkillsFromResume = async (pdfText) => {
+    try {
+        if (!process.env.GEMINI_API_KEY) {
+            console.warn("[Gemini] API Key missing. Skipping resume parsing.");
+            return [];
+        }
+        
+        const prompt = `You are a strict ATS (Applicant Tracking System) AI. 
+Read the following text extracted from a candidate's resume.
+Your ONLY task is to extract a list of standard technical skills, programming languages, databases, tools, and frameworks (e.g., React, Node.js, AWS, Python, SQL, Git).
+CRITICAL RULES:
+1. ONLY extract ACTUAL technical skills. DO NOT extract project names, domain descriptions, job titles, or phrases like "Web Development", "API Integration", or "Performance Improvements".
+2. DO NOT extract soft skills (like communication, teamwork) or full sentences.
+3. If it's a descriptive phrase (e.g. "AI-based Resume Analysis"), DO NOT include it.
+4. Return ONLY a comma-separated list of skills, with no other text, no formatting, and no bullet points.
+
+Example Output: "React, Node.js, AWS, Python, SQL, Agile"
+
+Resume Text:
+${pdfText.substring(0, 15000)}
+`;
+
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+        });
+        
+        const aiResponse = response.text;
+        
+        if (!aiResponse || aiResponse.trim() === "") {
+            return [];
+        }
+
+        // Clean up the response
+        const skillsArray = aiResponse
+            .split(',')
+            .map(s => s.trim().replace(/['"]/g, ''))
+            .filter(s => s.length > 0 && s.length <= 30);
+
+        return skillsArray;
+    } catch (error) {
+        console.error("EXTRACT RESUME SKILLS ERROR:", error.message);
+        return [];
+    }
+};

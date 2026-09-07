@@ -3,13 +3,13 @@ import { assets } from '../assets/assets'
 import { useClerk, useUser } from '@clerk/clerk-react'
 import { useNavigate } from 'react-router-dom'
 import { AppContext } from '../context/AppContext'
-import { Bell, ChevronDown, User as UserIcon, Settings, HelpCircle, LogOut, Search, MapPin } from 'lucide-react'
+import { Bell, ChevronDown, User as UserIcon, Settings, HelpCircle, LogOut, Search, MapPin, Bookmark } from 'lucide-react'
 
 const Navbar = () => {
     const { openSignIn, signOut } = useClerk()
     const { user } = useUser()
     const navigate = useNavigate()
-    const { userData, setIsProfileModalOpen, setIsViewProfileModalOpen, searchFilter, setSearchFilter, setIsSearched } = useContext(AppContext)
+    const { userData, setIsProfileModalOpen, setIsViewProfileModalOpen, searchFilter, setSearchFilter, setIsSearched, savedJobs } = useContext(AppContext)
     
     const [isDropdownOpen, setIsDropdownOpen] = useState(false)
     const dropdownRef = useRef(null)
@@ -48,6 +48,20 @@ const Navbar = () => {
                     {
                         user
                             ? <div className='flex items-center gap-4 relative'>
+                                {/* Saved Jobs / Wishlist */}
+                                <button 
+                                    onClick={() => navigate('/saved-jobs')}
+                                    className="relative p-2.5 text-gray-600 hover:bg-blue-50 hover:text-blue-600 rounded-full transition"
+                                    title="Saved Jobs"
+                                >
+                                    <Bookmark size={20} />
+                                    {savedJobs && savedJobs.length > 0 && (
+                                        <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-blue-600 text-white text-[9px] font-bold flex items-center justify-center border-2 border-white rounded-full">
+                                            {savedJobs.length}
+                                        </span>
+                                    )}
+                                </button>
+
                                 {/* Notification Bell */}
                                 <button className="relative p-2.5 text-gray-600 hover:bg-gray-100 rounded-full transition">
                                     <Bell size={20} />

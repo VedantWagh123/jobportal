@@ -1,5 +1,5 @@
 import express from 'express'
-import { applyForJob, getUserData, syncUser, getUserJobApplications, updateUserResume, completeUserProfile, updateUserSkills, getTargetJobs, getCareerAnalysis, getMarketRecommendations, enrollInBatch } from '../controllers/userController.js'
+import { applyForJob, getUserData, syncUser, getUserJobApplications, updateUserResume, completeUserProfile, updateUserSkills, getTargetJobs, getCareerAnalysis, getMarketRecommendations, enrollInBatch, extractResumeSkillsAPI } from '../controllers/userController.js'
 import upload from '../config/multer.js'
 
 
@@ -25,6 +25,9 @@ router.post('/complete-profile', upload.fields([{ name: 'resume', maxCount: 1 },
 
 // Update user profile (skills)
 router.post('/update-skills', updateUserSkills)
+
+// Extract Skills directly from uploaded resume (No DB save)
+router.post('/extract-resume-skills', upload.single('resume'), extractResumeSkillsAPI)
 
 // Career Path APIs
 router.get('/career/jobs', getTargetJobs)

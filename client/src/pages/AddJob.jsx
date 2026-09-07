@@ -5,6 +5,7 @@ import axios from 'axios';
 import { AppContext } from '../context/AppContext';
 import { toast } from 'react-toastify';
 import { Sparkles, Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const AddJob = () => {
 
@@ -12,6 +13,7 @@ const AddJob = () => {
     const [location, setLocation] = useState('Pune');
     const [category, setCategory] = useState('Programming');
     const [level, setLevel] = useState('Beginner level');
+    const [jobType, setJobType] = useState('Full Time');
     const [salary, setSalary] = useState(0);
     const [vacancies, setVacancies] = useState(1);
     const [skillsString, setSkillsString] = useState('');
@@ -20,6 +22,7 @@ const AddJob = () => {
 
     const editorRef = useRef(null)
     const quillRef = useRef(null)
+    const navigate = useNavigate()
 
     const { backendUrl, companyToken } = useContext(AppContext)
 
@@ -33,7 +36,7 @@ const AddJob = () => {
             const skills = skillsString.split(',').map(s => s.trim()).filter(s => s);
 
             const { data } = await axios.post(backendUrl + '/api/company/post-job',
-                { title, description, location, salary, category, level, vacancies, skills },
+                { title, description, location, salary, category, level, jobType, vacancies, skills },
                 { headers: { token: companyToken } }
             )
 
@@ -44,6 +47,7 @@ const AddJob = () => {
                 setVacancies(1)
                 setSkillsString('')
                 quillRef.current.root.innerHTML = ""
+                navigate('/dashboard/manage-jobs')
             } else {
                 toast.error(data.message)
             }
@@ -132,6 +136,17 @@ const AddJob = () => {
                             <option value="Beginner level">Beginner level</option>
                             <option value="Intermediate level">Intermediate level</option>
                             <option value="Senior level">Senior level</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className='block text-sm font-medium text-gray-700 mb-1.5'>Job Type</label>
+                        <select className='w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all bg-white' onChange={e => setJobType(e.target.value)} value={jobType}>
+                            <option value="Full Time">Full Time</option>
+                            <option value="Part Time">Part Time</option>
+                            <option value="Contract">Contract</option>
+                            <option value="Internship">Internship</option>
+                            <option value="Remote">Remote</option>
+                            <option value="Hybrid">Hybrid</option>
                         </select>
                     </div>
                 </div>

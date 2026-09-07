@@ -78,7 +78,7 @@ const JobCard = ({ job }) => {
                 <div className='flex items-center flex-wrap gap-x-4 gap-y-2 text-[12px] font-medium text-gray-500'>
                     <div className='flex items-center gap-1.5'>
                         <Briefcase size={14} className='text-gray-400' />
-                        <span>Full Time</span>
+                        <span>{job.jobType || 'Full Time'}</span>
                     </div>
                     <div className='flex items-center gap-1.5'>
                         <BarChart size={14} className='text-gray-400' />
