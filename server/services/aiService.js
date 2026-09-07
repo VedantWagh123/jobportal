@@ -4,9 +4,10 @@ import JobSkill from "../models/JobSkill.js";
 import UnresolvedSkill from "../models/UnresolvedSkill.js";
 import Job from "../models/Job.js";
 
-// Initialize Gemini SDK
-// It automatically picks up GEMINI_API_KEY from environment variables
-const ai = process.env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }) : null;
+// Initialize Gemini SDK lazily to avoid dotenv hoisting issues
+const getAIInstance = () => {
+    return process.env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }) : null;
+};
 
 /**
  * Clean Job Description text to save tokens and improve extraction accuracy
@@ -28,6 +29,7 @@ export const parseJobDescription = async (jobId, title, description) => {
         // 1. Update Job Status to Processing
         await Job.findByIdAndUpdate(jobId, { intelligenceStatus: 'Processing' });
 
+        const ai = getAIInstance();
         if (!ai) {
             throw new Error("GEMINI_API_KEY is not configured.");
         }
@@ -150,7 +152,17 @@ export const parseJobDescription = async (jobId, title, description) => {
  * Step 10: AI What-If Simulator - Phase 1: Intent Extraction
  */
 export const extractSimulationIntent = async (userPrompt) => {
-    if (!ai) throw new Error("GEMINI_API_KEY is not configured.");
+    const ai = getAIInstance();
+    if (!ai) {
+        console.warn("[AI Service] GEMINI_API_KEY is missing. Using Fallback Intent.");
+        return {
+            skill: "React (Fallback)",
+            district: "Overall",
+            proposedBatches: 2,
+            estimatedSeats: 100,
+            isFallback: true
+        };
+    }
 
     const prompt = `
         You are an AI assistant for a Government Skill & Labor Intelligence Platform.
@@ -169,21 +181,28 @@ export const extractSimulationIntent = async (userPrompt) => {
         Ensure no markdown formatting or backticks wrap the JSON response.
     `;
 
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-        config: {
-            temperature: 0.1,
-            responseMimeType: "application/json"
-        }
-    });
-
     try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                temperature: 0.1,
+                responseMimeType: "application/json"
+            }
+        });
+
         const intent = JSON.parse(response.text);
-        return intent;
+        return { ...intent, isFallback: false };
     } catch (err) {
-        console.error("[AI Service] Intent parse failed:", response.text);
-        throw new Error("Failed to parse intent from AI");
+        console.error("[AI Service] Intent extract failed or rate limited:", err.message);
+        // Fallback Intent
+        return {
+            skill: "React (Fallback)",
+            district: "Overall",
+            proposedBatches: 2,
+            estimatedSeats: 100,
+            isFallback: true
+        };
     }
 };
 
@@ -191,7 +210,14 @@ export const extractSimulationIntent = async (userPrompt) => {
  * Step 10: AI What-If Simulator - Phase 2: Prediction Generation
  */
 export const generateSimulationPrediction = async (intent, marketData) => {
-    if (!ai) throw new Error("GEMINI_API_KEY is not configured.");
+    const ai = getAIInstance();
+    if (!ai) {
+        console.warn("[AI Service] GEMINI_API_KEY is missing. Using Fallback Prediction.");
+        return { 
+            text: `[FALLBACK MODE - API KEY MISSING]\nBased on the current market data, adding these batches will significantly help reduce the skill gap for ${intent.skill} in ${intent.district}. We highly recommend proceeding with this policy action to ensure strong placements.`,
+            isFallback: true
+        };
+    }
 
     const prompt = `
         You are a senior data analyst and advisor for the Government Skill Development Mission.
@@ -209,13 +235,21 @@ export const generateSimulationPrediction = async (intent, marketData) => {
         Keep your response under 4 sentences. Write in a direct, professional tone.
     `;
 
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-        config: {
-            temperature: 0.4,
-        }
-    });
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                temperature: 0.4,
+            }
+        });
 
-    return response.text;
+        return { text: response.text, isFallback: false };
+    } catch (err) {
+        console.error("[AI Service] Prediction failed or rate limited:", err.message);
+        return { 
+            text: `[FALLBACK MODE - API QUOTA EXCEEDED]\nBased on the current market data, adding these batches will significantly help reduce the skill gap for ${intent.skill} in ${intent.district}. We highly recommend proceeding with this policy action to ensure strong placements.`,
+            isFallback: true
+        };
+    }
 };

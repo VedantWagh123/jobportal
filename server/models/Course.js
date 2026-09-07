@@ -6,6 +6,7 @@ const courseSchema = new mongoose.Schema({
     description: { type: String },
     targetRole: { type: mongoose.Schema.Types.ObjectId, ref: 'Role' },
     durationMonths: { type: Number, required: true },
+    location: { type: String, default: 'Online' },
     isActive: { type: Boolean, default: true },
     createdAt: { type: Date, default: Date.now }
 });

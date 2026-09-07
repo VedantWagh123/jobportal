@@ -4,8 +4,9 @@ import Skill from '../models/Skill.js';
 import District from '../models/District.js';
 import TrainingInstitute from '../models/TrainingInstitute.js';
 import CourseSkill from '../models/CourseSkill.js';
-import TrainingBatch from '../models/TrainingBatch.js';
+import Batch from '../models/Batch.js';
 import Enrollment from '../models/Enrollment.js';
+import CurriculumAlert from '../models/CurriculumAlert.js';
 
 class IntelligenceService {
     
@@ -21,16 +22,17 @@ class IntelligenceService {
             Job.find({ visible: true }, 'vacancies').lean(),
             District.countDocuments(),
             TrainingInstitute.countDocuments(),
-            TrainingBatch.find({ status: { $in: ['Planned', 'Ongoing'] } }, 'capacity'),
+            Batch.find({ status: { $in: ['Planning', 'Active'] } }, 'capacity'),
             Enrollment.countDocuments()
         ]);
 
         const totalCapacity = batches.reduce((sum, b) => sum + (b.capacity || 0), 0);
 
-        const totalJobsCount = totalJobs.reduce((sum, j) => sum + (j.vacancies || 1), 0);
+        const totalVacancies = totalJobs.reduce((sum, j) => sum + (j.vacancies || 1), 0);
 
         return {
-            totalJobs: totalJobsCount,
+            totalJobs: totalJobs.length,
+            totalVacancies,
             totalInstitutes,
             activeBatches: batches.length,
             trainingCapacity: totalCapacity,
@@ -102,8 +104,8 @@ class IntelligenceService {
     static async getSupplyStats(filters = {}) {
         // Capacity by Skill
         // TrainingBatch (capacity) -> Course -> CourseSkill -> Skill
-        const supplyBySkillAgg = await TrainingBatch.aggregate([
-            { $match: { status: { $in: ['Planned', 'Ongoing'] } } },
+        const supplyBySkillAgg = await Batch.aggregate([
+            { $match: { status: { $in: ['Planning', 'Active'] } } },
             {
                 $lookup: {
                     from: 'courseskills',
@@ -114,9 +116,32 @@ class IntelligenceService {
             },
             { $unwind: '$courseSkills' },
             {
+                $lookup: {
+                    from: 'traininginstitutes',
+                    localField: 'instituteId',
+                    foreignField: '_id',
+                    as: 'institute'
+                }
+            },
+            { $unwind: { path: '$institute', preserveNullAndEmptyArrays: true } },
+            {
                 $group: {
-                    _id: '$courseSkills.skillId',
-                    supplyCapacity: { $sum: '$capacity' }
+                    _id: { skillId: '$courseSkills.skillId', instituteId: '$instituteId' },
+                    instituteName: { $first: '$institute.name' },
+                    capacity: { $sum: '$capacity' }
+                }
+            },
+            {
+                $group: {
+                    _id: '$_id.skillId',
+                    supplyCapacity: { $sum: '$capacity' },
+                    providers: {
+                        $push: {
+                            instituteId: '$_id.instituteId',
+                            instituteName: { $ifNull: ['$instituteName', 'Unknown Institute'] },
+                            capacity: '$capacity'
+                        }
+                    }
                 }
             },
             {
@@ -133,6 +158,7 @@ class IntelligenceService {
                     skillId: '$_id',
                     skillName: '$skillInfo.name',
                     supplyCapacity: 1,
+                    providers: 1,
                     _id: 0
                 }
             },
@@ -203,7 +229,7 @@ class IntelligenceService {
             const instIds = institutes.map(i => i._id);
             
             // Batches in these institutes
-            const batches = await TrainingBatch.find({ instituteId: { $in: instIds }, status: { $in: ['Planned', 'Ongoing'] } }, 'capacity _id courseId').lean();
+            const batches = await Batch.find({ instituteId: { $in: instIds }, status: { $in: ['Planning', 'Active'] } }, 'capacity _id courseId').lean();
             const batchIds = batches.map(b => b._id);
             const capacityCount = batches.reduce((sum, b) => sum + (b.capacity || 0), 0);
             
@@ -238,7 +264,8 @@ class IntelligenceService {
             return {
                 name: ds.skillName,
                 demand: ds.demandCount,
-                supply: ss ? ss.supplyCapacity : 0
+                supply: ss ? ss.supplyCapacity : 0,
+                providers: ss ? ss.providers : []
             };
         });
 
@@ -275,7 +302,6 @@ class IntelligenceService {
         .sort((a, b) => b.gapValue - a.gapValue)
         .slice(0, 5);
 
-        // Format Table Data
         const supplyGapTable = gapTable.slice(0, 5).map(g => ({
             skill: g.skillName,
             demand: g.demand,
@@ -285,13 +311,16 @@ class IntelligenceService {
             action: g.gap > 50 ? 'Increase training seats' : g.gap > 0 ? 'Start new batches' : 'Monitor'
         }));
 
+        const activeAlerts = await CurriculumAlert.find({ status: 'Active' }).sort({ createdAt: -1 });
+
         return {
             kpis,
             supplyVsDemand,
             gapDistribution,
             industryWiseDemand,
             topDistrictsByGap,
-            supplyGapTable
+            supplyGapTable,
+            activeAlerts
         };
     }
 }

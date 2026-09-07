@@ -4,7 +4,8 @@ import Skill from '../models/Skill.js';
 import CourseSkill from '../models/CourseSkill.js';
 import Course from '../models/Course.js';
 import TrainingInstitute from '../models/TrainingInstitute.js';
-import TrainingBatch from '../models/TrainingBatch.js';
+import Batch from '../models/Batch.js';
+import SkillNormalizationService from './SkillNormalizationService.js';
 
 class SkillGapService {
     
@@ -145,24 +146,57 @@ class SkillGapService {
             };
         }
 
-        // 3. Normalize Candidate Skills
-        const normalizedCandSkills = await this.normalizeCandidateSkills(candidateSkills);
-        const candSkillIds = new Set(normalizedCandSkills.map(s => s._id.toString()));
-
-        // 4. Calculate Match vs Missing
+        // 3. Compare Required Skills against Candidate Skills using new Engine
         const matchedSkills = [];
         const missingSkills = [];
+        const skillAnalysis = [];
+
+        let totalScoreWeight = 0;
+        let earnedScoreWeight = 0;
 
         for (const reqSkill of requiredSkills) {
-            if (candSkillIds.has(reqSkill.id)) {
+            let bestMatch = { matchType: 'MISSING', confidence: 0, matchedSkillName: null };
+            let bestCandSkillName = null;
+
+            for (const candSkill of candidateSkills) {
+                const comparison = SkillNormalizationService.compareSkills(reqSkill.name, candSkill);
+                if (comparison.confidence > bestMatch.confidence) {
+                    bestMatch = comparison;
+                    bestCandSkillName = candSkill;
+                }
+            }
+
+            // Assign Weights
+            let weight = 0;
+            switch (bestMatch.matchType) {
+                case 'EXACT': weight = 1.0; break;
+                case 'ALIAS': weight = 0.95; break;
+                case 'FUZZY': weight = 0.85; break;
+                case 'SEMANTIC': weight = 0.50; break; // Semantic match gives partial credit
+                case 'MISSING': weight = 0; break;
+            }
+
+            totalScoreWeight += 1.0;
+            earnedScoreWeight += weight;
+
+            skillAnalysis.push({
+                skill: reqSkill.name,
+                required: true,
+                candidateSkill: bestCandSkillName,
+                matchType: bestMatch.matchType,
+                confidence: bestMatch.confidence
+            });
+
+            // For backward compatibility (Semantic is considered Missing for strict matching)
+            if (bestMatch.matchType === 'EXACT' || bestMatch.matchType === 'ALIAS' || bestMatch.matchType === 'FUZZY') {
                 matchedSkills.push(reqSkill);
             } else {
                 missingSkills.push(reqSkill);
             }
         }
 
-        // 5. Match Score Formula: (matched / totalRequired) * 100, rounded to nearest int
-        const matchScore = Math.round((matchedSkills.length / requiredSkills.length) * 100);
+        // 5. Match Score Formula based on weights
+        const matchScore = totalScoreWeight > 0 ? Math.round((earnedScoreWeight / totalScoreWeight) * 100) : 0;
 
         // 6. Government Course Recommendations (For Missing Skills)
         let recommendations = [];
@@ -173,6 +207,7 @@ class SkillGapService {
         return {
             job: { id: job._id, title: job.title, company: job.companyId?.name, location: job.location },
             matchScore,
+            skillAnalysis,
             requiredSkills,
             matchedSkills,
             missingSkills,
@@ -217,9 +252,9 @@ class SkillGapService {
             if (!course || !course.instituteId) continue; // Skip inactive courses or detached institutes
             
             // Check if there's any active batch for this course
-            const activeBatch = await TrainingBatch.findOne({ 
+            const activeBatch = await Batch.findOne({ 
                 courseId: cid, 
-                status: { $in: ['Planned', 'Ongoing'] }
+                status: { $in: ['Planning', 'Active'] }
             });
 
             const coveredSkillsArr = Array.from(courseCoverageMap.get(cid).coveredSkills);
@@ -237,6 +272,7 @@ class SkillGapService {
                 districtName: course.instituteId.districtId?.name || 'Unknown',
                 coveredSkills: coveredSkillsArr,
                 batchAvailable: !!activeBatch,
+                batchId: activeBatch ? activeBatch._id : null,
                 relevanceScore
             });
         }

@@ -1,7 +1,13 @@
 import Job from "../models/Job.js"
 import JobApplication from "../models/JobApplication.js"
 import User from "../models/User.js"
+import CurriculumAlert from '../models/CurriculumAlert.js';
+import SkillGapService from '../services/skillGapService.js';
+import Enrollment from '../models/Enrollment.js';
+import Batch from '../models/Batch.js';
+import Notification from '../models/Notification.js';
 import { v2 as cloudinary } from "cloudinary"
+import fs from 'fs';
 
 // Get User Data
 export const getUserData = async (req, res) => {
@@ -72,6 +78,16 @@ export const applyForJob = async (req, res) => {
             jobId,
             date: Date.now()
         })
+        
+        const user = await User.findById(userId);
+
+        await Notification.create({
+            companyId: jobData.companyId,
+            type: 'New_Application',
+            title: 'New Job Application',
+            message: `${user ? user.name : 'A candidate'} applied for ${jobData.title}`,
+            link: '/dashboard/view-applications'
+        })
 
         res.json({ success: true, message: 'Applied Successfully' })
 
@@ -117,8 +133,11 @@ export const updateUserResume = async (req, res) => {
 
         if (resumeFile) {
             try {
-                const resumeUpload = await cloudinary.uploader.upload(resumeFile.path)
+                const resumeUpload = await cloudinary.uploader.upload(resumeFile.path, { resource_type: 'raw' })
                 userData.resume = resumeUpload.secure_url
+                fs.unlink(resumeFile.path, (err) => {
+                    if (err) console.error("Failed to delete local file:", err);
+                });
             } catch (error) {
                 console.warn("Cloudinary resume upload failed, using local file.", error.message);
                 userData.resume = `http://localhost:5000/uploads/${resumeFile.filename}`;
@@ -133,6 +152,66 @@ export const updateUserResume = async (req, res) => {
 
         res.json({ success: false, message: error.message })
 
+    }
+}
+
+// Complete User Profile (Multi-step form details + File uploads)
+export const completeUserProfile = async (req, res) => {
+    try {
+        const userId = req.auth.userId;
+        const { phone, address, city, college } = req.body;
+        
+        const userData = await User.findById(userId);
+        if (!userData) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        // Update fields if provided
+        if (phone) userData.phone = phone;
+        if (address) userData.address = address;
+        if (city) userData.city = city;
+        if (college) userData.college = college;
+
+        // Handle File Uploads (resume and image) via req.files
+        if (req.files) {
+            // Upload Resume
+            if (req.files.resume && req.files.resume[0]) {
+                const resumeFile = req.files.resume[0];
+                try {
+                    const resumeUpload = await cloudinary.uploader.upload(resumeFile.path, { resource_type: 'raw' });
+                    userData.resume = resumeUpload.secure_url;
+                    fs.unlink(resumeFile.path, (err) => {
+                        if (err) console.error("Failed to delete local file:", err);
+                    });
+                } catch (error) {
+                    console.warn("Cloudinary resume upload failed, using local file.", error.message);
+                    userData.resume = `http://localhost:5000/uploads/${resumeFile.filename}`;
+                }
+            }
+            // Upload Image
+            if (req.files.image && req.files.image[0]) {
+                const imageFile = req.files.image[0];
+                try {
+                    if (userData.image && userData.image.includes('cloudinary.com')) {
+                        const publicId = userData.image.split('/').pop().split('.')[0];
+                        await cloudinary.uploader.destroy(publicId).catch(e => console.warn("Could not delete old image", e.message));
+                    }
+                    const imageUpload = await cloudinary.uploader.upload(imageFile.path);
+                    userData.image = imageUpload.secure_url;
+                    fs.unlink(imageFile.path, (err) => {
+                        if (err) console.error("Failed to delete local file:", err);
+                    });
+                } catch (error) {
+                    console.warn("Cloudinary image upload failed, using local file.", error.message);
+                    userData.image = `http://localhost:5000/uploads/${imageFile.filename}`;
+                }
+            }
+        }
+
+        await userData.save();
+        return res.json({ success: true, message: 'Profile updated successfully', user: userData });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
     }
 }
 
@@ -174,8 +253,6 @@ export const getTargetJobs = async (req, res) => {
 }
 
 // Get Career Analysis (Skill Gap)
-import SkillGapService from '../services/skillGapService.js';
-
 export const getCareerAnalysis = async (req, res) => {
     try {
         const { jobId } = req.params;
@@ -193,3 +270,116 @@ export const getCareerAnalysis = async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 }
+
+// Get Market Recommendations (Home Page)
+export const getMarketRecommendations = async (req, res) => {
+    try {
+        const userId = req.auth.userId;
+        const user = await User.findById(userId);
+        if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+        const candidateSkills = user.skills || [];
+        const normalizedCandSkills = await SkillGapService.normalizeCandidateSkills(candidateSkills);
+        const candSkillIds = new Set(normalizedCandSkills.map(s => s._id.toString()));
+
+        // 1. Fetch active market shortage alerts (Critical / High)
+        const activeAlerts = await CurriculumAlert.find({ 
+            status: 'Active',
+            severity: { $in: ['Critical', 'High', 'Medium'] }
+        });
+
+        // 2. Identify missing skills for the candidate
+        // Assuming alert.skill is the raw string, we need to map it to a missing skill object
+        const missingSkillNames = new Set();
+        for (const alert of activeAlerts) {
+            // Very simple check: if candidate doesn't have this string in their raw skills
+            const hasSkill = candidateSkills.some(cs => cs.toLowerCase().includes(alert.skill.toLowerCase()) || alert.skill.toLowerCase().includes(cs.toLowerCase()));
+            if (!hasSkill) {
+                missingSkillNames.add(alert.skill);
+            }
+        }
+
+        if (missingSkillNames.size === 0) {
+            return res.json({ success: true, recommendations: [], message: "You already possess the highly demanded skills in the market!" });
+        }
+
+        // Convert raw string names back to pseudo skill objects for the service
+        const missingSkillsFakeObjs = await SkillGapService.normalizeCandidateSkills(Array.from(missingSkillNames));
+        
+        // Remove skills the candidate already has (verified by IDs)
+        const trueMissingSkills = missingSkillsFakeObjs.filter(s => !candSkillIds.has(s._id.toString())).map(s => ({ id: s._id.toString(), name: s.name }));
+
+        // 3. Find matching courses
+        let recommendations = [];
+        if (trueMissingSkills.length > 0) {
+            recommendations = await SkillGapService.getRecommendationsForMissingSkills(trueMissingSkills);
+        }
+
+        // Group recommendations with the alerts that caused them
+        const finalRecommendations = recommendations.map(rec => {
+            // Find which missing skill string caused this
+            const matchingAlerts = activeAlerts.filter(a => rec.coveredSkills.some(cs => cs.toLowerCase().includes(a.skill.toLowerCase()) || a.skill.toLowerCase().includes(cs.toLowerCase())));
+            return {
+                ...rec,
+                urgencyMessage: matchingAlerts.length > 0 ? matchingAlerts[0].message : 'High market demand for these skills.'
+            }
+        }).slice(0, 4); // Only top 4 recommendations
+
+        // Check if user is already enrolled in any of these batches
+        const userEnrollments = await Enrollment.find({ userId }).select('batchId');
+        const enrolledBatchIds = new Set(userEnrollments.map(e => e.batchId.toString()));
+
+        const recommendationsWithEnrollmentStatus = finalRecommendations.map(rec => ({
+            ...rec,
+            isEnrolled: rec.batchId ? enrolledBatchIds.has(rec.batchId.toString()) : false
+        }));
+
+        res.json({ success: true, recommendations: recommendationsWithEnrollmentStatus, missingSkills: trueMissingSkills.map(s => s.name) });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+}
+
+// Enroll in a training batch
+export const enrollInBatch = async (req, res) => {
+    try {
+        const userId = req.auth.userId;
+        const { batchId } = req.body;
+
+        if (!batchId) {
+            return res.status(400).json({ success: false, message: 'Batch ID is required' });
+        }
+
+        // Check if batch exists
+        const batch = await Batch.findById(batchId);
+        if (!batch) {
+            return res.status(404).json({ success: false, message: 'Batch not found' });
+        }
+
+        // Check capacity
+        if (batch.enrolledCount >= batch.capacity) {
+            return res.status(400).json({ success: false, message: 'Batch is full' });
+        }
+
+        // Check if already enrolled
+        const existingEnrollment = await Enrollment.findOne({ userId, batchId });
+        if (existingEnrollment) {
+            return res.status(400).json({ success: false, message: 'Already enrolled in this batch' });
+        }
+
+        // Create enrollment
+        const enrollment = await Enrollment.create({
+            userId,
+            batchId
+        });
+
+        // Increment enrolled count
+        batch.enrolledCount += 1;
+        await batch.save();
+
+        res.status(201).json({ success: true, message: 'Successfully enrolled!', enrollment });
+    } catch (error) {
+        console.error("ENROLLMENT ERROR:", error);
+        res.status(500).json({ success: false, message: error.message || 'Server Error' });
+    }
+};

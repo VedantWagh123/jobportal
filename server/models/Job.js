@@ -7,6 +7,7 @@ const jobSchema = new mongoose.Schema({
     districtId: { type: mongoose.Schema.Types.ObjectId, ref: 'District' },
     category: { type: String, required: true },
     level: { type: String, required: true },
+    skills: [{ type: String }],
     salary: { type: Number, required: true },
     date: { type: Number, required: true },
     visible: { type: Boolean, default: true },

@@ -2,6 +2,7 @@ import { useContext, useEffect, useState } from 'react'
 import { AppContext } from '../context/AppContext'
 import { assets, JobCategories, JobLocations } from '../assets/assets'
 import JobCard from './JobCard'
+import { Code, Database, PenTool, Wifi, Briefcase, Megaphone, ShieldCheck, Layers, MapPin, Sparkles, ArrowRight } from 'lucide-react'
 
 const JobListing = () => {
 
@@ -26,14 +27,17 @@ const JobListing = () => {
         )
     }
 
+    const clearAllFilters = () => {
+        setSearchFilter({ title: '', location: '' })
+        setSelectedCategories([])
+        setSelectedLocations([])
+        document.getElementById('job-list')?.scrollIntoView({ behavior: 'smooth' })
+    }
+
     useEffect(() => {
-
         const matchesCategory = job => selectedCategories.length === 0 || selectedCategories.includes(job.category)
-
         const matchesLocation = job => selectedLocations.length === 0 || selectedLocations.includes(job.location)
-
         const matchesTitle = job => searchFilter.title === "" || job.title.toLowerCase().includes(searchFilter.title.toLowerCase())
-
         const matchesSearchLocation = job => searchFilter.location === "" || job.location.toLowerCase().includes(searchFilter.location.toLowerCase())
 
         const newFilteredJobs = jobs.slice().reverse().filter(
@@ -44,108 +48,172 @@ const JobListing = () => {
         setCurrentPage(1)
     }, [jobs, selectedCategories, selectedLocations, searchFilter])
 
+    const getCategoryIcon = (category) => {
+        switch (category) {
+            case 'Programming': return <Code size={18} />;
+            case 'Data Science': return <Database size={18} />;
+            case 'Designing': return <PenTool size={18} />;
+            case 'Networking': return <Wifi size={18} />;
+            case 'Management': return <Briefcase size={18} />;
+            case 'Marketing': return <Megaphone size={18} />;
+            case 'Cybersecurity': return <ShieldCheck size={18} />;
+            default: return <Layers size={18} />;
+        }
+    }
+
     return (
-        <div className='container 2xl:px-20 mx-auto flex flex-col lg:flex-row max-lg:space-y-8 py-8'>
+        <div className='px-6 lg:px-8 mx-auto flex flex-col lg:flex-row max-lg:space-y-8 py-8 gap-8'>
 
-            {/* Sidebar */}
-            <div className='w-full lg:w-1/4 bg-white px-4'>
+            {/* Sidebar Filters */}
+            <div className='w-full lg:w-1/4'>
+                <div className='bg-white p-6 rounded-[1.5rem] border border-gray-100 shadow-sm sticky top-24'>
 
-                {/*  Search Filter from Hero Component */}
-                {
-                    isSearched && (searchFilter.title !== "" || searchFilter.location !== "") && (
-                        <>
-                            <h3 className='font-medium text-lg mb-4'>Current Search</h3>
-                            <div className='mb-4 text-gray-600'>
-                                {searchFilter.title && (
-                                    <span className='inline-flex items-center gap-2.5 bg-blue-50 border border-blue-200 px-4 py-1.5 rounded'>
-                                        {searchFilter.title}
-                                        <img onClick={e => setSearchFilter(prev => ({ ...prev, title: "" }))} className='cursor-pointer' src={assets.cross_icon} alt="" />
-                                    </span>
-                                )}
-                                {searchFilter.location && (
-                                    <span className='ml-2 inline-flex items-center gap-2.5 bg-red-50 border border-red-200 px-4 py-1.5 rounded'>
-                                        {searchFilter.location}
-                                        <img onClick={e => setSearchFilter(prev => ({ ...prev, location: "" }))} className='cursor-pointer' src={assets.cross_icon} alt="" />
-                                    </span>
-                                )}
+                    {/* Current Search */}
+                    {
+                        isSearched && (searchFilter.title !== "" || searchFilter.location !== "") && (
+                            <div className="mb-6 pb-6 border-b border-gray-100">
+                                <h3 className='font-bold text-gray-800 text-sm tracking-wide uppercase mb-4'>Current Search</h3>
+                                <div className='flex flex-wrap gap-2'>
+                                    {searchFilter.title && (
+                                        <span className='inline-flex items-center gap-2 bg-blue-50 text-blue-700 border border-blue-200 px-3 py-1.5 rounded-lg text-sm font-medium'>
+                                            {searchFilter.title}
+                                            <img onClick={e => setSearchFilter(prev => ({ ...prev, title: "" }))} className='cursor-pointer w-3 h-3' src={assets.cross_icon} alt="" style={{ filter: 'brightness(0) saturate(100%) invert(20%) sepia(98%) saturate(2335%) hue-rotate(212deg) brightness(98%) contrast(98%)' }} />
+                                        </span>
+                                    )}
+                                    {searchFilter.location && (
+                                        <span className='inline-flex items-center gap-2 bg-red-50 text-red-700 border border-red-200 px-3 py-1.5 rounded-lg text-sm font-medium'>
+                                            {searchFilter.location}
+                                            <img onClick={e => setSearchFilter(prev => ({ ...prev, location: "" }))} className='cursor-pointer w-3 h-3' src={assets.cross_icon} alt="" style={{ filter: 'brightness(0) saturate(100%) invert(20%) sepia(98%) saturate(3335%) hue-rotate(350deg) brightness(98%) contrast(98%)' }} />
+                                        </span>
+                                    )}
+                                </div>
                             </div>
-                        </>
-                    )
-                }
+                        )
+                    }
 
-                <button onClick={e => setShowFilter(prev => !prev)} className='px-6 py-1.5 rounded border border-gray-400 lg:hidden'>
-                    {showFilter ? "Close" : "Filters"}
-                </button>
+                    <button onClick={e => setShowFilter(prev => !prev)} className='w-full px-6 py-2.5 rounded-xl border border-blue-200 bg-blue-50 text-blue-700 font-medium lg:hidden mb-4'>
+                        {showFilter ? "Close Filters" : "Show Filters"}
+                    </button>
 
-                {/* Category Filter */}
-                <div className={showFilter ? "" : "max-lg:hidden"}>
-                    <h4 className='font-medium text-lg py-4'>Search by Categories</h4>
-                    <ul className='space-y-4 text-gray-600'>
-                        {
-                            JobCategories.map((category, index) => (
-                                <li className='flex gap-3 items-center' key={index}>
-                                    <input
-                                        className='scale-125'
-                                        type="checkbox"
-                                        onChange={() => handleCategoryChange(category)}
-                                        checked={selectedCategories.includes(category)}
-                                    />
-                                    {category}
+                    {/* Category Filter */}
+                    <div className={showFilter ? "" : "max-lg:hidden"}>
+                        <h4 className='font-bold text-lg text-gray-800 flex items-center gap-2 mb-4'>
+                            <Layers size={20} className="text-blue-600" />
+                            Search by Categories
+                        </h4>
+                        <ul className='space-y-3'>
+                            {JobCategories.map((category, index) => (
+                                <li key={index}>
+                                    <label className='flex gap-3 items-center cursor-pointer group'>
+                                        <div className="relative flex items-center justify-center">
+                                            <input
+                                                type="checkbox"
+                                                className='peer sr-only'
+                                                onChange={() => handleCategoryChange(category)}
+                                                checked={selectedCategories.includes(category)}
+                                            />
+                                            <div className="w-5 h-5 border-2 border-gray-300 rounded peer-checked:bg-blue-600 peer-checked:border-blue-600 transition-colors"></div>
+                                            <svg className="absolute w-3 h-3 text-white opacity-0 peer-checked:opacity-100 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"></path></svg>
+                                        </div>
+                                        <span className={`flex items-center gap-2 flex-1 text-sm font-medium transition-colors ${selectedCategories.includes(category) ? 'text-blue-600' : 'text-gray-600 group-hover:text-gray-900'}`}>
+                                            <span className={`${selectedCategories.includes(category) ? 'text-blue-600' : 'text-gray-400 group-hover:text-blue-500'} transition-colors`}>
+                                                {getCategoryIcon(category)}
+                                            </span>
+                                            {category}
+                                        </span>
+                                    </label>
                                 </li>
-                            ))
-                        }
-                    </ul>
-                </div>
+                            ))}
+                        </ul>
+                    </div>
 
-                {/* Location Filter */}
-                <div className={showFilter ? "" : "max-lg:hidden"}>
-                    <h4 className='font-medium text-lg py-4 pt-14'>Search by Location</h4>
-                    <ul className='space-y-4 text-gray-600'>
-                        {
-                            JobLocations.map((location, index) => (
-                                <li className='flex gap-3 items-center' key={index}>
-                                    <input
-                                        className='scale-125'
-                                        type="checkbox"
-                                        onChange={() => handleLocationChange(location)}
-                                        checked={selectedLocations.includes(location)}
-                                    />
-                                    {location}
+                    {/* Location Filter */}
+                    <div className={`mt-8 pt-8 border-t border-gray-100 ${showFilter ? "" : "max-lg:hidden"}`}>
+                        <h4 className='font-bold text-lg text-gray-800 flex items-center gap-2 mb-4'>
+                            <MapPin size={20} className="text-blue-600" />
+                            Search by Location
+                        </h4>
+                        <ul className='space-y-3'>
+                            {JobLocations.map((location, index) => (
+                                <li key={index}>
+                                    <label className='flex gap-3 items-center cursor-pointer group'>
+                                        <div className="relative flex items-center justify-center">
+                                            <input
+                                                type="checkbox"
+                                                className='peer sr-only'
+                                                onChange={() => handleLocationChange(location)}
+                                                checked={selectedLocations.includes(location)}
+                                            />
+                                            <div className="w-5 h-5 border-2 border-gray-300 rounded peer-checked:bg-blue-600 peer-checked:border-blue-600 transition-colors"></div>
+                                            <svg className="absolute w-3 h-3 text-white opacity-0 peer-checked:opacity-100 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"></path></svg>
+                                        </div>
+                                        <span className={`text-sm font-medium transition-colors ${selectedLocations.includes(location) ? 'text-blue-600' : 'text-gray-600 group-hover:text-gray-900'}`}>
+                                            {location}
+                                        </span>
+                                    </label>
                                 </li>
-                            ))
-                        }
-                    </ul>
+                            ))}
+                        </ul>
+                    </div>
                 </div>
             </div>
 
             {/* Job listings */}
-            <section className='w-full lg:w-3/4 text-gray-800 max-lg:px-4'>
-                <h3 className='font-medium text-3xl py-2' id='job-list'>Latest jobs</h3>
-                <p className='mb-8'>Get your desired job from top companies</p>
-                <div className='grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4'>
+            <section className='w-full lg:w-3/4' id='job-list'>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
+                    <div>
+                        <h3 className='font-bold text-2xl lg:text-3xl text-gray-900 flex items-center gap-2'>
+                            Latest jobs <Sparkles size={24} className="text-blue-500" />
+                        </h3>
+                        <p className='text-gray-500 mt-1 font-medium'>Get your desired job from top companies</p>
+                    </div>
+                    <button 
+                        onClick={clearAllFilters}
+                        className="inline-flex items-center gap-2 text-blue-600 bg-blue-50 px-5 py-2.5 rounded-full font-semibold hover:bg-blue-100 transition-colors self-start sm:self-auto"
+                    >
+                        View All Jobs <ArrowRight size={18} />
+                    </button>
+                </div>
+
+                <div className='grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6'>
                     {filteredJobs.slice((currentPage - 1) * 6, currentPage * 6).map((job, index) => (
                         <JobCard key={index} job={job} />
                     ))}
                 </div>
 
-
                 {/* Pagination */}
                 {filteredJobs.length > 0 && (
-                    <div className='flex items-center justify-center space-x-2 mt-10'>
+                    <div className='flex items-center justify-center space-x-2 mt-12'>
                         <a href="#job-list">
-                            <img onClick={() => setCurrentPage(Math.max(currentPage - 1), 1)} src={assets.left_arrow_icon} alt="" />
+                            <button 
+                                onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))} 
+                                className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-blue-600 transition-all shadow-sm"
+                                disabled={currentPage === 1}
+                            >
+                                <img src={assets.left_arrow_icon} alt="Previous" className="w-4 h-4 opacity-50" />
+                            </button>
                         </a>
                         {Array.from({ length: Math.ceil(filteredJobs.length / 6) }).map((_, index) => (
                             <a key={index} href="#job-list">
-                                <button onClick={() => setCurrentPage(index + 1)} className={`w-10 h-10 flex items-center justify-center border border-gray-300 rounded ${currentPage === index + 1 ? 'bg-blue-100 text-blue-500' : 'text-gray-500'}`}>{index + 1}</button>
+                                <button 
+                                    onClick={() => setCurrentPage(index + 1)} 
+                                    className={`w-10 h-10 flex items-center justify-center rounded-xl font-bold transition-all shadow-sm ${currentPage === index + 1 ? 'bg-blue-600 border border-blue-600 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-blue-600'}`}
+                                >
+                                    {index + 1}
+                                </button>
                             </a>
                         ))}
                         <a href="#job-list">
-                            <img onClick={() => setCurrentPage(Math.min(currentPage + 1, Math.ceil(filteredJobs.length / 6)))} src={assets.right_arrow_icon} alt="" />
+                            <button 
+                                onClick={() => setCurrentPage(Math.min(currentPage + 1, Math.ceil(filteredJobs.length / 6)))} 
+                                className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-blue-600 transition-all shadow-sm"
+                                disabled={currentPage === Math.ceil(filteredJobs.length / 6)}
+                            >
+                                <img src={assets.right_arrow_icon} alt="Next" className="w-4 h-4 opacity-50" />
+                            </button>
                         </a>
                     </div>
                 )}
-
             </section>
 
         </div>

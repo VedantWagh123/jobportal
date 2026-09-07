@@ -22,8 +22,11 @@ export const AppContextProvider = (props) => {
     const [jobs, setJobs] = useState([])
 
     const [showRecruiterLogin, setShowRecruiterLogin] = useState(false)
+    const [isProfileModalOpen, setIsProfileModalOpen] = useState(false)
+    const [isViewProfileModalOpen, setIsViewProfileModalOpen] = useState(false)
 
     const [companyToken, setCompanyToken] = useState(null)
+    const [instituteToken, setInstituteToken] = useState(null)
     const [companyData, setCompanyData] = useState(null)
 
     const [userData, setUserData] = useState(null)
@@ -115,14 +118,18 @@ export const AppContextProvider = (props) => {
         }
     }
 
-    // Retrive Company Token From LocalStorage
+    // Retrive Tokens From LocalStorage
     useEffect(() => {
         fetchJobs()
 
         const storedCompanyToken = localStorage.getItem('companyToken')
+        const storedInstituteToken = localStorage.getItem('instituteToken')
 
         if (storedCompanyToken) {
             setCompanyToken(storedCompanyToken)
+        }
+        if (storedInstituteToken) {
+            setInstituteToken(storedInstituteToken)
         }
 
     }, [])
@@ -147,7 +154,10 @@ export const AppContextProvider = (props) => {
         isSearched, setIsSearched,
         jobs, setJobs,
         showRecruiterLogin, setShowRecruiterLogin,
+        isProfileModalOpen, setIsProfileModalOpen,
+        isViewProfileModalOpen, setIsViewProfileModalOpen,
         companyToken, setCompanyToken,
+        instituteToken, setInstituteToken,
         companyData, setCompanyData,
         backendUrl,
         userData, setUserData,

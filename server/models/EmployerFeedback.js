@@ -1,20 +1,24 @@
 import mongoose from "mongoose";
 
+// EmployerFeedback — stores per-skill ratings from HR after Interview_Completed stage
+// Feedback is MANDATORY for both Hired and Rejected final stages.
 const employerFeedbackSchema = new mongoose.Schema({
-    employerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: true },
-    candidateId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    instituteId: { type: mongoose.Schema.Types.ObjectId, ref: 'TrainingInstitute', required: true },
-    courseId: { type: mongoose.Schema.Types.ObjectId, ref: 'Course', required: true },
-    jobId: { type: mongoose.Schema.Types.ObjectId, ref: 'Job', required: false },
-    skillMatchScore: { type: Number, required: true, min: 1, max: 5 }, // 1 to 5 stars
-    comments: { type: String, default: "" },
-    status: { type: String, enum: ['Pending', 'Submitted'], default: 'Submitted' },
-    createdAt: { type: Date, default: Date.now }
+    applicationId: { type: mongoose.Schema.Types.ObjectId, ref: 'JobApplication', required: true, unique: true },
+    companyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: true },
+    jobId: { type: mongoose.Schema.Types.ObjectId, ref: 'Job', required: true },
+    candidateId: { type: String, ref: 'User', required: true },
+    finalStatus: { type: String, enum: ['Hired', 'Rejected'], required: true },
+    // Per-skill ratings: each job skill gets rated Strong / Weak / Missing
+    skillRatings: [
+        {
+            skillName: { type: String, required: true },
+            rating: { type: String, enum: ['Strong', 'Weak', 'Missing'], required: true }
+        }
+    ],
+    overallComment: { type: String, default: '' },
+    submittedAt: { type: Date, default: Date.now }
 });
 
-// Ensure an employer can only rate a candidate's specific course once
-employerFeedbackSchema.index({ employerId: 1, candidateId: 1, courseId: 1 }, { unique: true });
-
 const EmployerFeedback = mongoose.model('EmployerFeedback', employerFeedbackSchema);
-
 export default EmployerFeedback;
+

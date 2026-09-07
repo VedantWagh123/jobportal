@@ -45,15 +45,17 @@ export const runWhatIfSimulation = async (req, res) => {
             skill: skillGap.skillName,
             district,
             proposedBatches,
-            estimatedSeats
+            estimatedSeats,
+            isFallback: intent.isFallback
         };
-        const prediction = await generateSimulationPrediction(enrichedIntent, marketData);
+        const predictionResult = await generateSimulationPrediction(enrichedIntent, marketData);
 
         res.json({
             success: true,
             intent: enrichedIntent,
             marketData,
-            prediction
+            prediction: predictionResult.text,
+            isFallback: intent.isFallback || predictionResult.isFallback
         });
     } catch (error) {
         console.error("[runWhatIfSimulation] Error:", error);

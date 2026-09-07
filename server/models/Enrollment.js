@@ -1,8 +1,8 @@
 import mongoose from "mongoose";
 
 const enrollmentSchema = new mongoose.Schema({
-    userId: { type: String, required: true }, // Matches Clerk String ID from User model
-    batchId: { type: mongoose.Schema.Types.ObjectId, ref: 'TrainingBatch', required: true },
+    userId: { type: String, ref: 'User', required: true }, // Matches Clerk String ID from User model
+    batchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Batch', required: true },
     status: { 
         type: String, 
         enum: ['Enrolled', 'Completed', 'Dropped'], 

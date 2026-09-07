@@ -6,7 +6,11 @@ const userSchema = new mongoose.Schema({
     email: { type: String, required: true, unique: true },
     resume: { type: String },
     image: { type: String, required: true },
-    skills: [{ type: String }]
+    skills: [{ type: String }],
+    phone: { type: String },
+    address: { type: String },
+    city: { type: String },
+    college: { type: String }
 })
 
 const User = mongoose.model('User', userSchema)

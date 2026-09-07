@@ -1,5 +1,5 @@
 import express from 'express'
-import { ChangeJobApplicationsStatus, changeVisiblity, getCompanyData, getCompanyJobApplicants, getCompanyPostedJobs, loginCompany, postJob, registerCompany } from '../controllers/companyController.js'
+import { ChangeJobApplicationsStatus, changeVisiblity, getCompanyData, getCompanyJobApplicants, getCompanyPostedJobs, loginCompany, postJob, registerCompany, extractJobSkills, getNotifications, markNotificationRead, updateCompanyProfile } from '../controllers/companyController.js'
 import upload from '../config/multer.js'
 import { protectCompany } from '../middleware/authMiddleware.js'
 
@@ -17,6 +17,9 @@ router.get('/company', protectCompany, getCompanyData)
 // Post a job
 router.post('/post-job', protectCompany, postJob)
 
+// Extract Skills
+router.post('/extract-skills', protectCompany, extractJobSkills)
+
 // Get Applicants Data of Company
 router.get('/applicants', protectCompany, getCompanyJobApplicants)
 
@@ -29,8 +32,16 @@ router.post('/change-status', protectCompany, ChangeJobApplicationsStatus)
 // Change Applcations Visiblity 
 router.post('/change-visiblity', protectCompany, changeVisiblity)
 
-// Submit Feedback for Candidate
-import { submitFeedback } from '../controllers/feedbackController.js';
+// Feedback routes
+import { submitFeedback, getJobSkillsForFeedback } from '../controllers/feedbackController.js';
 router.post('/feedback', protectCompany, submitFeedback)
+router.get('/job-skills/:jobId', protectCompany, getJobSkillsForFeedback)
+
+// Notification routes
+router.get('/notifications', protectCompany, getNotifications)
+router.post('/notifications/read', protectCompany, markNotificationRead)
+
+// Profile update
+router.post('/profile/update', protectCompany, upload.single('image'), updateCompanyProfile)
 
 export default router
