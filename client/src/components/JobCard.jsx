@@ -48,13 +48,13 @@ const JobCard = ({ job }) => {
             <div className='flex justify-between items-start mb-6 relative z-10'>
                 <div 
                     className='flex items-center gap-3 cursor-pointer group/company'
-                    onClick={(e) => { e.stopPropagation(); navigate(`/company/${job.companyId._id}`); window.scrollTo(0,0); }}
+                    onClick={(e) => { e.stopPropagation(); if(job.companyId?._id) navigate(`/company/${job.companyId._id}`); window.scrollTo(0,0); }}
                 >
                     <div className='w-12 h-12 bg-white rounded-[14px] shadow-sm border border-gray-100/80 flex items-center justify-center p-2.5 shrink-0 group-hover/company:border-blue-200 transition-colors'>
-                        <img className='max-h-full max-w-full object-contain' src={job.companyId.image} alt={job.companyId.name} />
+                        <img className='max-h-full max-w-full object-contain' src={job.companyId?.image || ''} alt={job.companyId?.name || 'Company'} />
                     </div>
                     <div>
-                        <h4 className='font-bold text-gray-900 text-sm tracking-tight group-hover/company:text-blue-600 transition-colors'>{job.companyId.name}</h4>
+                        <h4 className='font-bold text-gray-900 text-sm tracking-tight group-hover/company:text-blue-600 transition-colors'>{job.companyId?.name || 'Unknown Company'}</h4>
                         <p className='text-[11px] text-gray-500 font-medium mt-0.5'>{job.location}</p>
                     </div>
                 </div>

@@ -74,11 +74,17 @@ export const getIntelligenceOverview = async (req, res) => {
 
 export const getDashboardAnalytics = async (req, res) => {
     try {
-        const analytics = await IntelligenceService.getDashboardAnalytics();
+        const filters = {};
+        if (req.admin && req.admin.scope === 'state' && req.admin.name) {
+            let stateName = req.admin.name.toLowerCase().replace('government of ', '').trim();
+            filters.state = stateName;
+        }
+        
+        const analytics = await IntelligenceService.getDashboardAnalytics(filters);
         res.json({ success: true, analytics });
     } catch (error) {
         console.error("Error in getDashboardAnalytics:", error);
-        res.status(500).json({ success: false, message: error.message });
+        res.json({ success: false, message: error.message });
     }
 };
 
@@ -111,9 +117,14 @@ export const getGapIntelligence = async (req, res) => {
 
 export const getDistrictIntelligence = async (req, res) => {
     try {
-        const districts = await IntelligenceService.getDistrictIntelligence();
+        const filters = {};
+        if (req.admin && req.admin.scope === 'state' && req.admin.name) {
+            let stateName = req.admin.name.toLowerCase().replace('government of ', '').trim();
+            filters.state = stateName;
+        }
+        const districts = await IntelligenceService.getDistrictIntelligence(filters);
         res.json({ success: true, districts });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.json({ success: false, message: error.message });
     }
 };

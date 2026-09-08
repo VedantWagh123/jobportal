@@ -9,7 +9,7 @@ import Footer from '../components/Footer'
 import axios from 'axios'
 import { toast } from 'react-toastify'
 import { useAuth } from '@clerk/clerk-react'
-import { Briefcase, MapPin, BarChart, Bookmark, Building, Users, Calendar, Link as LinkIcon, ClipboardList, CheckCircle2, IndianRupee, Sparkles, Share2, ArrowRight, CheckCircle, Zap } from 'lucide-react'
+import { Briefcase, MapPin, BarChart, Bookmark, Building, Users, Calendar, Link as LinkIcon, ClipboardList, CheckCircle2, IndianRupee, Sparkles, Share2, ArrowRight, CheckCircle, Zap, Lightbulb, Layers, Trash2, X, Plus, Search } from 'lucide-react'
 
 const ApplyJob = () => {
 
@@ -63,7 +63,7 @@ const ApplyJob = () => {
   }
 
   const checkAlreadyApplied = () => {
-    const hasApplied = userApplications.some(item => item.jobId._id === JobData._id)
+    const hasApplied = userApplications.some(item => item.jobId?._id === JobData._id)
     setIsAlreadyApplied(hasApplied)
   }
 
@@ -115,6 +115,45 @@ const ApplyJob = () => {
     }
   }
 
+  const handleRemoveSkill = async (skillToRemove) => {
+    try {
+      const token = await getToken();
+      const currentSkills = Array.isArray(userData.skills) ? userData.skills : (typeof userData.skills === 'string' && userData.skills ? userData.skills.split(',').map(s=>s.trim()) : []);
+      const updatedSkills = currentSkills.filter(s => s !== skillToRemove);
+      const { data } = await axios.post(backendUrl + '/api/users/update-skills', 
+        { skills: updatedSkills },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (data.success) {
+        setUserData({ ...userData, skills: data.skills });
+        toast.success(`Removed ${skillToRemove}`);
+      } else {
+        toast.error(data.message);
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message);
+    }
+  }
+
+  const handleClearAllSkills = async () => {
+    if(!window.confirm("Are you sure you want to clear all your skills?")) return;
+    try {
+      const token = await getToken();
+      const { data } = await axios.post(backendUrl + '/api/users/update-skills', 
+        { skills: [] },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (data.success) {
+        setUserData({ ...userData, skills: data.skills });
+        toast.success(`Cleared all skills`);
+      } else {
+        toast.error(data.message);
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message);
+    }
+  }
+
   useEffect(() => {
     fetchJob()
   }, [id])
@@ -126,12 +165,18 @@ const ApplyJob = () => {
   }, [JobData, userApplications, id])
 
   if (!JobData) return <Loading />
+  // Guard: if companyId not populated yet, show loading
+  if (!JobData.companyId || typeof JobData.companyId !== 'object') return <Loading />
 
   const displaySkills = JobData.skills && JobData.skills.length > 0 ? JobData.skills : [JobData.category || 'Problem Solving']
   
-  const similarJobs = jobs.filter(job => job._id !== JobData._id && job.companyId._id === JobData.companyId._id)
-      .filter(job => {
-        const appliedJobsIds = new Set(userApplications.map(app => app.jobId && app.jobId._id))
+  const similarJobs = jobs.filter(job => 
+      job._id !== JobData._id && 
+      job.companyId && 
+      JobData.companyId && 
+      job.companyId._id?.toString() === JobData.companyId._id?.toString()
+    ).filter(job => {
+        const appliedJobsIds = new Set(userApplications.map(app => app.jobId?._id))
         return !appliedJobsIds.has(job._id)
       }).slice(0, 4)
 
@@ -221,7 +266,7 @@ const ApplyJob = () => {
           
           {/* Tabs */}
           <div className='flex items-center gap-8 border-b border-gray-200 overflow-x-auto no-scrollbar'>
-            {['Overview', 'About Company', 'Skills Required', 'Similar Jobs'].map((tab) => (
+            {['Overview', 'About Company', 'Similar Jobs'].map((tab) => (
               <button 
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -300,77 +345,224 @@ const ApplyJob = () => {
                 </ul>
               </div>
 
-              {/* Requirements & Skills */}
-              <div className='bg-white rounded-[24px] p-8 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)] border border-gray-100'>
-                <h2 className='text-xl font-extrabold text-gray-900 flex items-center gap-2.5 mb-6'>
-                  <Zap size={22} className='text-blue-600' /> Requirements & Skills
-                </h2>
-                <div className='flex flex-wrap gap-2.5'>
-                  {displaySkills.map((skill, index) => (
-                    <span key={index} className='px-4 py-2 bg-blue-50/50 border border-blue-100/50 text-blue-700 font-bold text-[13px] rounded-full hover:bg-blue-50 hover:border-blue-200 transition-colors cursor-default'>
-                      {skill}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {/* AI Skill Match Analyzer */}
+              {/* Premium AI Skill Match Analyzer */}
               {userData && (
-                <div className='bg-white p-8 rounded-[24px] border border-gray-100 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)]'>
-                  <div className='flex items-center justify-between mb-6'>
-                    <div>
-                      <h3 className='text-xl font-extrabold text-gray-900 flex items-center gap-2.5'>
-                        <Sparkles size={24} className='text-purple-500' /> AI Skill Match Analyzer
-                      </h3>
-                      <p className='text-sm text-gray-500 mt-1.5'>Compare your profile skills with this job's requirements.</p>
+                <div className='animate-fadeIn flex flex-col gap-6 mt-10'>
+                  
+                  {/* Header / Hero Section */}
+                  <div className='bg-white rounded-[24px] p-8 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.06)] border border-gray-100 relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-8'>
+                    {/* Background decorations */}
+                    <div className='absolute -top-24 -left-24 w-64 h-64 bg-purple-50 rounded-full blur-3xl opacity-60 pointer-events-none'></div>
+                    <div className='absolute -bottom-24 -right-24 w-64 h-64 bg-blue-50 rounded-full blur-3xl opacity-60 pointer-events-none'></div>
+                    
+                    <div className='flex items-start gap-5 z-10 w-full md:w-auto'>
+                      <div className='w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shrink-0 shadow-lg shadow-purple-500/20'>
+                        <Sparkles size={28} className='text-white' />
+                      </div>
+                      <div>
+                        <h2 className='text-2xl font-extrabold text-gray-900 tracking-tight'>
+                          AI Skill Match <span className='text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600'>Analyzer</span>
+                        </h2>
+                        <p className='text-[15px] text-gray-500 mt-1.5 font-medium'>
+                          Compare your profile skills with this job's requirements and find your match.
+                        </p>
+                        
+                        <div className='flex flex-wrap items-center gap-3 mt-5'>
+                          <span className='flex items-center gap-1.5 text-[13px] font-bold text-gray-600 bg-gray-50 border border-gray-100 px-3 py-1.5 rounded-lg shadow-sm'><Zap size={14} className='text-purple-500' /> Get instant analysis</span>
+                          <span className='flex items-center gap-1.5 text-[13px] font-bold text-gray-600 bg-gray-50 border border-gray-100 px-3 py-1.5 rounded-lg shadow-sm'><BarChart size={14} className='text-blue-500' /> Identify skill gaps</span>
+                        </div>
+                      </div>
                     </div>
-                    <div className='flex flex-col items-center justify-center shrink-0'>
-                      <div className='relative w-20 h-20 rounded-full bg-gray-50 border-[5px] border-gray-100 flex items-center justify-center'>
-                          <svg className="w-full h-full transform -rotate-90 absolute top-0 left-0" viewBox="0 0 36 36">
-                              <path className="text-gray-100" strokeWidth="3" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                              <path className={`${matchPercentage >= 100 ? 'text-green-500' : matchPercentage >= 50 ? 'text-yellow-500' : 'text-red-500'} transition-all duration-1000 drop-shadow-sm`} strokeDasharray={`${matchPercentage}, 100`} strokeWidth="3.5" strokeLinecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                          </svg>
-                          <span className={`text-lg font-black z-10 ${matchPercentage >= 100 ? 'text-green-600' : matchPercentage >= 50 ? 'text-yellow-600' : 'text-red-600'}`}>{matchPercentage}%</span>
+                    
+                    {/* Circular Progress */}
+                    <div className='flex flex-col items-center justify-center z-10 shrink-0 bg-white/50 backdrop-blur-md p-4 rounded-3xl border border-gray-50 shadow-sm'>
+                      <div className='relative w-32 h-32 flex items-center justify-center'>
+                        {/* Background Circle */}
+                        <svg className="w-full h-full transform -rotate-90 absolute" viewBox="0 0 36 36">
+                          <path className="text-gray-100" strokeWidth="3" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                          <path 
+                            className={`${matchPercentage >= 80 ? 'text-green-500' : matchPercentage >= 50 ? 'text-yellow-500' : 'text-red-500'} transition-all duration-1000 ease-out`} 
+                            strokeDasharray={`${matchPercentage}, 100`} 
+                            strokeWidth="3.5" 
+                            strokeLinecap="round" 
+                            stroke="currentColor" 
+                            fill="none" 
+                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" 
+                          />
+                        </svg>
+                        <div className='flex flex-col items-center justify-center bg-white rounded-full w-[104px] h-[104px] shadow-[0_2px_10px_rgba(0,0,0,0.04)] border border-gray-50 z-10'>
+                          <span className='text-3xl font-black text-gray-900 tracking-tight'>{matchPercentage}%</span>
+                          <span className='text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-0.5'>Match</span>
+                        </div>
+                      </div>
+                      
+                      <div className={`mt-4 px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 shadow-sm
+                        ${matchPercentage >= 80 ? 'bg-green-50 text-green-700 border border-green-100' : 
+                          matchPercentage >= 50 ? 'bg-yellow-50 text-yellow-700 border border-yellow-100' : 
+                          'bg-red-50 text-red-700 border border-red-100'}`}
+                      >
+                        <Lightbulb size={14} className={matchPercentage >= 80 ? 'text-green-500' : matchPercentage >= 50 ? 'text-yellow-500' : 'text-red-500'} />
+                        {matchPercentage >= 80 ? 'Excellent Match!' : matchPercentage >= 50 ? 'You\'re halfway there!' : 'Skill Gap Detected'}
                       </div>
                     </div>
                   </div>
 
-                  {matchPercentage >= 100 && (
-                    <div className='mb-6 p-4 bg-green-50 border border-green-200 rounded-xl flex items-start gap-3 animate-slide-up'>
-                      <CheckCircle2 size={20} className='text-green-600 shrink-0 mt-0.5' />
-                      <div>
-                        <p className='text-[15px] font-bold text-green-900'>100% Match! You should definitely apply!</p>
-                        <p className='text-[13px] text-green-700 mt-0.5'>Your profile skills perfectly align with what the employer is looking for.</p>
+                  {/* 75%+ Match — Apply Banner */}
+                  {matchPercentage >= 75 && (
+                    <div className='relative overflow-hidden rounded-[24px] p-6 sm:p-8 border-2 border-green-200 bg-gradient-to-r from-green-50 via-emerald-50 to-teal-50 shadow-[0_8px_32px_-8px_rgba(16,185,129,0.25)] flex flex-col sm:flex-row items-center justify-between gap-5'>
+                      <div className='absolute -top-12 -left-12 w-48 h-48 bg-green-300/20 rounded-full blur-3xl pointer-events-none'></div>
+                      <div className='absolute -bottom-12 -right-12 w-48 h-48 bg-emerald-300/20 rounded-full blur-3xl pointer-events-none'></div>
+                      <div className='flex items-center gap-5 z-10'>
+                        <div className='w-16 h-16 rounded-2xl bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center shrink-0 shadow-lg shadow-green-500/30'>
+                          <CheckCircle2 size={32} className='text-white' />
+                        </div>
+                        <div>
+                          <span className='text-[11px] font-extrabold text-green-700 uppercase tracking-widest bg-green-100 border border-green-200 px-2.5 py-0.5 rounded-full'>
+                            🎯 {matchPercentage}% Match
+                          </span>
+                          <h3 className='text-xl sm:text-2xl font-extrabold text-gray-900 mt-2 leading-snug'>
+                            You're a <span className='text-transparent bg-clip-text bg-gradient-to-r from-green-600 to-emerald-600'>great fit</span> for this job!
+                          </h3>
+                          <p className='text-[14px] text-gray-600 font-medium mt-1'>
+                            Your skill set strongly matches what the employer is looking for. Don't miss this opportunity!
+                          </p>
+                        </div>
+                      </div>
+                      <div className='flex flex-col sm:flex-row items-center gap-3 z-10 shrink-0 w-full sm:w-auto'>
+                        <button
+                          onClick={applyHandler}
+                          disabled={isAlreadyApplied}
+                          className={`w-full sm:w-auto flex items-center justify-center gap-2.5 px-8 py-3.5 rounded-xl font-extrabold text-[15px] shadow-lg transition-all
+                            ${isAlreadyApplied
+                              ? 'bg-gray-100 text-gray-500 cursor-not-allowed border border-gray-200'
+                              : 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white hover:-translate-y-0.5 hover:shadow-green-500/30'
+                            }`}
+                        >
+                          {isAlreadyApplied ? <><CheckCircle2 size={18} /> Already Applied</> : <><ArrowRight size={18} /> Apply Now</>}
+                        </button>
+                        <p className='text-[12px] font-medium text-green-700/70 text-center sm:text-left sm:max-w-[100px] leading-tight'>
+                          Be among the first to apply!
+                        </p>
                       </div>
                     </div>
                   )}
 
-                  <div className='bg-[#F8FAFC] p-6 rounded-2xl border border-gray-100'>
-                    <label className='block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-3'>Your Current Skills</label>
-                    <div className='flex flex-wrap gap-2 mb-6'>
-                      {userData.skills && (Array.isArray(userData.skills) ? userData.skills : typeof userData.skills === 'string' ? userData.skills.split(',') : []).length > 0 ? (Array.isArray(userData.skills) ? userData.skills : typeof userData.skills === 'string' ? userData.skills.split(',').map(s=>s.trim()) : []).map((skill, idx) => (
-                        <span key={idx} className={`px-3.5 py-1.5 border text-[13px] font-bold rounded-full shadow-sm transition-all ${isSkillMatched(skill, displaySkills) ? 'bg-green-50 text-green-700 border-green-200 ring-2 ring-green-500/20' : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'}`}>
-                          {skill}
+                  {/* Skills Card */}
+
+                  <div className='bg-white rounded-[24px] p-8 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.06)] border border-gray-100'>
+                    <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 border-b border-gray-100 pb-5'>
+                      <div className='flex items-start gap-3'>
+                        <div className='w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 mt-0.5'>
+                          <Layers size={20} />
+                        </div>
+                        <div>
+                          <h3 className='text-[15px] font-extrabold text-gray-900 uppercase tracking-wide'>Your Current Skills</h3>
+                          <p className='text-[13px] text-gray-500 font-medium mt-0.5'>These skills are used to match with job requirements.</p>
+                        </div>
+                      </div>
+                      <div className='flex items-center gap-3 shrink-0'>
+                        <span className='text-[13px] font-bold text-blue-600 bg-blue-50 px-4 py-2 rounded-xl flex items-center gap-2'>
+                          <Layers size={14} /> {((Array.isArray(userData.skills) ? userData.skills : typeof userData.skills === 'string' && userData.skills ? userData.skills.split(',') : []).length)} Skills Added
                         </span>
-                      )) : (
-                        <span className='text-xs text-gray-400 italic'>No skills added to your profile yet.</span>
+                        {((Array.isArray(userData.skills) ? userData.skills : typeof userData.skills === 'string' && userData.skills ? userData.skills.split(',') : []).length > 0) && (
+                          <button 
+                            onClick={handleClearAllSkills}
+                            className='text-[13px] font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-100 px-4 py-2 rounded-xl flex items-center gap-2 transition-colors'
+                          >
+                            <Trash2 size={14} /> Clear All
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Skill Chips Container */}
+                    <div className='flex flex-wrap gap-3 mb-10 min-h-[100px]'>
+                      {userData.skills && (Array.isArray(userData.skills) ? userData.skills : typeof userData.skills === 'string' && userData.skills ? userData.skills.split(',') : []).length > 0 ? (
+                        (Array.isArray(userData.skills) ? userData.skills : typeof userData.skills === 'string' ? userData.skills.split(',').map(s=>s.trim()) : []).map((skill, idx) => {
+                          const isMatched = isSkillMatched(skill, displaySkills);
+                          return (
+                            <div 
+                              key={idx} 
+                              className={`group flex items-center gap-2.5 px-4 py-2.5 rounded-full border text-[14px] font-bold transition-all shadow-sm
+                                ${isMatched 
+                                  ? 'bg-green-50 border-green-200 text-green-800' 
+                                  : 'bg-white border-gray-200 text-gray-700 hover:border-purple-300 hover:shadow-[0_2px_8px_rgba(168,85,247,0.15)]'}`}
+                            >
+                              {/* Left Icon */}
+                              {isMatched ? (
+                                <CheckCircle2 size={16} className='text-green-500 fill-green-100 shrink-0' />
+                              ) : (
+                                <div className='w-1.5 h-1.5 rounded-full bg-gray-300 group-hover:bg-purple-400 transition-colors'></div>
+                              )}
+                              
+                              <span>{skill}</span>
+                              
+                              {/* Remove Button */}
+                              <button 
+                                onClick={() => handleRemoveSkill(skill)}
+                                className={`ml-1 flex items-center justify-center rounded-full w-5 h-5 transition-colors
+                                  ${isMatched 
+                                    ? 'text-green-600 hover:bg-green-200/50' 
+                                    : 'text-gray-400 hover:bg-gray-100 hover:text-red-500'}`}
+                                aria-label={`Remove ${skill}`}
+                              >
+                                <X size={14} />
+                              </button>
+                            </div>
+                          )
+                        })
+                      ) : (
+                        <div className='w-full flex flex-col items-center justify-center py-8 text-center bg-gray-50/50 rounded-2xl border border-dashed border-gray-200'>
+                          <Layers size={32} className='text-gray-300 mb-3' />
+                          <p className='text-sm font-bold text-gray-600'>No skills added yet</p>
+                          <p className='text-[13px] text-gray-400 mt-1'>Add your skills below to see how well you match with this job.</p>
+                        </div>
                       )}
                     </div>
-                    
-                    <div>
-                        <label className='block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2.5'>Add a new skill</label>
-                        <div className='relative max-w-sm'>
-                          <input 
-                          type="text"
-                          value={newSkill}
-                          onChange={(e) => setNewSkill(e.target.value)}
-                          onKeyDown={handleAddSkill}
-                          placeholder="Type a skill and press Enter..."
-                          className='w-full px-4 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all shadow-sm'
-                          />
-                          <p className="text-[11px] font-medium text-gray-400 mt-2 ml-1">Changes are saved to your profile immediately.</p>
+
+                    {/* Add New Skill Section */}
+                    <div className='bg-[#F8FAFC] rounded-2xl p-5 border border-gray-100 flex flex-col lg:flex-row lg:items-center justify-between gap-6'>
+                      <div className='flex items-start gap-4 flex-1'>
+                        <div className='w-10 h-10 rounded-xl bg-white shadow-sm border border-gray-100 text-blue-500 flex items-center justify-center shrink-0'>
+                          <Plus size={20} />
                         </div>
+                        <div className='flex-1 max-w-lg'>
+                          <h4 className='text-[13px] font-extrabold text-gray-900 uppercase tracking-wider mb-1'>Add a new skill</h4>
+                          <p className='text-[13px] text-gray-500 mb-3'>Type a skill and press Enter or click Add to add it to your profile.</p>
+                          
+                          <div className='flex items-center gap-3 relative'>
+                            <div className='relative flex-1'>
+                              <Search size={16} className='absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400' />
+                              <input 
+                                type="text"
+                                value={newSkill}
+                                onChange={(e) => setNewSkill(e.target.value)}
+                                onKeyDown={handleAddSkill}
+                                placeholder="e.g. Docker, Kubernetes, Machine Learning..."
+                                className='w-full pl-10 pr-4 py-3 text-[14px] font-medium bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-100 focus:border-purple-400 transition-all shadow-sm'
+                              />
+                            </div>
+                            <button 
+                              onClick={() => handleAddSkill({ key: 'Enter' })}
+                              disabled={!newSkill.trim()}
+                              className='bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold py-3 px-6 rounded-xl shadow-md shadow-purple-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 whitespace-nowrap'
+                            >
+                              <Plus size={16} /> Add Skill
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Pro Tip */}
+                      <div className='lg:w-64 bg-yellow-50/50 border border-yellow-100 rounded-xl p-4 flex items-start gap-3 shrink-0'>
+                        <Lightbulb size={18} className='text-yellow-500 shrink-0 mt-0.5' />
+                        <div>
+                          <h5 className='text-[13px] font-bold text-yellow-800 mb-0.5'>Pro Tip:</h5>
+                          <p className='text-[12px] text-yellow-700/80 leading-relaxed'>Add relevant skills to get a higher match score and better job recommendations.</p>
+                        </div>
+                      </div>
                     </div>
+
                   </div>
                 </div>
               )}
@@ -425,23 +617,6 @@ const ApplyJob = () => {
                       </div>
                   )}
                 </div>
-              </div>
-            </div>
-          )}
-
-          {/* SKILLS REQUIRED TAB */}
-          {activeTab === 'Skills Required' && (
-            <div className='animate-fadeIn bg-white rounded-[24px] p-8 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)] border border-gray-100'>
-              <h3 className='text-xl font-extrabold text-gray-900 mb-6 flex items-center gap-2.5'>
-                <Sparkles size={22} className='text-purple-500' /> Skills Required
-              </h3>
-              <div className='flex flex-wrap gap-3'>
-                {displaySkills.map((skill, index) => (
-                  <div key={index} className='flex items-center gap-2 bg-purple-50/50 border border-purple-100/50 px-4 py-2.5 rounded-xl'>
-                    <CheckCircle2 size={18} className='text-purple-500 fill-purple-100' />
-                    <span className='font-bold text-purple-900 text-sm'>{skill}</span>
-                  </div>
-                ))}
               </div>
             </div>
           )}

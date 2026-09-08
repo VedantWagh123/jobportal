@@ -1,137 +1,362 @@
-import { useContext, useEffect, useState } from 'react'
+import { useContext, useEffect, useState, useRef } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { assets } from '../assets/assets'
 import { AppContext } from '../context/AppContext'
-import { Bell, User, Users, BarChart2, Briefcase, FileText, Settings, LogOut, Home } from 'lucide-react'
 import axios from 'axios'
+import {
+  Bell, Settings, LogOut, Home, Briefcase, FileText, Users,
+  BarChart2, MessageSquare, CreditCard, HelpCircle, Search,
+  ChevronDown, Menu, X, Zap, Star, UserCircle, ChevronRight,
+  Globe, Link2, ExternalLink, Share2, Crown, CheckCircle2
+} from 'lucide-react'
+
+const navMain = [
+  { label: 'Overview', icon: Home, to: '/dashboard', end: true },
+  { label: 'Manage Jobs', icon: Briefcase, to: '/dashboard/manage-jobs' },
+  { label: 'Applications', icon: FileText, to: '/dashboard/view-applications', badge: 'apps' },
+  { label: 'Candidates', icon: Users, to: '/dashboard/candidates' },
+]
+const navInsights = [
+  { label: 'Analytics', icon: BarChart2, to: '/dashboard/analytics' },
+  { label: 'Messages', icon: MessageSquare, to: '#', badge: 3 },
+]
+const navSettings = [
+  { label: 'Company Profile', icon: Settings, to: '/dashboard/profile' },
+  { label: 'Team Members', icon: Users, to: '#' },
+  { label: 'Billing', icon: CreditCard, to: '#' },
+  { label: 'Help & Support', icon: HelpCircle, to: '#' },
+]
+
+const SidebarLink = ({ item, onClick }) => {
+  const isDummy = item.to === '#'
+  const baseClass = 'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group w-full'
+  
+  if (isDummy) {
+    return (
+      <div 
+        title="Feature Not Available Yet"
+        className={`${baseClass} text-gray-500 hover:bg-red-50 hover:text-red-600 cursor-not-allowed`}
+      >
+        <item.icon size={18} className="text-gray-400 group-hover:text-red-500 transition-colors" />
+        <span className="flex-1">{item.label}</span>
+        {typeof item.badge === 'number' && (
+          <span className="bg-gray-300 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 group-hover:bg-red-400 transition-colors">
+            {item.badge}
+          </span>
+        )}
+      </div>
+    )
+  }
+
+  const activeClass = 'bg-blue-50 text-blue-700 font-semibold'
+  const inactiveClass = 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+
+  return (
+    <NavLink
+      to={item.to}
+      end={item.end}
+      onClick={onClick}
+      className={({ isActive }) => `${baseClass} ${isActive ? activeClass : inactiveClass}`}
+    >
+      {({ isActive }) => (
+        <>
+          <item.icon size={18} className={isActive ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-600'} />
+          <span className="flex-1">{item.label}</span>
+          {typeof item.badge === 'number' && (
+            <span className="bg-blue-600 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+              {item.badge}
+            </span>
+          )}
+        </>
+      )}
+    </NavLink>
+  )
+}
+
+const SidebarContent = ({ companyData, unreadCount, logout, onClose }) => {
+  const navigate = useNavigate()
+  return (
+    <div className="flex flex-col h-full">
+      {/* Company Greeting */}
+      <div className="px-5 py-6 border-b border-gray-100 flex flex-col shrink-0 bg-gradient-to-b from-blue-50/50 to-transparent relative">
+        <p className="text-[10px] font-extrabold text-blue-600 uppercase tracking-widest mb-1.5">Welcome back</p>
+        <h2 className="text-[17px] font-extrabold text-gray-900 truncate leading-tight pr-6">{companyData?.name || 'Recruiter'}</h2>
+        <div className="flex items-center gap-2 mt-2.5">
+           <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-md"><CheckCircle2 size={11}/> Verified</span>
+        </div>
+        {onClose && (
+          <button onClick={onClose} className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 lg:hidden">
+            <X size={18} />
+          </button>
+        )}
+      </div>
+
+      {/* Nav */}
+      <div className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
+        <div>
+          <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest mb-2 px-3">Main Menu</p>
+          <div className="space-y-0.5">
+            {navMain.map(item => (
+              <SidebarLink key={item.label} item={item} onClick={onClose} />
+            ))}
+          </div>
+        </div>
+        <div>
+          <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest mb-2 px-3">Insights</p>
+          <div className="space-y-0.5">
+            {navInsights.map(item => (
+              <SidebarLink key={item.label} item={item} onClick={onClose} />
+            ))}
+          </div>
+        </div>
+        <div>
+          <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest mb-2 px-3">Settings</p>
+          <div className="space-y-0.5">
+            {navSettings.map(item => (
+              <SidebarLink key={item.label} item={item} onClick={onClose} />
+            ))}
+            <button
+              onClick={() => { logout(); onClose?.(); }}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 w-full transition-colors"
+            >
+              <LogOut size={18} className="text-red-400" />
+              Logout
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Upgrade Card */}
+      <div className="px-3 pb-5 shrink-0">
+        <div className="bg-gradient-to-br from-violet-50 via-blue-50 to-indigo-50 border border-violet-100 rounded-2xl p-4 relative overflow-hidden">
+          <div className="absolute top-2 right-2 w-16 h-16 bg-violet-200/30 rounded-full blur-xl"></div>
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-sm">
+              <Crown size={14} className="text-white" />
+            </div>
+            <span className="font-extrabold text-gray-900 text-sm">Upgrade to Pro</span>
+            <Zap size={12} className="text-violet-500 ml-auto" />
+          </div>
+          <p className="text-[12px] text-gray-500 leading-relaxed mb-3">
+            Get advanced features, more visibility and better reach.
+          </p>
+          <button className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white text-[12px] font-bold py-2 rounded-xl transition-all shadow-md shadow-violet-500/20 flex items-center justify-center gap-1.5">
+            Upgrade Now <ChevronRight size={13} />
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 const Dashboard = () => {
+  const navigate = useNavigate()
+  const { companyData, setCompanyData, setCompanyToken, backendUrl, companyToken } = useContext(AppContext)
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const [profileOpen, setProfileOpen] = useState(false)
+  const profileRef = useRef(null)
+  
+  // Search state & refs
+  const [searchQuery, setSearchQuery] = useState('')
+  const searchInputRef = useRef(null)
 
-    const navigate = useNavigate()
-
-    const { companyData, setCompanyData, setCompanyToken, backendUrl, companyToken } = useContext(AppContext)
-    const [unreadCount, setUnreadCount] = useState(0)
-
-    // Fetch Notifications to get unread count
-    useEffect(() => {
-        if (companyToken) {
-            axios.get(backendUrl + '/api/company/notifications', { headers: { token: companyToken } })
-                .then(res => {
-                    if (res.data.success) {
-                        const unread = res.data.notifications.filter(n => !n.isRead).length;
-                        setUnreadCount(unread);
-                    }
-                }).catch(err => console.log(err));
-        }
-    }, [companyToken, backendUrl])
-
-    // Function to logout for company
-    const logout = () => {
-        setCompanyToken(null)
-        localStorage.removeItem('companyToken')
-        setCompanyData(null)
-        navigate('/')
+  useEffect(() => {
+    if (companyToken) {
+      axios.get(backendUrl + '/api/company/notifications', { headers: { token: companyToken } })
+        .then(res => {
+          if (res.data.success) {
+            setUnreadCount(res.data.notifications.filter(n => !n.isRead).length)
+          }
+        }).catch(() => {})
     }
+  }, [companyToken, backendUrl])
 
-    return (
-        <div className='min-h-screen bg-gray-50/50'>
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (profileRef.current && !profileRef.current.contains(e.target)) {
+        setProfileOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
-            {/* Navbar for Recuriter Panel */}
-            <div className='bg-white shadow-sm border-b border-gray-100 py-3 sticky top-0 z-40'>
-                <div className='px-5 flex justify-between items-center max-w-7xl mx-auto'>
-                    <img onClick={e => navigate('/')} className='max-sm:w-32 cursor-pointer' src={assets.logo} alt="Logo" />
-                    {companyData && (
-                        <div className='flex items-center gap-5'>
-                            <button onClick={() => navigate('/dashboard/notifications')} className='relative text-gray-500 hover:text-blue-600 transition-colors p-2 rounded-full hover:bg-blue-50'>
-                                <Bell size={20} />
-                                {unreadCount > 0 && (
-                                    <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
-                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-                                    </span>
-                                )}
-                            </button>
-                            <div className='h-8 w-px bg-gray-200'></div>
-                            <div className='flex items-center gap-3 relative group cursor-pointer'>
-                                <div className='flex flex-col items-end max-sm:hidden'>
-                                    <p className='text-sm font-semibold text-gray-800'>{companyData.name}</p>
-                                    <p className='text-xs text-gray-500'>Recruiter</p>
-                                </div>
-                                <img className='w-10 h-10 border-2 border-white shadow-sm rounded-full object-cover' src={companyData.image} alt="Profile" />
-                                
-                                {/* Dropdown Profile Menu */}
-                                <div className='absolute hidden group-hover:block top-full right-0 pt-2 z-50 w-48'>
-                                    <div className='bg-white rounded-xl shadow-lg border border-gray-100 py-2 overflow-hidden'>
-                                        <div className='px-4 py-2 border-b border-gray-50 mb-1 max-sm:block hidden'>
-                                            <p className='text-sm font-semibold text-gray-800 truncate'>{companyData.name}</p>
-                                        </div>
-                                        <div onClick={() => navigate('/dashboard/profile')} className='flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 cursor-pointer transition-colors'>
-                                            <Settings size={16} /> Company Profile
-                                        </div>
-                                        <div onClick={logout} className='flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 cursor-pointer transition-colors mt-1 border-t border-gray-50'>
-                                            <LogOut size={16} /> Logout
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </div>
+  // Handle Ctrl+K shortcut for Search
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault()
+        searchInputRef.current?.focus()
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
-            <div className='flex items-start max-w-7xl mx-auto'>
+  const handleSearchSubmit = (e) => {
+    e.preventDefault()
+    if (searchQuery.trim()) {
+      // Navigate to Manage Jobs with search query in URL
+      navigate(`/dashboard/manage-jobs?search=${encodeURIComponent(searchQuery.trim())}`)
+      searchInputRef.current?.blur() // Remove focus after search
+    }
+  }
 
-                {/* Left Sidebar */}
-                <div className='inline-block min-h-[calc(100vh-73px)] w-64 border-r border-gray-200 bg-white shadow-sm z-30 max-md:w-16 transition-all duration-300'>
-                    <ul className='flex flex-col items-start pt-6 text-gray-600 font-medium pb-8 gap-1 px-3'>
-                        
-                        <p className='text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 ml-3 max-md:hidden mt-2'>Main Menu</p>
-                        
-                        <NavLink className={({ isActive }) => `flex items-center p-3 sm:px-4 gap-3 w-full rounded-xl transition-colors ${isActive ? 'bg-blue-50 text-blue-700 font-semibold [&>svg]:text-blue-600' : 'hover:bg-gray-50 hover:text-gray-900 [&>svg]:text-gray-400'}`} to={'/dashboard'} end>
-                            <Home size={20} />
-                            <p className='max-md:hidden'>Overview</p>
-                        </NavLink>
-                        
-                        <NavLink className={({ isActive }) => `flex items-center p-3 sm:px-4 gap-3 w-full rounded-xl transition-colors ${isActive ? 'bg-blue-50 text-blue-700 font-semibold [&>svg]:text-blue-600' : 'hover:bg-gray-50 hover:text-gray-900 [&>svg]:text-gray-400'}`} to={'/dashboard/manage-jobs'}>
-                            <Briefcase size={20} />
-                            <p className='max-md:hidden'>Manage Jobs</p>
-                        </NavLink>
+  const logout = () => {
+    setCompanyToken(null)
+    localStorage.removeItem('companyToken')
+    setCompanyData(null)
+    navigate('/')
+  }
 
-                        <NavLink className={({ isActive }) => `flex items-center p-3 sm:px-4 gap-3 w-full rounded-xl transition-colors ${isActive ? 'bg-blue-50 text-blue-700 font-semibold [&>svg]:text-blue-600' : 'hover:bg-gray-50 hover:text-gray-900 [&>svg]:text-gray-400'}`} to={'/dashboard/view-applications'}>
-                            <FileText size={20} />
-                            <p className='max-md:hidden'>Applications</p>
-                        </NavLink>
+  return (
+    <div className="min-h-screen bg-[#F4F6FB] flex flex-col">
 
-                        <NavLink className={({ isActive }) => `flex items-center p-3 sm:px-4 gap-3 w-full rounded-xl transition-colors ${isActive ? 'bg-blue-50 text-blue-700 font-semibold [&>svg]:text-blue-600' : 'hover:bg-gray-50 hover:text-gray-900 [&>svg]:text-gray-400'}`} to={'/dashboard/candidates'}>
-                            <Users size={20} />
-                            <p className='max-md:hidden'>Candidates</p>
-                        </NavLink>
+      {/* Top Header */}
+      <header className="bg-white border-b border-gray-100 shadow-sm sticky top-0 z-40 shrink-0">
+        <div className="flex items-center gap-4 px-4 lg:px-6 h-[60px]">
 
-                        <p className='text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 ml-3 max-md:hidden mt-6'>Insights</p>
+          {/* Mobile Hamburger */}
+          <button
+            onClick={() => setMobileOpen(true)}
+            className="lg:hidden p-2 rounded-xl hover:bg-gray-100 text-gray-500 transition-colors"
+          >
+            <Menu size={20} />
+          </button>
 
-                        <NavLink className={({ isActive }) => `flex items-center p-3 sm:px-4 gap-3 w-full rounded-xl transition-colors ${isActive ? 'bg-blue-50 text-blue-700 font-semibold [&>svg]:text-blue-600' : 'hover:bg-gray-50 hover:text-gray-900 [&>svg]:text-gray-400'}`} to={'/dashboard/analytics'}>
-                            <BarChart2 size={20} />
-                            <p className='max-md:hidden'>Analytics</p>
-                        </NavLink>
+          {/* Logo */}
+          <div className="flex-1 max-w-xl hidden sm:flex items-center">
+            <img onClick={() => navigate('/')} className="h-8 cursor-pointer hover:opacity-90 transition-opacity" src={assets.logo} alt="InsiderJobs" />
+          </div>
 
-                        <p className='text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 ml-3 max-md:hidden mt-6'>Settings</p>
+          {/* Right Side */}
+          <div className="ml-auto flex items-center gap-2">
+            {/* Notification */}
+            <button
+              onClick={() => navigate('/dashboard/notifications')}
+              className="relative p-2.5 rounded-xl hover:bg-gray-100 text-gray-500 transition-colors"
+            >
+              <Bell size={20} />
+              {unreadCount > 0 && (
+                <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 border-2 border-white rounded-full"></span>
+              )}
+            </button>
 
-                        <NavLink className={({ isActive }) => `flex items-center p-3 sm:px-4 gap-3 w-full rounded-xl transition-colors ${isActive ? 'bg-blue-50 text-blue-700 font-semibold [&>svg]:text-blue-600' : 'hover:bg-gray-50 hover:text-gray-900 [&>svg]:text-gray-400'}`} to={'/dashboard/profile'}>
-                            <Settings size={20} />
-                            <p className='max-md:hidden'>Company Profile</p>
-                        </NavLink>
+            {/* Company Profile */}
+            {companyData && (
+              <div className="relative" ref={profileRef}>
+                <button
+                  onClick={() => setProfileOpen(!profileOpen)}
+                  className="flex items-center gap-2.5 pl-2 pr-3 py-1.5 rounded-xl hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-200"
+                >
+                  <img
+                    src={companyData.image}
+                    alt={companyData.name}
+                    className="w-8 h-8 rounded-full object-cover border-2 border-white shadow-sm"
+                  />
+                  <div className="hidden sm:flex flex-col items-start leading-tight">
+                    <span className="text-sm font-bold text-gray-800">{companyData.name}</span>
+                    <span className="text-[11px] text-gray-400 font-medium">Recruiter</span>
+                  </div>
+                  <ChevronDown size={15} className={`text-gray-400 transition-transform hidden sm:block ${profileOpen ? 'rotate-180' : ''}`} />
+                </button>
 
-                    </ul>
-                </div>
-
-                <div className='flex-1 h-full p-4 sm:p-6 lg:p-8 min-h-[calc(100vh-73px)] w-full overflow-hidden'>
-                    <Outlet />
-                </div>
-
-            </div>
-
+                {profileOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-50">
+                    <div className="px-4 py-3 border-b border-gray-50 flex items-center gap-3">
+                      <img src={companyData.image} alt="" className="w-9 h-9 rounded-full object-cover border-2 border-white shadow-sm" />
+                      <div>
+                        <p className="text-sm font-bold text-gray-800 truncate max-w-[120px]">{companyData.name}</p>
+                        <p className="text-[11px] text-gray-400">Recruiter</p>
+                      </div>
+                    </div>
+                    <button onClick={() => { navigate('/dashboard/profile'); setProfileOpen(false); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors">
+                      <Settings size={16} className="text-gray-400" /> Company Profile
+                    </button>
+                    <div className="border-t border-gray-50 mt-1">
+                      <button onClick={logout} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors">
+                        <LogOut size={16} className="text-red-400" /> Logout
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
-    )
+      </header>
+
+      <div className="flex flex-1 min-h-0">
+
+        {/* Desktop Sidebar */}
+        <aside className="hidden lg:flex w-[220px] xl:w-[240px] shrink-0 bg-white border-r border-gray-100 flex-col sticky top-[60px] h-[calc(100vh-60px)] overflow-hidden shadow-sm">
+          <SidebarContent companyData={companyData} unreadCount={unreadCount} logout={logout} />
+        </aside>
+
+        {/* Mobile Drawer Overlay */}
+        {mobileOpen && (
+          <div className="fixed inset-0 z-50 lg:hidden flex">
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setMobileOpen(false)}></div>
+            <div className="relative w-[260px] bg-white h-full shadow-2xl flex flex-col animate-slide-in-left z-50">
+              <SidebarContent
+                companyData={companyData}
+                unreadCount={unreadCount}
+                logout={logout}
+                onClose={() => setMobileOpen(false)}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Main Content */}
+        <main className="flex-1 min-w-0 flex flex-col">
+          <div className="flex-1 p-3 sm:p-5 lg:p-6 overflow-auto">
+            <Outlet />
+          </div>
+
+          {/* Footer */}
+          <footer className="bg-white border-t border-gray-100 px-6 py-4 mt-auto">
+            <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <img src={assets.logo} alt="InsiderJobs" className="h-6 opacity-80" />
+                <span className="text-[12px] text-gray-400 font-medium">Connecting Talent with Opportunities</span>
+              </div>
+              <div className="flex items-center gap-4 flex-wrap justify-center">
+                <div className="flex items-center gap-4 text-[12px] text-gray-400">
+                  <a href="#" className="hover:text-gray-600 transition-colors">Privacy</a>
+                  <span className="text-gray-200">|</span>
+                  <a href="#" className="hover:text-gray-600 transition-colors">Terms</a>
+                  <span className="text-gray-200">|</span>
+                  <a href="#" className="hover:text-gray-600 transition-colors">Contact</a>
+                </div>
+                <div className="flex items-center gap-2">
+                  {[Globe, Link2, Share2, ExternalLink].map((Icon, i) => (
+                    <a key={i} href="#" className="w-7 h-7 rounded-lg bg-gray-50 hover:bg-blue-50 hover:text-blue-600 text-gray-400 flex items-center justify-center transition-colors border border-gray-100">
+                      <Icon size={13} />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </footer>
+        </main>
+      </div>
+
+      {/* Floating Help Button */}
+      <button className="fixed bottom-6 right-6 w-12 h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg shadow-blue-500/30 flex items-center justify-center text-lg font-bold z-50 transition-all hover:scale-110 hover:shadow-xl hover:shadow-blue-500/40">
+        ?
+      </button>
+
+      <style>{`
+        @keyframes slide-in-left {
+          from { transform: translateX(-100%); }
+          to { transform: translateX(0); }
+        }
+        .animate-slide-in-left { animation: slide-in-left 0.25s ease-out; }
+      `}</style>
+    </div>
+  )
 }
 
 export default Dashboard

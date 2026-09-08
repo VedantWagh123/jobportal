@@ -8,6 +8,8 @@ import SkillsManagement from './pages/SkillsManagement';
 import StateAdmins from './pages/StateAdmins';
 import InstituteManagement from './pages/InstituteManagement';
 import EmployersManagement from './pages/EmployersManagement';
+import Settings from './pages/Settings';
+import ReportsAnalytics from './pages/ReportsAnalytics';
 
 // Protect routes
 const ProtectedRoute = ({ children }) => {
@@ -30,6 +32,8 @@ function AppRoutes() {
                 <Route path="admins" element={<StateAdmins />} />
                 <Route path="institutes" element={<InstituteManagement />} />
                 <Route path="employers" element={<EmployersManagement />} />
+                <Route path="settings" element={<Settings />} />
+                <Route path="reports" element={<ReportsAnalytics />} />
             </Route>
         </Routes>
     );

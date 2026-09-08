@@ -16,8 +16,6 @@ const AddJob = () => {
     const [jobType, setJobType] = useState('Full Time');
     const [salary, setSalary] = useState(0);
     const [vacancies, setVacancies] = useState(1);
-    const [skillsString, setSkillsString] = useState('');
-    const [isExtracting, setIsExtracting] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const editorRef = useRef(null)
@@ -33,7 +31,7 @@ const AddJob = () => {
         try {
 
             const description = quillRef.current.root.innerHTML
-            const skills = skillsString.split(',').map(s => s.trim()).filter(s => s);
+            const skills = [];
 
             const { data } = await axios.post(backendUrl + '/api/company/post-job',
                 { title, description, location, salary, category, level, jobType, vacancies, skills },
@@ -45,7 +43,6 @@ const AddJob = () => {
                 setTitle('')
                 setSalary(0)
                 setVacancies(1)
-                setSkillsString('')
                 quillRef.current.root.innerHTML = ""
                 navigate('/dashboard/manage-jobs')
             } else {
@@ -60,29 +57,6 @@ const AddJob = () => {
 
     }
 
-    const handleExtractSkills = async () => {
-        const descriptionHTML = quillRef.current?.root?.innerHTML;
-        if (!descriptionHTML || descriptionHTML === '<p><br></p>') {
-            return toast.warning("Please enter a job description first.");
-        }
-        setIsExtracting(true);
-        try {
-            const { data } = await axios.post(backendUrl + '/api/company/extract-skills', 
-                { description: descriptionHTML },
-                { headers: { token: companyToken } }
-            );
-            if (data.success && data.skills) {
-                const existing = skillsString ? skillsString.split(',').map(s=>s.trim()).filter(s=>s) : [];
-                const merged = [...new Set([...existing, ...data.skills])];
-                setSkillsString(merged.join(', '));
-                toast.success("Skills extracted!");
-            }
-        } catch (error) {
-            toast.error("Failed to extract skills via AI.");
-        } finally {
-            setIsExtracting(false);
-        }
-    };
 
 
     useEffect(() => {
@@ -156,28 +130,16 @@ const AddJob = () => {
             <div className="w-full bg-white border border-gray-100 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07)] rounded-2xl p-6">
                 <div className='flex justify-between items-center mb-5 border-b border-gray-100 pb-3'>
                     <h3 className="text-lg font-semibold text-gray-800">Job Description</h3>
-                    <button type="button" onClick={handleExtractSkills} disabled={isExtracting} className="flex items-center gap-1.5 bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 px-3 py-1.5 rounded-lg text-xs font-bold transition disabled:opacity-50 shadow-sm">
-                        {isExtracting ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} className="text-yellow-500" />}
-                        {isExtracting ? 'Extracting Skills...' : 'AI Auto-Extract Skills'}
-                    </button>
                 </div>
                 <div className="border border-gray-200 rounded-xl overflow-hidden [&_.ql-toolbar]:border-none [&_.ql-toolbar]:border-b [&_.ql-toolbar]:border-gray-200 [&_.ql-toolbar]:bg-gray-50 [&_.ql-container]:border-none [&_.ql-editor]:min-h-[200px]">
                     <div ref={editorRef}></div>
                 </div>
             </div>
 
-            {/* Skills & Compensation Card */}
+            {/* Compensation Card */}
             <div className="w-full bg-white border border-gray-100 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07)] rounded-2xl p-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-5 border-b border-gray-100 pb-3">Requirements & Compensation</h3>
+                <h3 className="text-lg font-semibold text-gray-800 mb-5 border-b border-gray-100 pb-3">Compensation</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <div className='col-span-1 md:col-span-2'>
-                        <label className='block text-sm font-medium text-gray-700 mb-1.5'>Required Skills (comma separated)</label>
-                        <input type="text" placeholder='e.g. React, Node.js, AWS'
-                            onChange={e => setSkillsString(e.target.value)} value={skillsString}
-                            required
-                            className='w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all'
-                        />
-                    </div>
                     <div>
                         <label className='block text-sm font-medium text-gray-700 mb-1.5'>Job Salary (₹)</label>
                         <input min={0} className='w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all' onChange={e => setSalary(e.target.value)} value={salary} type="Number" placeholder='25000' />

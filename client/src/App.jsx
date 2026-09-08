@@ -26,6 +26,8 @@ const CompanyProfile = lazy(() => import('./pages/CompanyProfile'))
 const CompanyDetails = lazy(() => import('./pages/CompanyDetails'))
 const UserLayout = lazy(() => import('./components/UserLayout'))
 const Upskilling = lazy(() => import('./pages/Upskilling'))
+const CareerGap = lazy(() => import('./pages/CareerGap'))
+const SavedJobs = lazy(() => import('./pages/SavedJobs'))
 
 const App = () => {
 
@@ -45,6 +47,8 @@ const App = () => {
             <Route path='/company/:id' element={<CompanyDetails />} />
             <Route path='/applications' element={<Applications />} />
             <Route path='/upskilling' element={<Upskilling />} />
+            <Route path='/career-gap' element={<CareerGap />} />
+            <Route path='/saved-jobs' element={<SavedJobs />} />
           </Route>
           
           {/* Company Dashboard (Keeps its own layout) */}

@@ -10,24 +10,54 @@ import CurriculumAlert from '../models/CurriculumAlert.js';
 
 class IntelligenceService {
     
+    // Helper to get district IDs for a state filter
+    static async getValidDistrictIds(stateFilter) {
+        if (!stateFilter) return null;
+        const regex = new RegExp(`^${stateFilter}$`, 'i');
+        const districts = await District.find({ state: regex }).select('_id').lean();
+        return districts.map(d => d._id);
+    }
+
     // 1. OVERVIEW
     static async getOverviewStats(filters = {}) {
+        const districtIds = await this.getValidDistrictIds(filters.state);
+        
+        const jobFilter = { visible: true };
+        const instFilter = {};
+        const districtFilter = {};
+        
+        if (districtIds) {
+            jobFilter.districtId = { $in: districtIds };
+            instFilter.districtId = { $in: districtIds };
+            districtFilter._id = { $in: districtIds };
+        }
+
+        // Institutes in the state
+        const institutes = await TrainingInstitute.find(instFilter, '_id').lean();
+        const instIds = institutes.map(i => i._id);
+
+        // Batches in those institutes
+        const batchFilter = { status: { $in: ['Planning', 'Active'] } };
+        if (districtIds) {
+            batchFilter.instituteId = { $in: instIds };
+        }
+
         const [
             totalJobs,
             totalDistricts,
             totalInstitutes,
-            batches,
-            totalEnrollments
+            batches
         ] = await Promise.all([
-            Job.find({ visible: true }, 'vacancies').lean(),
-            District.countDocuments(),
-            TrainingInstitute.countDocuments(),
-            Batch.find({ status: { $in: ['Planning', 'Active'] } }, 'capacity'),
-            Enrollment.countDocuments()
+            Job.find(jobFilter, 'vacancies').lean(),
+            District.countDocuments(districtFilter),
+            TrainingInstitute.countDocuments(instFilter),
+            Batch.find(batchFilter, 'capacity _id').lean()
         ]);
 
-        const totalCapacity = batches.reduce((sum, b) => sum + (b.capacity || 0), 0);
+        const batchIds = batches.map(b => b._id);
+        const totalEnrollments = await Enrollment.countDocuments({ batchId: { $in: batchIds } });
 
+        const totalCapacity = batches.reduce((sum, b) => sum + (b.capacity || 0), 0);
         const totalVacancies = totalJobs.reduce((sum, j) => sum + (j.vacancies || 1), 0);
 
         return {
@@ -42,6 +72,15 @@ class IntelligenceService {
 
     // 2. DEMAND INTELLIGENCE
     static async getDemandStats(filters = {}) {
+        const districtIds = await this.getValidDistrictIds(filters.state);
+        const jobMatch = { 'job.visible': true };
+        const jobFilter = { visible: true };
+        
+        if (districtIds) {
+            jobMatch['job.districtId'] = { $in: districtIds };
+            jobFilter.districtId = { $in: districtIds };
+        }
+
         // Top Demanded Skills
         const topSkillsAgg = await JobSkill.aggregate([
             {
@@ -53,11 +92,11 @@ class IntelligenceService {
                 }
             },
             { $unwind: '$job' },
-            { $match: { 'job.visible': true } },
+            { $match: jobMatch },
             {
                 $group: {
                     _id: '$skillId',
-                    demandCount: { $sum: { $ifNull: ['$job.vacancies', 1] } } // Each job requiring it counts for its vacancies
+                    demandCount: { $sum: { $ifNull: ['$job.vacancies', 1] } }
                 }
             },
             {
@@ -81,9 +120,9 @@ class IntelligenceService {
             { $limit: 20 }
         ]);
 
-        // Top Roles (Using 'category' or 'title' from Job since Role ref isn't strictly enforced on all legacy jobs)
+        // Top Roles
         const topRolesAgg = await Job.aggregate([
-            { $match: { visible: true } },
+            { $match: jobFilter },
             {
                 $group: {
                     _id: '$category',
@@ -100,12 +139,57 @@ class IntelligenceService {
         };
     }
 
+    // 2.5 DEMAND TREND (Historical)
+    static async getDemandTrend(filters = {}) {
+        const districtIds = await this.getValidDistrictIds(filters.state);
+        const matchStage = { visible: true };
+        if (districtIds) {
+            matchStage.districtId = { $in: districtIds };
+        }
+
+        const jobs = await Job.find(matchStage, 'vacancies date').lean();
+        
+        // Initialize last 6 months (including current)
+        const months = [];
+        const now = new Date();
+        for (let i = 5; i >= 0; i--) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            months.push({
+                month: d.toLocaleString('default', { month: 'short' }),
+                year: d.getFullYear(),
+                monthIndex: d.getMonth(),
+                demand: 0
+            });
+        }
+
+        // Aggregate real data
+        jobs.forEach(j => {
+            const d = new Date(j.date);
+            const jMonth = d.getMonth();
+            const jYear = d.getFullYear();
+            
+            const targetMonth = months.find(m => m.monthIndex === jMonth && m.year === jYear);
+            if (targetMonth) {
+                targetMonth.demand += (j.vacancies || 1);
+            }
+        });
+
+        return months.map(m => ({ name: m.month, demand: m.demand }));
+    }
+
     // 3. SUPPLY INTELLIGENCE
     static async getSupplyStats(filters = {}) {
-        // Capacity by Skill
-        // TrainingBatch (capacity) -> Course -> CourseSkill -> Skill
+        const districtIds = await this.getValidDistrictIds(filters.state);
+        const matchStage = { status: { $in: ['Planning', 'Active'] } };
+        
+        if (districtIds) {
+            const institutes = await TrainingInstitute.find({ districtId: { $in: districtIds } }, '_id').lean();
+            const instIds = institutes.map(i => i._id);
+            matchStage.instituteId = { $in: instIds };
+        }
+
         const supplyBySkillAgg = await Batch.aggregate([
-            { $match: { status: { $in: ['Planning', 'Active'] } } },
+            { $match: matchStage },
             {
                 $lookup: {
                     from: 'courseskills',
@@ -172,7 +256,6 @@ class IntelligenceService {
 
     // 4. GAP INTELLIGENCE
     static async getGapIntelligence(filters = {}) {
-        // Gap = Demand - Supply
         const demand = await this.getDemandStats(filters);
         const supply = await this.getSupplyStats(filters);
 
@@ -189,7 +272,6 @@ class IntelligenceService {
             const d = demandMap.get(id) || { name: supplyMap.get(id).name, demand: 0 };
             const s = supplyMap.get(id) || { name: demandMap.get(id).name, supply: 0 };
             
-            // Core Gap Calculation
             const demandCount = d.demand;
             const supplyCount = s.supply;
             const gap = demandCount - supplyCount;
@@ -208,32 +290,34 @@ class IntelligenceService {
             });
         });
 
-        gapData.sort((a, b) => b.gap - a.gap); // Sort by largest shortage first
+        gapData.sort((a, b) => b.gap - a.gap);
 
         return gapData;
     }
 
     // 5. DISTRICT INTELLIGENCE
-    static async getDistrictIntelligence() {
-        const districts = await District.find().lean();
+    static async getDistrictIntelligence(filters = {}) {
+        const districtFilter = {};
+        if (filters.state) {
+            districtFilter.state = new RegExp(`^${filters.state}$`, 'i');
+        }
+        
+        const districts = await District.find(districtFilter).lean();
         const data = [];
 
         for (const dist of districts) {
             const distId = dist._id;
 
-            // Jobs in this district
             const jobsInDistrict = await Job.find({ districtId: distId, visible: true }, 'vacancies').lean();
             const jobCount = jobsInDistrict.reduce((sum, j) => sum + (j.vacancies || 1), 0);
-            // Institutes in this district
+            
             const institutes = await TrainingInstitute.find({ districtId: distId }, '_id').lean();
             const instIds = institutes.map(i => i._id);
             
-            // Batches in these institutes
-            const batches = await Batch.find({ instituteId: { $in: instIds }, status: { $in: ['Planning', 'Active'] } }, 'capacity _id courseId').lean();
+            const batches = await Batch.find({ instituteId: { $in: instIds }, status: { $in: ['Planning', 'Active'] } }, 'capacity _id').lean();
             const batchIds = batches.map(b => b._id);
             const capacityCount = batches.reduce((sum, b) => sum + (b.capacity || 0), 0);
             
-            // Enrollments in these batches
             const enrollmentsCount = await Enrollment.countDocuments({ batchId: { $in: batchIds } });
 
             data.push({
@@ -249,15 +333,16 @@ class IntelligenceService {
         
         return data.sort((a, b) => b.jobs - a.jobs);
     }
+
     // 6. DASHBOARD ANALYTICS (Aggregate for Frontend)
     static async getDashboardAnalytics(filters = {}) {
         const kpis = await this.getOverviewStats(filters);
         const demand = await this.getDemandStats(filters);
+        const demandTrend = await this.getDemandTrend(filters);
         const supply = await this.getSupplyStats(filters);
         const gapTable = await this.getGapIntelligence(filters);
-        const districts = await this.getDistrictIntelligence();
+        const districts = await this.getDistrictIntelligence(filters);
 
-        // Format Supply vs Demand (Top 5 Skills by Demand)
         const top5Skills = demand.topSkills.slice(0, 5);
         const supplyVsDemand = top5Skills.map(ds => {
             const ss = supply.topSuppliedSkills.find(s => s.skillId.toString() === ds.skillId.toString());
@@ -269,7 +354,6 @@ class IntelligenceService {
             };
         });
 
-        // Format Gap Distribution
         let highShortage = 0, moderateShortage = 0, sufficientSupply = 0;
         gapTable.forEach(g => {
             if (g.gap > 50) highShortage++;
@@ -283,7 +367,6 @@ class IntelligenceService {
             { name: 'Sufficient Supply', value: Math.round((sufficientSupply / totalGapSkills) * 100), color: '#10B981' }
         ];
 
-        // Format Industry Demand
         const colors = ['#3B82F6', '#6366F1', '#F43F5E', '#10B981', '#F472B6', '#9CA3AF'];
         const totalRoles = demand.topRoles.reduce((sum, r) => sum + r.demandCount, 0) || 1;
         const industryWiseDemand = demand.topRoles.slice(0, 6).map((r, i) => ({
@@ -292,7 +375,6 @@ class IntelligenceService {
             color: colors[i % colors.length]
         }));
 
-        // Top Districts by Gap (We use jobs vs capacity as a proxy for district gap here)
         const topDistrictsByGap = districts.map(d => ({
             name: `${d.districtName} (${d.state})`,
             gap: d.jobs > d.capacity ? `+${d.jobs - d.capacity}` : 'Balanced',
@@ -311,11 +393,13 @@ class IntelligenceService {
             action: g.gap > 50 ? 'Increase training seats' : g.gap > 0 ? 'Start new batches' : 'Monitor'
         }));
 
+        // Fetch curriculum alerts
         const activeAlerts = await CurriculumAlert.find({ status: 'Active' }).sort({ createdAt: -1 });
 
         return {
             kpis,
             supplyVsDemand,
+            demandTrend,
             gapDistribution,
             industryWiseDemand,
             topDistrictsByGap,

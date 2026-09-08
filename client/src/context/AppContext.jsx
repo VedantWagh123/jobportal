@@ -9,7 +9,7 @@ export const AppContextProvider = (props) => {
 
     const backendUrl = import.meta.env.VITE_BACKEND_URL
 
-    const { user } = useUser()
+    const { user, isLoaded } = useUser()
     const { getToken } = useAuth()
 
     const [searchFilter, setSearchFilter] = useState({
@@ -32,6 +32,7 @@ export const AppContextProvider = (props) => {
     const [userData, setUserData] = useState(null)
     const [userApplications, setUserApplications] = useState([])
     const [savedJobs, setSavedJobs] = useState([])
+    const [isChatbotOpen, setIsChatbotOpen] = useState(false)
 
     // Function to handle saved jobs
     const toggleSaveJob = (jobId) => {
@@ -164,11 +165,20 @@ export const AppContextProvider = (props) => {
 
     // Fetch User's Applications & Data if User is Logged In
     useEffect(() => {
+        // Wait for Clerk to fully load before reacting to user state.
+        // Without this guard, on page refresh: user is null briefly (Clerk loading),
+        // so userData stays null and the Navbar shows Login. Once Clerk resolves,
+        // user becomes available and we fetch correctly.
+        if (!isLoaded) return;
         if (user) {
             fetchUserData()
             fetchUserApplications()
+        } else {
+            // User has signed out — clear user data
+            setUserData(null)
+            setUserApplications([])
         }
-    }, [user])
+    }, [user, isLoaded])
 
     const value = {
         setSearchFilter, searchFilter,
@@ -186,6 +196,7 @@ export const AppContextProvider = (props) => {
         fetchUserData,
         fetchUserApplications,
         savedJobs, toggleSaveJob,
+        isChatbotOpen, setIsChatbotOpen,
 
     }
 

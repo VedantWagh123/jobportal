@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
 import { AppContext } from '../context/AppContext';
 import { assets } from '../assets/assets';
-import { Home, BriefcaseBusiness, Compass, Building2, GraduationCap } from 'lucide-react';
+import { Home, BriefcaseBusiness, Compass, Building2, GraduationCap, TrendingUp } from 'lucide-react';
 
 const UserSidebar = () => {
     const { user } = useUser();
@@ -42,6 +42,12 @@ const UserSidebar = () => {
                                 <div className="flex items-center gap-3">
                                     <Compass size={20} className={location.pathname === '/upskilling' ? "text-white" : "text-gray-500"} />
                                     <span>Upskilling</span>
+                                </div>
+                            </Link>
+                            <Link to="/career-gap" className={`px-4 py-3 rounded-xl transition-all duration-300 ${location.pathname === '/career-gap' ? 'bg-blue-600 text-white font-semibold shadow-md shadow-blue-500/20' : 'text-gray-600 hover:bg-gray-100'}`}>
+                                <div className="flex items-center gap-3">
+                                    <TrendingUp size={20} className={location.pathname === '/career-gap' ? "text-white" : "text-gray-500"} />
+                                    <span>Career Gap</span>
                                 </div>
                             </Link>
                         </>
@@ -112,14 +118,23 @@ const UserSidebar = () => {
 
             {/* Bottom Promo Section */}
             <div className="p-6 mt-auto">
-                <div className="bg-blue-50/50 rounded-2xl p-4 border border-blue-100 flex flex-col items-center text-center">
-                    <div className="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center mb-3 text-blue-600">
-                        <Compass size={24} />
+                <div className="group relative overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-50/50 rounded-3xl p-6 border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-sm transition-all duration-500 hover:shadow-[0_8px_30px_rgb(59,130,246,0.12)] hover:-translate-y-1 cursor-pointer flex flex-col items-center text-center">
+                    {/* Background Decorative Elements */}
+                    <div className="absolute -top-10 -right-10 w-32 h-32 bg-blue-100 rounded-full mix-blend-multiply filter blur-2xl opacity-70 group-hover:bg-blue-200 transition-all duration-500"></div>
+                    <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-indigo-100 rounded-full mix-blend-multiply filter blur-2xl opacity-70 group-hover:bg-indigo-200 transition-all duration-500"></div>
+                    
+                    {/* Icon */}
+                    <div className="relative z-10 w-14 h-14 bg-white/90 backdrop-blur-md rounded-2xl shadow-[0_4px_20px_rgb(0,0,0,0.06)] border border-white/80 flex items-center justify-center mb-4 text-blue-600 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-500 ease-out">
+                        <Compass size={26} strokeWidth={2.5} />
                     </div>
-                    <h4 className="font-bold text-sm text-gray-800">Build Your Future</h4>
-                    <p className="text-xs text-gray-500 mt-1 mb-3">Better Skills, Brighter Opportunities.</p>
-                    <button className="w-8 h-8 rounded-full bg-white text-blue-600 shadow-sm flex items-center justify-center hover:bg-blue-600 hover:text-white transition-colors">
-                        &rarr;
+                    
+                    {/* Text */}
+                    <h4 className="relative z-10 font-bold text-base text-gray-800 tracking-tight group-hover:text-blue-700 transition-colors duration-300">Build Your Future</h4>
+                    <p className="relative z-10 text-xs text-gray-500 mt-2 mb-5 font-medium leading-relaxed group-hover:text-gray-600 transition-colors duration-300">Better Skills, Brighter Opportunities.</p>
+                    
+                    {/* Action Button */}
+                    <button className="relative z-10 w-10 h-10 rounded-full bg-white text-blue-600 shadow-sm border border-gray-50 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white group-hover:shadow-md transition-all duration-300 overflow-hidden">
+                        <span className="transform group-hover:translate-x-1 transition-transform duration-300">&rarr;</span>
                     </button>
                 </div>
             </div>

@@ -5,6 +5,7 @@ import Navbar from './Navbar';
 import CompleteProfileModal from './CompleteProfileModal';
 import ViewProfileModal from './ViewProfileModal';
 import { AppContext } from '../context/AppContext';
+import FloatingChatbot from './FloatingChatbot';
 
 const UserLayout = () => {
     const { isProfileModalOpen, setIsProfileModalOpen, isViewProfileModalOpen, setIsViewProfileModalOpen } = useContext(AppContext);
@@ -34,6 +35,8 @@ const UserLayout = () => {
                 isOpen={isViewProfileModalOpen} 
                 onClose={() => setIsViewProfileModalOpen(false)} 
             />
+
+            <FloatingChatbot />
         </div>
     );
 };

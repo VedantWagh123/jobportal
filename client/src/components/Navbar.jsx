@@ -7,7 +7,7 @@ import { Bell, ChevronDown, User as UserIcon, Settings, HelpCircle, LogOut, Sear
 
 const Navbar = () => {
     const { openSignIn, signOut } = useClerk()
-    const { user } = useUser()
+    const { user, isLoaded, isSignedIn } = useUser()
     const navigate = useNavigate()
     const { userData, setIsProfileModalOpen, setIsViewProfileModalOpen, searchFilter, setSearchFilter, setIsSearched, savedJobs } = useContext(AppContext)
     
@@ -145,11 +145,22 @@ const Navbar = () => {
                                     </div>
                                 )}
                             </div>
-                            : <div>
-                                <button onClick={e => openSignIn()} className='bg-blue-600 text-white px-6 py-2 text-sm font-medium rounded-full hover:bg-blue-700 transition shadow-sm hover:shadow-md'>
-                                    Candidate Login
-                                </button>
-                            </div>
+                            : isLoaded ? (
+                                <div>
+                                    <button onClick={e => openSignIn()} className='bg-blue-600 text-white px-6 py-2 text-sm font-medium rounded-full hover:bg-blue-700 transition shadow-sm hover:shadow-md'>
+                                        Candidate Login
+                                    </button>
+                                </div>
+                            ) : (
+                                // Skeleton while Clerk is initializing auth session
+                                <div className='flex items-center gap-3 animate-pulse'>
+                                    <div className='w-10 h-10 rounded-full bg-gray-200'></div>
+                                    <div className='hidden md:flex flex-col gap-1.5'>
+                                        <div className='w-24 h-3 bg-gray-200 rounded-full'></div>
+                                        <div className='w-16 h-2.5 bg-gray-100 rounded-full'></div>
+                                    </div>
+                                </div>
+                            )
                     }
                 </div>
             </div>

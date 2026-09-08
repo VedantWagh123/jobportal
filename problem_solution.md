@@ -28,6 +28,10 @@ This document maps the 6 core problems identified in the concept note (`supply d
 * **Issue:** The system needs to predict the requirements for students, trainers, and equipment based on future skill demand for proper planning.
 * **Our Solution (✅ Solved):** We built an AI-powered **What-If Simulator** (`runWhatIfSimulation`). State Admins can input prompts like "What if I add 500 more seats in EV Training?". The AI reads real market gap data and predicts how this action will reduce the skill shortage and impact overall placement.
 
+## Bonus Feature: Master Skills & AI Parsing Queue
+* **Issue:** Job descriptions contain messy, unstandardized skill names (e.g., "React.js", "ReactJS", "React"). Directly saving them corrupts the database.
+* **Our Solution (✅ Solved):** We introduced a **Canonical Skills Dictionary (Master Skills)**. When the AI Engine parses new resumes or jobs, any unknown skill is pushed to the **Unresolved Skills Queue**. A Super Admin reviews and "Approves to Master" to maintain a highly standardized, clean, and deduplicated skill database for accurate gap analysis.
+
 ---
 **Conclusion:**
 The core vision of a **Skill Demand Digital Twin** and **Labour-Market Intelligence Platform** has been fully realized in the backend architecture. All 6 proposed problems have dedicated technical solutions integrated via our APIs and intelligent services.
