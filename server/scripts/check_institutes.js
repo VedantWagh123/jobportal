@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
-const uri = 'mongodb+srv://Vedant:Vedant1234@cluster0.unc2i2c.mongodb.net/job-portal';
+import 'dotenv/config'; // Make sure to load env
+const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/job-portal';
 mongoose.connect(uri).then(async () => {
     const institutes = await mongoose.connection.db.collection('traininginstitutes').find({}).toArray();
     console.log('Total institutes:', institutes.length);
