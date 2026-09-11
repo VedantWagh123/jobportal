@@ -2,7 +2,7 @@ import express from 'express';
 import { protectInstitute } from '../../middleware/instituteAuthMiddleware.js';
 import { 
     getMyCourses, createCourse, deleteCourse,
-    getMyBatches, createBatch, updateBatchStatus, updateBatch, getInstituteAlerts, extractCourseSkills, getBatchEnrollments
+    getMyBatches, createBatch, updateBatchStatus, updateBatch, getInstituteAlerts, extractCourseSkills, getBatchEnrollments, generateDashboardSummary, generateCoursePlan, getCurriculumGap
 } from '../../controllers/institute/instituteCourseController.js';
 
 const router = express.Router();
@@ -22,7 +22,10 @@ router.put('/batches/:id', updateBatch);
 router.put('/batches/:id/status', updateBatchStatus);
 router.get('/batches/:batchId/enrollments', getBatchEnrollments);
 
-// Alerts
+// Alerts, AI Summary & Gap
 router.get('/alerts', getInstituteAlerts);
+router.post('/ai-summary', generateDashboardSummary);
+router.post('/ai-course-plan', generateCoursePlan);
+router.get('/curriculum-gap', getCurriculumGap);
 
 export default router;

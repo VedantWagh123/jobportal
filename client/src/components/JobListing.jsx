@@ -6,14 +6,15 @@ import { Code, Database, PenTool, Wifi, Briefcase, Megaphone, ShieldCheck, Layer
 
 const JobListing = () => {
 
-    const { isSearched, searchFilter, setSearchFilter, jobs } = useContext(AppContext)
+    const { 
+        isSearched, searchFilter, setSearchFilter, 
+        jobs, 
+        selectedCategories, setSelectedCategories, 
+        selectedLocations, setSelectedLocations,
+        fetchNextPage, hasNextPage, isFetchingNextPage, jobsStatus
+    } = useContext(AppContext)
 
     const [showFilter, setShowFilter] = useState(false)
-    const [currentPage, setCurrentPage] = useState(1)
-    const [selectedCategories, setSelectedCategories] = useState([])
-    const [selectedLocations, setSelectedLocations] = useState([])
-
-    const [filteredJobs, setFilteredJobs] = useState(jobs)
 
     const handleCategoryChange = (category) => {
         setSelectedCategories(
@@ -33,20 +34,6 @@ const JobListing = () => {
         setSelectedLocations([])
         document.getElementById('job-list')?.scrollIntoView({ behavior: 'smooth' })
     }
-
-    useEffect(() => {
-        const matchesCategory = job => selectedCategories.length === 0 || selectedCategories.includes(job.category)
-        const matchesLocation = job => selectedLocations.length === 0 || selectedLocations.includes(job.location)
-        const matchesTitle = job => searchFilter.title === "" || job.title.toLowerCase().includes(searchFilter.title.toLowerCase())
-        const matchesSearchLocation = job => searchFilter.location === "" || job.location.toLowerCase().includes(searchFilter.location.toLowerCase())
-
-        const newFilteredJobs = jobs.slice().reverse().filter(
-            job => matchesCategory(job) && matchesLocation(job) && matchesTitle(job) && matchesSearchLocation(job)
-        )
-
-        setFilteredJobs(newFilteredJobs)
-        setCurrentPage(1)
-    }, [jobs, selectedCategories, selectedLocations, searchFilter])
 
     const getCategoryIcon = (category) => {
         switch (category) {
@@ -176,42 +163,42 @@ const JobListing = () => {
                 </div>
 
                 <div className='grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6'>
-                    {filteredJobs.slice((currentPage - 1) * 6, currentPage * 6).map((job, index) => (
+                    {jobs.map((job, index) => (
                         <JobCard key={index} job={job} />
                     ))}
                 </div>
 
-                {/* Pagination */}
-                {filteredJobs.length > 0 && (
-                    <div className='flex items-center justify-center space-x-2 mt-12'>
-                        <a href="#job-list">
-                            <button 
-                                onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))} 
-                                className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-blue-600 transition-all shadow-sm"
-                                disabled={currentPage === 1}
-                            >
-                                <img src={assets.left_arrow_icon} alt="Previous" className="w-4 h-4 opacity-50" />
-                            </button>
-                        </a>
-                        {Array.from({ length: Math.ceil(filteredJobs.length / 6) }).map((_, index) => (
-                            <a key={index} href="#job-list">
-                                <button 
-                                    onClick={() => setCurrentPage(index + 1)} 
-                                    className={`w-10 h-10 flex items-center justify-center rounded-xl font-bold transition-all shadow-sm ${currentPage === index + 1 ? 'bg-blue-600 border border-blue-600 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-blue-600'}`}
-                                >
-                                    {index + 1}
-                                </button>
-                            </a>
-                        ))}
-                        <a href="#job-list">
-                            <button 
-                                onClick={() => setCurrentPage(Math.min(currentPage + 1, Math.ceil(filteredJobs.length / 6)))} 
-                                className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-blue-600 transition-all shadow-sm"
-                                disabled={currentPage === Math.ceil(filteredJobs.length / 6)}
-                            >
-                                <img src={assets.right_arrow_icon} alt="Next" className="w-4 h-4 opacity-50" />
-                            </button>
-                        </a>
+                {/* Status and Load More */}
+                {jobsStatus === 'pending' && jobs.length === 0 && (
+                    <div className="flex justify-center mt-12">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    </div>
+                )}
+                
+                {jobsStatus === 'success' && jobs.length === 0 && (
+                    <div className="text-center mt-12 py-12 bg-gray-50 rounded-2xl border border-gray-100">
+                        <p className="text-gray-500 font-medium">No jobs found matching your filters.</p>
+                        <button onClick={clearAllFilters} className="mt-4 text-blue-600 font-bold hover:underline">Clear Filters</button>
+                    </div>
+                )}
+                
+                {jobsStatus === 'error' && (
+                    <div className="text-center mt-12 py-12 bg-red-50 rounded-2xl border border-red-100">
+                        <p className="text-red-500 font-medium">Failed to fetch jobs. The server might be unreachable or an error occurred.</p>
+                        <button onClick={() => window.location.reload()} className="mt-4 text-red-600 font-bold hover:underline">Reload Page</button>
+                    </div>
+                )}
+
+                {hasNextPage && (
+                    <div className='flex items-center justify-center mt-12'>
+                        <button 
+                            onClick={() => fetchNextPage()} 
+                            disabled={isFetchingNextPage}
+                            className="inline-flex items-center gap-2 bg-white border-2 border-blue-100 text-blue-600 font-bold px-8 py-3 rounded-xl hover:bg-blue-50 transition-colors shadow-sm disabled:opacity-50"
+                        >
+                            {isFetchingNextPage ? 'Loading...' : 'Load More Jobs'} 
+                            {!isFetchingNextPage && <ArrowRight size={18} />}
+                        </button>
                     </div>
                 )}
             </section>

@@ -8,6 +8,10 @@ const instituteSchema = new mongoose.Schema({
     districtId: { type: mongoose.Schema.Types.ObjectId, ref: 'District', required: true },
     type: { type: String, enum: ['Government', 'Private', 'NGO', 'Corporate'], default: 'Private' },
     accreditation: { type: String }, // e.g., "NSDC", "AICTE"
+    phone: { type: String, default: "" },
+    address: { type: String, default: "" },
+    description: { type: String, default: "" },
+    image: { type: String, default: "" }, // Cloudinary Image URL
     isApproved: { type: Boolean, default: false }, // Must be approved by Super Admin before login is allowed
     createdAt: { type: Date, default: Date.now }
 });

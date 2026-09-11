@@ -28,7 +28,7 @@ export const createEnrollment = async (req, res) => {
         }
 
         const enrollment = await Enrollment.create({ 
-            userId, batchId, status, placementStatus, placementCompanyId, employerFeedbackScore 
+            userId, batchId, instituteId: batch.instituteId, status, placementStatus, placementCompanyId, employerFeedbackScore 
         });
         res.status(201).json({ success: true, enrollment });
     } catch (error) {

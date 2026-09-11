@@ -40,7 +40,7 @@ export const loginAdmin = async (req, res) => {
         }
 
     } catch (error) {
-        res.json({ success: false, message: error.message });
+        res.status(500).json({ success: false, message: error.message });
     }
 };
 
@@ -50,6 +50,6 @@ export const getAdminProfile = async (req, res) => {
         const admin = req.admin;
         res.json({ success: true, admin });
     } catch (error) {
-        res.json({ success: false, message: error.message });
+        res.status(500).json({ success: false, message: error.message });
     }
 };

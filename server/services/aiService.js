@@ -3,6 +3,7 @@ import Skill from "../models/Skill.js";
 import JobSkill from "../models/JobSkill.js";
 import UnresolvedSkill from "../models/UnresolvedSkill.js";
 import Job from "../models/Job.js";
+import JobIntelligence from "../models/JobIntelligence.js";
 
 // Initialize Gemini SDK lazily to avoid dotenv hoisting issues
 const getAIInstance = () => {
@@ -40,12 +41,15 @@ export const parseJobDescription = async (jobId, title, description) => {
             You are an expert technical recruiter and IT ontology system.
             Extract all distinct hard skills, frameworks, tools, and programming languages from the following job description.
             Do not extract soft skills (e.g. "communication", "teamwork").
+            Also infer the normalized job role (e.g., 'Frontend Developer', 'Data Scientist') and the experience required (e.g., '0-2 years', '5+ years').
             
             Job Title: ${title}
             Job Description: ${cleanedDescription}
             
             Return ONLY a valid JSON object matching this schema exactly, and nothing else.
             {
+                "extractedRole": "Normalized Role Name",
+                "inferredExperience": "Experience level string",
                 "skills": [
                     { "name": "Skill Name", "confidence": 0.95 }
                 ]
@@ -78,9 +82,21 @@ export const parseJobDescription = async (jobId, title, description) => {
         const extractedSkills = extractedData.skills;
         console.log(`[Job Intelligence] LLM Extracted ${extractedSkills.length} potential skills.`);
 
+        await JobIntelligence.findOneAndUpdate(
+            { jobId },
+            {
+                extractedRole: extractedData.extractedRole || title,
+                inferredExperience: extractedData.inferredExperience || 'Not specified',
+                extractedSkills: extractedSkills.map(s => s.name),
+                processedAt: new Date()
+            },
+            { upsert: true, new: true }
+        );
+
         // 3. Controlled Normalization & Matching
         let matchedCount = 0;
         let unresolvedCount = 0;
+        const normalizedSkillNames = new Set();
 
         for (const extracted of extractedSkills) {
             const rawName = extracted.name;
@@ -109,6 +125,7 @@ export const parseJobDescription = async (jobId, title, description) => {
                     { upsert: true, new: true }
                 );
                 matchedCount++;
+                normalizedSkillNames.add(skillDoc.name);
             } else {
                 // NO MATCH: Create UnresolvedSkill for Admin review
                 // Convert to lowercase for unique indexing of unresolved skills
@@ -124,6 +141,7 @@ export const parseJobDescription = async (jobId, title, description) => {
                     { upsert: true }
                 );
                 unresolvedCount++;
+                normalizedSkillNames.add(rawName);
             }
         }
 
@@ -131,7 +149,8 @@ export const parseJobDescription = async (jobId, title, description) => {
         await Job.findByIdAndUpdate(jobId, { 
             intelligenceStatus: 'Completed',
             intelligenceLastError: null,
-            intelligenceRetryCount: 0 // Reset on success
+            intelligenceRetryCount: 0, // Reset on success
+            skills: Array.from(normalizedSkillNames) // Sync normalized skills to Job array for frontend
         });
 
         console.log(`[Job Intelligence] Successfully mapped ${matchedCount} skills to Job ${jobId}. Recorded ${unresolvedCount} unknown skills.`);

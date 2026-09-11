@@ -13,14 +13,22 @@ if (!PUBLISHABLE_KEY) {
   throw new Error("Missing Publishable Key")
 }
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+
+const queryClient = new QueryClient()
+
 createRoot(document.getElementById('root')).render(
-  <ClerkProvider publishableKey={PUBLISHABLE_KEY} afterSignOutUrl="/">
-    <BrowserRouter>
-      <AppContextProvider>
-        <AdminContextProvider>
-          <App />
-        </AdminContextProvider>
-      </AppContextProvider>
-    </BrowserRouter>
-  </ClerkProvider>,
+  <QueryClientProvider client={queryClient}>
+    <ClerkProvider publishableKey={PUBLISHABLE_KEY} afterSignOutUrl="/">
+      <BrowserRouter>
+        <AppContextProvider>
+          <AdminContextProvider>
+            <App />
+          </AdminContextProvider>
+        </AppContextProvider>
+      </BrowserRouter>
+    </ClerkProvider>
+    <ReactQueryDevtools initialIsOpen={false} />
+  </QueryClientProvider>,
 )

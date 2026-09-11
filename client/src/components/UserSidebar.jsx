@@ -3,138 +3,187 @@ import { Link, useLocation } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
 import { AppContext } from '../context/AppContext';
 import { assets } from '../assets/assets';
-import { Home, BriefcaseBusiness, Compass, Building2, GraduationCap, TrendingUp } from 'lucide-react';
+import {
+    Home, BriefcaseBusiness, Compass, TrendingUp,
+    Building2, GraduationCap, ArrowRight, Crown
+} from 'lucide-react';
 
 const UserSidebar = () => {
     const { user } = useUser();
-    const { setShowRecruiterLogin, companyToken, instituteToken } = useContext(AppContext);
+    const { setShowRecruiterLogin, companyToken, instituteToken, userApplications } = useContext(AppContext);
     const location = useLocation();
 
-    const isActive = (path) => {
-        return location.pathname === path ? 'bg-blue-50 text-blue-600 border-r-4 border-blue-600 font-semibold' : 'text-gray-600 hover:bg-gray-50';
-    };
+    const isActive = (path) => location.pathname === path;
+
+    const navItems = [
+        { path: '/', label: 'Home', icon: Home, badge: null },
+        ...(user ? [
+            { path: '/applications', label: 'Applied Jobs', icon: BriefcaseBusiness, badge: userApplications ? userApplications.filter(job => job.jobId && job.companyId).length : 0, badgeType: 'count' },
+            { path: '/upskilling', label: 'Upskilling', icon: Compass, badge: 'New', badgeType: 'new' },
+            { path: '/career-gap', label: 'Career Gap', icon: TrendingUp, badge: null },
+        ] : []),
+    ];
 
     return (
-        <div className="w-64 min-h-screen border-r border-gray-200 bg-white hidden lg:flex flex-col flex-shrink-0 sticky top-0 h-screen overflow-y-auto">
-            <div className="p-6 pb-2 border-b border-gray-100 flex items-center justify-center lg:justify-start">
-                <img onClick={() => window.location.href = '/'} className='cursor-pointer h-8' src={assets.logo} alt="Logo" />
+        <div className='w-[220px] min-h-screen border-r border-gray-200 bg-white hidden lg:flex flex-col flex-shrink-0 sticky top-0 h-screen overflow-y-auto'>
+
+            {/* ── Logo ── */}
+            <div className='px-5 py-5 border-b border-gray-100'>
+                <img
+                    onClick={() => window.location.href = '/'}
+                    className='cursor-pointer h-8'
+                    src={assets.logo}
+                    alt='InsiderJobs'
+                />
             </div>
 
-            <div className="p-6 flex-1 overflow-y-auto">
-                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Main Menu</h3>
-                <nav className="flex flex-col gap-2">
-                    <Link to="/" className={`px-4 py-3 rounded-xl transition-all duration-300 ${location.pathname === '/' ? 'bg-blue-600 text-white font-semibold shadow-md shadow-blue-500/20' : 'text-gray-600 hover:bg-gray-100'}`}>
-                        <div className="flex items-center gap-3">
-                            <Home size={20} className={location.pathname === '/' ? "text-white" : "text-gray-500"} />
-                            <span>Home</span>
-                        </div>
-                    </Link>
-
-                    {user && (
-                        <>
-                            <Link to="/applications" className={`px-4 py-3 rounded-xl transition-all duration-300 ${location.pathname === '/applications' ? 'bg-blue-600 text-white font-semibold shadow-md shadow-blue-500/20' : 'text-gray-600 hover:bg-gray-100'}`}>
-                                <div className="flex items-center gap-3">
-                                    <BriefcaseBusiness size={20} className={location.pathname === '/applications' ? "text-white" : "text-gray-500"} />
-                                    <span>Applied Jobs</span>
+            {/* ── Main Nav ── */}
+            <div className='px-3 py-4 flex-1 overflow-y-auto'>
+                <nav className='flex flex-col gap-1'>
+                    {navItems.map(({ path, label, icon: Icon, badge, badgeType }) => {
+                        const active = isActive(path);
+                        return (
+                            <Link
+                                key={path}
+                                to={path}
+                                className={`flex items-center justify-between px-3 py-2.5 rounded-xl transition-all duration-200 group
+                                    ${active
+                                        ? 'bg-blue-600 text-white font-semibold shadow-md shadow-blue-500/20'
+                                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                                    }`}
+                            >
+                                <div className='flex items-center gap-3'>
+                                    <Icon
+                                        size={18}
+                                        className={active ? 'text-white' : 'text-gray-500 group-hover:text-gray-700'}
+                                    />
+                                    <span className='text-sm font-medium'>{label}</span>
                                 </div>
+                                {badge !== null && badge !== undefined && (
+                                    badgeType === 'count' ? (
+                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full leading-none
+                                            ${active ? 'bg-white/25 text-white' : 'bg-blue-100 text-blue-700'}`}>
+                                            {badge}
+                                        </span>
+                                    ) : (
+                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full leading-none
+                                            ${active ? 'bg-white/25 text-white' : 'bg-emerald-100 text-emerald-700'}`}>
+                                            {badge}
+                                        </span>
+                                    )
+                                )}
                             </Link>
-                            <Link to="/upskilling" className={`px-4 py-3 rounded-xl transition-all duration-300 ${location.pathname === '/upskilling' ? 'bg-blue-600 text-white font-semibold shadow-md shadow-blue-500/20' : 'text-gray-600 hover:bg-gray-100'}`}>
-                                <div className="flex items-center gap-3">
-                                    <Compass size={20} className={location.pathname === '/upskilling' ? "text-white" : "text-gray-500"} />
-                                    <span>Upskilling</span>
-                                </div>
-                            </Link>
-                            <Link to="/career-gap" className={`px-4 py-3 rounded-xl transition-all duration-300 ${location.pathname === '/career-gap' ? 'bg-blue-600 text-white font-semibold shadow-md shadow-blue-500/20' : 'text-gray-600 hover:bg-gray-100'}`}>
-                                <div className="flex items-center gap-3">
-                                    <TrendingUp size={20} className={location.pathname === '/career-gap' ? "text-white" : "text-gray-500"} />
-                                    <span>Career Gap</span>
-                                </div>
-                            </Link>
-                        </>
-                    )}
+                        );
+                    })}
                 </nav>
 
-                <div className="mt-8">
-                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Partner Portals</h3>
-                    <div className="flex flex-col gap-3">
-                        
+                {/* ── Partner Portals ── */}
+                <div className='mt-6'>
+                    <p className='text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 px-3'>
+                        Partner Portals
+                    </p>
+
+                    <div className='flex flex-col gap-1.5'>
                         {/* Employer Portal */}
                         {companyToken ? (
-                            <Link to="/dashboard" target="_blank" rel="noopener noreferrer" className="block w-full p-4 rounded-2xl border border-gray-100 bg-white shadow-sm hover:shadow-md hover:border-blue-200 transition-all duration-300 group">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center group-hover:bg-blue-600 transition-colors duration-300">
-                                        <Building2 size={20} className="text-blue-600 group-hover:text-white transition-colors duration-300" />
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-bold text-gray-800 leading-tight group-hover:text-blue-600 transition-colors">Employer</p>
-                                        <p className="text-[11px] font-medium text-gray-500 mt-0.5">Go to Dashboard &rarr;</p>
-                                    </div>
+                            <Link
+                                to='/dashboard'
+                                target='_blank'
+                                rel='noopener noreferrer'
+                                className='flex items-center justify-between px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition group'
+                            >
+                                <div className='flex items-center gap-3'>
+                                    <Building2 size={18} className='text-gray-500 group-hover:text-gray-700' />
+                                    <span className='text-sm font-medium'>Employer</span>
                                 </div>
+                                <ArrowRight size={14} className='text-gray-400 group-hover:translate-x-0.5 transition-transform' />
                             </Link>
                         ) : (
-                            <button onClick={() => setShowRecruiterLogin(true)} className="block w-full p-4 text-left rounded-2xl border border-gray-100 bg-white shadow-sm hover:shadow-md hover:border-blue-200 transition-all duration-300 group">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center group-hover:bg-blue-600 transition-colors duration-300">
-                                        <Building2 size={20} className="text-gray-400 group-hover:text-white transition-colors duration-300" />
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-bold text-gray-800 leading-tight group-hover:text-blue-600 transition-colors">Hire Talent</p>
-                                        <p className="text-[11px] font-medium text-gray-500 mt-0.5">Become an Employer</p>
-                                    </div>
+                            <button
+                                onClick={() => setShowRecruiterLogin(true)}
+                                className='w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition group'
+                            >
+                                <div className='flex items-center gap-3'>
+                                    <Building2 size={18} className='text-gray-500 group-hover:text-gray-700' />
+                                    <span className='text-sm font-medium'>Employer</span>
                                 </div>
+                                <ArrowRight size={14} className='text-gray-400 group-hover:translate-x-0.5 transition-transform' />
                             </button>
                         )}
 
                         {/* Institute Portal */}
                         {instituteToken ? (
-                            <a href="http://localhost:5176/" target="_blank" rel="noopener noreferrer" className="block w-full p-4 rounded-2xl border border-gray-100 bg-white shadow-sm hover:shadow-md hover:border-green-200 transition-all duration-300 group">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center group-hover:bg-green-600 transition-colors duration-300">
-                                        <GraduationCap size={20} className="text-green-600 group-hover:text-white transition-colors duration-300" />
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-bold text-gray-800 leading-tight group-hover:text-green-600 transition-colors">Institute</p>
-                                        <p className="text-[11px] font-medium text-gray-500 mt-0.5">Go to Dashboard &rarr;</p>
-                                    </div>
+                            <a
+                                href='http://localhost:5176/'
+                                target='_blank'
+                                rel='noopener noreferrer'
+                                className='flex items-center justify-between px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition group'
+                            >
+                                <div className='flex items-center gap-3'>
+                                    <GraduationCap size={18} className='text-gray-500 group-hover:text-gray-700' />
+                                    <span className='text-sm font-medium'>Teach Skills</span>
                                 </div>
+                                <ArrowRight size={14} className='text-gray-400 group-hover:translate-x-0.5 transition-transform' />
                             </a>
                         ) : (
-                            <a href="http://localhost:5176/login" target="_blank" rel="noopener noreferrer" className="block w-full p-4 rounded-2xl border border-gray-100 bg-white shadow-sm hover:shadow-md hover:border-green-200 transition-all duration-300 group">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center group-hover:bg-green-600 transition-colors duration-300">
-                                        <GraduationCap size={20} className="text-gray-400 group-hover:text-white transition-colors duration-300" />
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-bold text-gray-800 leading-tight group-hover:text-green-600 transition-colors">Teach Skills</p>
-                                        <p className="text-[11px] font-medium text-gray-500 mt-0.5">Become an Institute</p>
-                                    </div>
+                            <a
+                                href='http://localhost:5176/login'
+                                target='_blank'
+                                rel='noopener noreferrer'
+                                className='flex items-center justify-between px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition group'
+                            >
+                                <div className='flex items-center gap-3'>
+                                    <GraduationCap size={18} className='text-gray-500 group-hover:text-gray-700' />
+                                    <span className='text-sm font-medium'>Teach Skills</span>
                                 </div>
+                                <ArrowRight size={14} className='text-gray-400 group-hover:translate-x-0.5 transition-transform' />
                             </a>
                         )}
-
                     </div>
                 </div>
             </div>
 
-            {/* Bottom Promo Section */}
-            <div className="p-6 mt-auto">
-                <div className="group relative overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-50/50 rounded-3xl p-6 border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-sm transition-all duration-500 hover:shadow-[0_8px_30px_rgb(59,130,246,0.12)] hover:-translate-y-1 cursor-pointer flex flex-col items-center text-center">
-                    {/* Background Decorative Elements */}
-                    <div className="absolute -top-10 -right-10 w-32 h-32 bg-blue-100 rounded-full mix-blend-multiply filter blur-2xl opacity-70 group-hover:bg-blue-200 transition-all duration-500"></div>
-                    <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-indigo-100 rounded-full mix-blend-multiply filter blur-2xl opacity-70 group-hover:bg-indigo-200 transition-all duration-500"></div>
-                    
-                    {/* Icon */}
-                    <div className="relative z-10 w-14 h-14 bg-white/90 backdrop-blur-md rounded-2xl shadow-[0_4px_20px_rgb(0,0,0,0.06)] border border-white/80 flex items-center justify-center mb-4 text-blue-600 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-500 ease-out">
-                        <Compass size={26} strokeWidth={2.5} />
+            {/* ── Career Growth Widget ── */}
+            <div className='p-4 mt-auto'>
+                <div className='relative overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-50/80 border border-blue-100/60 rounded-[20px] p-4 text-gray-800 shadow-[0_2px_10px_rgba(37,99,235,0.05)]'>
+                    {/* Illustration Composition */}
+                    <div className='flex justify-center mb-3 relative'>
+                        <div className="relative w-14 h-14">
+                            <div className="absolute inset-0 bg-blue-200/40 rounded-full animate-pulse"></div>
+                            <div className="absolute inset-1.5 bg-white rounded-full flex items-center justify-center shadow-sm">
+                                <TrendingUp size={20} className="text-blue-600" strokeWidth={2.5} />
+                            </div>
+                            <div className="absolute -top-1 -right-1 w-5 h-5 bg-amber-400 rounded-full border-2 border-white flex items-center justify-center shadow-sm">
+                                <span className="text-[9px] text-amber-900 font-extrabold">★</span>
+                            </div>
+                        </div>
                     </div>
+
+                    <h4 className='font-bold text-[13px] text-center leading-snug mb-3.5 text-gray-800'>Upgrade Your Career Journey</h4>
                     
-                    {/* Text */}
-                    <h4 className="relative z-10 font-bold text-base text-gray-800 tracking-tight group-hover:text-blue-700 transition-colors duration-300">Build Your Future</h4>
-                    <p className="relative z-10 text-xs text-gray-500 mt-2 mb-5 font-medium leading-relaxed group-hover:text-gray-600 transition-colors duration-300">Better Skills, Brighter Opportunities.</p>
-                    
-                    {/* Action Button */}
-                    <button className="relative z-10 w-10 h-10 rounded-full bg-white text-blue-600 shadow-sm border border-gray-50 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white group-hover:shadow-md transition-all duration-300 overflow-hidden">
-                        <span className="transform group-hover:translate-x-1 transition-transform duration-300">&rarr;</span>
+                    <ul className="flex flex-col gap-2 mb-4 px-1">
+                        <li className="flex items-start gap-2">
+                            <div className="mt-0.5 w-[14px] h-[14px] shrink-0 flex items-center justify-center rounded-full bg-blue-600 text-white shadow-sm">
+                                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            </div>
+                            <span className="text-[11px] font-medium text-gray-600 leading-tight">Get personalized job matches</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                            <div className="mt-0.5 w-[14px] h-[14px] shrink-0 flex items-center justify-center rounded-full bg-blue-600 text-white shadow-sm">
+                                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            </div>
+                            <span className="text-[11px] font-medium text-gray-600 leading-tight">Track your career growth</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                            <div className="mt-0.5 w-[14px] h-[14px] shrink-0 flex items-center justify-center rounded-full bg-blue-600 text-white shadow-sm">
+                                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            </div>
+                            <span className="text-[11px] font-medium text-gray-600 leading-tight">Unlock expert insights</span>
+                        </li>
+                    </ul>
+
+                    <button className='w-full bg-blue-600 text-white text-[12px] font-bold py-2 rounded-[10px] hover:bg-blue-700 hover:shadow-md transition-all duration-200'>
+                        Explore More &rarr;
                     </button>
                 </div>
             </div>

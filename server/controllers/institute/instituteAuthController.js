@@ -1,6 +1,8 @@
 import TrainingInstitute from '../../models/TrainingInstitute.js';
 import District from '../../models/District.js';
+import InstituteNotification from '../../models/InstituteNotification.js';
 import jwt from 'jsonwebtoken';
+import { v2 as cloudinary } from 'cloudinary';
 
 const generateToken = (id) => {
     return jwt.sign({ id, role: 'institute' }, process.env.JWT_SECRET, {
@@ -48,7 +50,7 @@ export const loginInstitute = async (req, res) => {
             }
             res.json({
                 success: true,
-                institute: { _id: institute._id, name: institute.name, email: institute.email, type: institute.type, districtId: institute.districtId },
+                institute: { _id: institute._id, name: institute.name, email: institute.email, type: institute.type, districtId: institute.districtId, image: institute.image },
                 token: generateToken(institute._id)
             });
         } else {
@@ -93,7 +95,35 @@ export const updateInstituteProfile = async (req, res) => {
                 }
             }
 
+            if (req.file) {
+                if (institute.image && institute.image.includes('cloudinary')) {
+                    try {
+                        const publicId = institute.image.split('/').slice(-1)[0].split('.')[0];
+                        await cloudinary.uploader.destroy(publicId);
+                    } catch (e) {
+                        console.warn("Could not delete old image", e.message);
+                    }
+                }
+                
+                try {
+                    const imageUpload = await cloudinary.uploader.upload(req.file.path);
+                    institute.image = imageUpload.secure_url;
+                } catch (error) {
+                    console.warn("Cloudinary upload failed, using local file instead.", error.message);
+                    institute.image = `http://localhost:5000/uploads/${req.file.filename}`;
+                }
+            }
+
             const updatedInstitute = await institute.save();
+
+            // Create notification for profile update
+            await InstituteNotification.create({
+                instituteId: updatedInstitute._id,
+                type: 'Success',
+                title: 'Profile Updated',
+                message: 'Your institute profile information was successfully updated.'
+            });
+
             res.json({ 
                 success: true, 
                 message: 'Profile updated successfully',

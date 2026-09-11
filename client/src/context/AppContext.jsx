@@ -2,6 +2,7 @@ import { createContext, useEffect, useState } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { useAuth, useUser } from "@clerk/clerk-react";
+import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 
 export const AppContext = createContext()
 
@@ -16,6 +17,9 @@ export const AppContextProvider = (props) => {
         title: '',
         location: ''
     })
+
+    const [selectedCategories, setSelectedCategories] = useState([])
+    const [selectedLocations, setSelectedLocations] = useState([])
 
     const [isSearched, setIsSearched] = useState(false)
 
@@ -45,39 +49,58 @@ export const AppContextProvider = (props) => {
         });
     }
 
-    // Function to Fetch Jobs 
-    const fetchJobs = async () => {
-        try {
+    // --- React Query Implementations ---
 
-            const { data } = await axios.get(backendUrl + '/api/jobs')
+    // 1. Fetch Jobs with Infinite Scroll & Remote Filtering
+    const { 
+        data: jobsQueryData, 
+        fetchNextPage, 
+        hasNextPage, 
+        isFetchingNextPage, 
+        status: jobsStatus 
+    } = useInfiniteQuery({
+        queryKey: ['jobs', searchFilter, selectedCategories, selectedLocations],
+        queryFn: async ({ pageParam = 1 }) => {
+            let url = `${backendUrl}/api/jobs?page=${pageParam}&limit=6`;
+            if (searchFilter.title) url += `&title=${encodeURIComponent(searchFilter.title)}`;
+            if (searchFilter.location) url += `&searchLocation=${encodeURIComponent(searchFilter.location)}`;
+            if (selectedCategories.length > 0) url += `&categories=${encodeURIComponent(selectedCategories.join(','))}`;
+            if (selectedLocations.length > 0) url += `&locations=${encodeURIComponent(selectedLocations.join(','))}`;
+            
+            const { data } = await axios.get(url);
+            if (!data.success) throw new Error(data.message);
+            return data;
+        },
+        getNextPageParam: (lastPage) => {
+            return lastPage.currentPage < lastPage.totalPages ? lastPage.currentPage + 1 : undefined;
+        },
+        initialPageParam: 1,
+        staleTime: 5 * 60 * 1000 // 5 minutes
+    })
 
-            if (data.success) {
-                setJobs(data.jobs)
-            } else {
-                toast.error(data.message)
-            }
-
-        } catch (error) {
-            toast.error(error.message)
-        }
-    }
-
-    // Function to Fetch Company Data
-    const fetchCompanyData = async () => {
-        try {
-
+    // 2. Fetch Company Data
+    const { data: companyQueryData, refetch: fetchCompanyData } = useQuery({
+        queryKey: ['companyData', companyToken],
+        queryFn: async () => {
             const { data } = await axios.get(backendUrl + '/api/company/company', { headers: { token: companyToken } })
+            if (!data.success) throw new Error(data.message)
+            return data.company
+        },
+        enabled: !!companyToken,
+        staleTime: 5 * 60 * 1000
+    })
 
-            if (data.success) {
-                setCompanyData(data.company)
-            } else {
-                toast.error(data.message)
-            }
-
-        } catch (error) {
-            toast.error(error.message)
+    // Sync React Query data to existing context states to prevent UI breakage
+    useEffect(() => {
+        if (jobsQueryData) {
+            const allJobs = jobsQueryData.pages.flatMap(page => page.jobs);
+            setJobs(allJobs);
         }
-    }
+    }, [jobsQueryData]);
+
+    useEffect(() => {
+        if (companyQueryData) setCompanyData(companyQueryData);
+    }, [companyQueryData]);
 
     // Function to Fetch User Data
     const fetchUserData = async () => {
@@ -131,9 +154,8 @@ export const AppContextProvider = (props) => {
         }
     }
 
-    // Retrive Tokens From LocalStorage
+    // Retrieve Tokens From LocalStorage
     useEffect(() => {
-        fetchJobs()
 
         const storedCompanyToken = localStorage.getItem('companyToken')
         const storedInstituteToken = localStorage.getItem('instituteToken')
@@ -157,11 +179,7 @@ export const AppContextProvider = (props) => {
     }, [])
 
     // Fetch Company Data if Company Token is Available
-    useEffect(() => {
-        if (companyToken) {
-            fetchCompanyData()
-        }
-    }, [companyToken])
+    // Handled automatically by useQuery `enabled: !!companyToken`
 
     // Fetch User's Applications & Data if User is Logged In
     useEffect(() => {
@@ -197,7 +215,9 @@ export const AppContextProvider = (props) => {
         fetchUserApplications,
         savedJobs, toggleSaveJob,
         isChatbotOpen, setIsChatbotOpen,
-
+        selectedCategories, setSelectedCategories,
+        selectedLocations, setSelectedLocations,
+        fetchNextPage, hasNextPage, isFetchingNextPage, jobsStatus
     }
 
     return (<AppContext.Provider value={value}>

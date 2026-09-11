@@ -10,6 +10,8 @@ import { generateResponse } from "../services/geminiAiService.js";
 import { runAIAnalysis } from "../services/geminiAiService.js";
 import { parseJobDescription } from "../services/aiService.js";
 import Notification from "../models/Notification.js";
+import { clearCache } from "../utils/cache.js";
+import { aiQueue } from "../config/queue.js";
 
 // Register a new company
 export const registerCompany = async (req, res) => {
@@ -64,7 +66,7 @@ export const registerCompany = async (req, res) => {
         })
 
     } catch (error) {
-        res.json({ success: false, message: error.message })
+        res.status(500).json({ success: false, message: error.message })
     }
 }
 
@@ -108,7 +110,7 @@ export const loginCompany = async (req, res) => {
         }
 
     } catch (error) {
-        res.json({ success: false, message: error.message })
+        res.status(500).json({ success: false, message: error.message })
     }
 
 }
@@ -123,9 +125,7 @@ export const getCompanyData = async (req, res) => {
         res.json({ success: true, company })
 
     } catch (error) {
-        res.json({
-            success: false, message: error.message
-        })
+        res.status(500).json({ success: false, message: error.message })
     }
 
 }
@@ -161,15 +161,27 @@ export const postJob = async (req, res) => {
 
         await newJob.save()
 
-        // Trigger AI Parsing asynchronously (don't await it so we don't block the response)
-        parseJobDescription(newJob._id, newJob.title, newJob.description);
+        // Trigger AI Parsing asynchronously via Redis Queue
+        try {
+            await aiQueue.add('parse-job', {
+                jobId: newJob._id,
+                title: newJob.title,
+                description: newJob.description
+            });
+        } catch (queueErr) {
+            console.error("[Queue Error] Failed to add job to ai-parsing-queue:", queueErr.message);
+        }
+
         runAIAnalysis().catch(err => console.error("Background AI failed:", err));
+
+        // Invalidate public jobs cache
+        clearCache('/api/jobs');
 
         res.json({ success: true, newJob })
 
     } catch (error) {
 
-        res.json({ success: false, message: error.message })
+        res.status(500).json({ success: false, message: error.message })
 
     }
 
@@ -184,14 +196,14 @@ export const getCompanyJobApplicants = async (req, res) => {
 
         // Find job applications for the user and populate related data
         const applications = await JobApplication.find({ companyId })
-            .populate('userId', 'name image resume skills')
+            .populate('userId', 'name image resume skills email phone address city college')
             .populate('jobId', 'title location category level salary skills')
             .exec()
 
         return res.json({ success: true, applications })
 
     } catch (error) {
-        res.json({ success: false, message: error.message })
+        res.status(500).json({ success: false, message: error.message })
     }
 }
 
@@ -203,16 +215,26 @@ export const getCompanyPostedJobs = async (req, res) => {
 
         const jobs = await Job.find({ companyId })
 
-        // Adding No. of applicants info in data
-        const jobsData = await Promise.all(jobs.map(async (job) => {
-            const applicants = await JobApplication.find({ jobId: job._id });
-            return { ...job.toObject(), applicants: applicants.length }
-        }))
+        // Optimize fetching applicants count using aggregation
+        const applicantsCount = await JobApplication.aggregate([
+            { $match: { companyId: req.company._id } },
+            { $group: { _id: "$jobId", count: { $sum: 1 } } }
+        ]);
+
+        const countsMap = applicantsCount.reduce((acc, curr) => {
+            acc[curr._id.toString()] = curr.count;
+            return acc;
+        }, {});
+
+        const jobsData = jobs.map(job => ({
+            ...job.toObject(),
+            applicants: countsMap[job._id.toString()] || 0
+        }));
 
         res.json({ success: true, jobsData })
 
     } catch (error) {
-        res.json({ success: false, message: error.message })
+        res.status(500).json({ success: false, message: error.message })
     }
 }
 
@@ -233,7 +255,7 @@ export const ChangeJobApplicationsStatus = async (req, res) => {
 
         res.json({ success: true, message: 'Status Changed' });
     } catch (error) {
-        res.json({ success: false, message: error.message });
+        res.status(500).json({ success: false, message: error.message });
     }
 }
 
@@ -254,10 +276,13 @@ export const changeVisiblity = async (req, res) => {
 
         await job.save()
 
+        // Invalidate public jobs cache since visibility changed
+        clearCache('/api/jobs');
+
         res.json({ success: true, job })
 
     } catch (error) {
-        res.json({ success: false, message: error.message })
+        res.status(500).json({ success: false, message: error.message })
     }
 }
 

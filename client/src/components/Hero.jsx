@@ -97,77 +97,76 @@ const Hero = () => {
                 <div className="hidden md:flex relative z-10 w-[45%] lg:w-[50%] h-[420px] items-end justify-center mt-10 md:mt-0">
                     
                     {/* Background Yellow Circle */}
-                    <div className="absolute top-[45%] left-[55%] -translate-x-1/2 -translate-y-1/2 w-[320px] h-[320px] bg-[#FFF2B2]/60 rounded-full -z-10"></div>
+                    <div className="absolute top-[50%] right-[10%] -translate-y-1/2 w-[340px] h-[340px] bg-gradient-to-tr from-[#FFF2B2] to-[#FFE24B] rounded-full -z-10 opacity-60"></div>
 
                     {/* Decorative dashes */}
-                    <div className="absolute top-20 right-10 flex flex-col gap-2 rotate-12 opacity-80">
-                        <div className="w-8 h-2 bg-blue-500 rounded-full rotate-45"></div>
-                        <div className="w-6 h-2 bg-yellow-400 rounded-full -rotate-12 ml-4"></div>
+                    <div className="absolute top-12 right-12 flex flex-col gap-2 rotate-12 opacity-80 animate-float-delayed">
+                        <div className="w-8 h-2.5 bg-blue-500 rounded-full rotate-45 shadow-sm"></div>
+                        <div className="w-6 h-2.5 bg-yellow-400 rounded-full -rotate-12 ml-4 shadow-sm"></div>
                     </div>
 
                     {/* Handwritten text */}
-                    <div className="absolute top-10 left-16 -rotate-6 hidden xl:block">
-                        <span className="font-serif italic text-blue-600 text-xl">Better Skills</span><br/>
-                        <span className="font-serif italic text-gray-600 text-xl">Brighter Future</span>
+                    <div className="absolute top-2 left-[5%] -rotate-6 hidden xl:block animate-float">
+                        <span className="font-serif italic text-blue-600 text-[22px] tracking-wide drop-shadow-sm">Better Skills</span><br/>
+                        <span className="font-serif italic text-gray-700 text-[22px] tracking-wide drop-shadow-sm ml-4">Brighter Future</span>
                     </div>
 
-                    <div className="absolute bottom-24 left-10 -rotate-12 hidden xl:block">
-                        <span className="font-serif italic text-gray-600 text-[17px] leading-tight block">Opportunities<br/>Are Waiting</span>
-                        {/* Curved Arrow SVG */}
-                        <svg className="w-10 h-10 text-gray-400 absolute -top-12 left-10 rotate-[140deg]" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" viewBox="0 0 24 24"><path d="M10 9l-6 6 6 6"/><path d="M4 15h9a5 5 0 0 0 5-5V4"/></svg>
+                    <div className="absolute bottom-32 -left-4 -rotate-[15deg] hidden xl:block opacity-70">
+                        {/* Curved Arrow SVG pointing to the stats */}
+                        <svg className="w-12 h-12 text-blue-400/60 rotate-[100deg]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" viewBox="0 0 24 24"><path d="M10 9l-6 6 6 6"/><path d="M4 15h9a5 5 0 0 0 5-5V4"/></svg>
                     </div>
 
                     {/* Statistic Cards Container */}
-                    <div className="absolute left-0 top-1/2 -translate-y-1/2 flex flex-col gap-4 z-20">
+                    <div className="absolute left-0 top-[52%] -translate-y-1/2 flex flex-col gap-4 z-20">
                         
                         {/* Card 1 */}
-                        <div className="bg-white/95 backdrop-blur p-3.5 pr-8 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-white flex items-center gap-3 hover:-translate-y-1 transition-transform">
-                            <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 shrink-0">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                        <div className="bg-white/90 backdrop-blur-md p-3.5 pr-8 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-white/50 flex items-center gap-4 hover:-translate-y-1.5 transition-transform duration-300 animate-float">
+                            <div className="w-11 h-11 bg-blue-50/80 rounded-xl flex items-center justify-center text-blue-600 shrink-0 shadow-inner">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
                             </div>
                             <div>
-                                <p className="font-extrabold text-gray-900 text-[15px] leading-tight">10K+</p>
-                                <p className="text-[11px] text-gray-500 font-medium">Job Opportunities</p>
+                                <p className="font-extrabold text-gray-900 text-[16px] leading-tight">10K+</p>
+                                <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider mt-0.5">Job Opportunities</p>
                             </div>
                         </div>
 
                         {/* Card 2 */}
-                        <div className="bg-white/95 backdrop-blur p-3.5 pr-8 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-white flex items-center gap-3 hover:-translate-y-1 transition-transform ml-6">
-                            <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600 shrink-0">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                        <div className="bg-white/90 backdrop-blur-md p-3.5 pr-8 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-white/50 flex items-center gap-4 hover:-translate-y-1.5 transition-transform duration-300 ml-8 animate-float-delayed">
+                            <div className="w-11 h-11 bg-emerald-50/80 rounded-xl flex items-center justify-center text-emerald-600 shrink-0 shadow-inner">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
                             </div>
                             <div>
-                                <p className="font-extrabold text-gray-900 text-[15px] leading-tight">500+</p>
-                                <p className="text-[11px] text-gray-500 font-medium">Top Companies</p>
+                                <p className="font-extrabold text-gray-900 text-[16px] leading-tight">500+</p>
+                                <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider mt-0.5">Top Companies</p>
                             </div>
                         </div>
 
                         {/* Card 3 */}
-                        <div className="bg-white/95 backdrop-blur p-3.5 pr-8 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-white flex items-center gap-3 hover:-translate-y-1 transition-transform">
-                            <div className="w-10 h-10 bg-purple-50 rounded-xl flex items-center justify-center text-purple-600 shrink-0">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                        <div className="bg-white/90 backdrop-blur-md p-3.5 pr-8 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-white/50 flex items-center gap-4 hover:-translate-y-1.5 transition-transform duration-300 animate-float">
+                            <div className="w-11 h-11 bg-purple-50/80 rounded-xl flex items-center justify-center text-purple-600 shrink-0 shadow-inner">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                             </div>
                             <div>
-                                <p className="font-extrabold text-gray-900 text-[15px] leading-tight">100K+</p>
-                                <p className="text-[11px] text-gray-500 font-medium">Successful Placements</p>
+                                <p className="font-extrabold text-gray-900 text-[16px] leading-tight">100K+</p>
+                                <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider mt-0.5">Successful Placements</p>
                             </div>
                         </div>
                     </div>
 
                     {/* The main character image */}
-                    <img src={assets.app_main_img} alt="Career Professional" className="max-w-[340px] w-full h-[450px] object-cover object-top z-10 drop-shadow-[0_20px_30px_rgba(0,0,0,0.15)] absolute bottom-0 right-10" />
+                    <img src={assets.app_main_img} alt="Career Professional" className="max-w-[340px] w-full h-[450px] object-cover object-top z-10 drop-shadow-[0_25px_35px_rgba(0,0,0,0.2)] absolute bottom-0 right-6" />
 
                     {/* Bottom Right Card */}
-                    <div className="absolute bottom-12 -right-2 bg-white p-3 pr-6 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-white flex items-center gap-3 z-30 hover:-translate-y-1 transition-transform">
-                        <div className="w-10 h-10 bg-yellow-50 rounded-xl flex items-center justify-center text-yellow-500 shrink-0">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path></svg>
+                    <div className="absolute bottom-10 -right-6 bg-white/95 backdrop-blur-sm p-3.5 pr-6 rounded-2xl shadow-[0_12px_30px_rgb(0,0,0,0.12)] border border-white flex items-center gap-3 z-30 hover:-translate-y-1.5 transition-transform duration-300 animate-float-delayed">
+                        <div className="w-11 h-11 bg-yellow-50 rounded-xl flex items-center justify-center text-yellow-500 shrink-0 shadow-inner">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path></svg>
                         </div>
                         <div>
-                            <p className="font-extrabold text-gray-900 text-[14px] leading-tight">Build</p>
-                            <p className="text-[10px] text-gray-500 font-medium">A Better You</p>
+                            <p className="font-extrabold text-gray-900 text-[15px] leading-tight">Build</p>
+                            <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider mt-0.5">A Better You</p>
                         </div>
-                        <div className="w-6 h-6 bg-yellow-50 rounded-full flex items-center justify-center ml-2 text-yellow-500">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+                        <div className="w-6 h-6 bg-yellow-100 rounded-full flex items-center justify-center ml-2 text-yellow-600 shadow-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
                         </div>
                     </div>
 

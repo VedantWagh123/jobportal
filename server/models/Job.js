@@ -19,6 +19,10 @@ const jobSchema = new mongoose.Schema({
     intelligenceRetryCount: { type: Number, default: 0 }
 })
 
+// Indexes for fast lookup & pagination
+jobSchema.index({ visible: 1, date: -1 });
+jobSchema.index({ companyId: 1 });
+
 const Job = mongoose.model('Job', jobSchema)
 
 export default Job

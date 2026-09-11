@@ -9,6 +9,8 @@ import Batches from './pages/Batches';
 import Enrollments from './pages/Enrollments';
 import Settings from './pages/Settings';
 import PlacementResults from './pages/PlacementResults';
+import InstituteProfile from './pages/InstituteProfile';
+import CurriculumGap from './pages/CurriculumGap';
 
 const ProtectedRoute = ({ children }) => {
     const { user, loading } = useContext(AuthContext);
@@ -30,7 +32,8 @@ const AppRoutes = () => {
                 <Route path="trainers" element={<div className="p-8 text-gray-500">Trainer planning coming soon...</div>} />
                 <Route path="enrollments" element={<Enrollments />} />
                 <Route path="placement" element={<PlacementResults />} />
-                <Route path="curriculum-gap" element={<div className="p-8 text-gray-500">AI Curriculum Gap detailed view coming soon...</div>} />
+                <Route path="profile" element={<InstituteProfile />} />
+                <Route path="curriculum-gap" element={<CurriculumGap />} />
                 <Route path="settings" element={<Settings />} />
                 <Route path="equipment" element={<div className="p-8 text-gray-500">Equipment & Lab management coming soon...</div>} />
             </Route>

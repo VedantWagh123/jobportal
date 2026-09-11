@@ -1,15 +1,16 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, AuthContext } from './context/AuthContext';
 import { useContext } from 'react';
+import { lazy, Suspense } from 'react';
 import Layout from './components/Layout';
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import SkillsManagement from './pages/SkillsManagement';
-import StateAdmins from './pages/StateAdmins';
-import InstituteManagement from './pages/InstituteManagement';
-import EmployersManagement from './pages/EmployersManagement';
-import Settings from './pages/Settings';
-import ReportsAnalytics from './pages/ReportsAnalytics';
+const Login = lazy(() => import('./pages/Login'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const SkillsManagement = lazy(() => import('./pages/SkillsManagement'));
+const StateAdmins = lazy(() => import('./pages/StateAdmins'));
+const InstituteManagement = lazy(() => import('./pages/InstituteManagement'));
+const EmployersManagement = lazy(() => import('./pages/EmployersManagement'));
+const Settings = lazy(() => import('./pages/Settings'));
+const ReportsAnalytics = lazy(() => import('./pages/ReportsAnalytics'));
 
 // Protect routes
 const ProtectedRoute = ({ children }) => {
@@ -23,19 +24,21 @@ const ProtectedRoute = ({ children }) => {
 
 function AppRoutes() {
     return (
-        <Routes>
-            <Route path="/login" element={<Login />} />
-            
-            <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-                <Route index element={<Dashboard />} />
-                <Route path="skills" element={<SkillsManagement />} />
-                <Route path="admins" element={<StateAdmins />} />
-                <Route path="institutes" element={<InstituteManagement />} />
-                <Route path="employers" element={<EmployersManagement />} />
-                <Route path="settings" element={<Settings />} />
-                <Route path="reports" element={<ReportsAnalytics />} />
-            </Route>
-        </Routes>
+        <Suspense fallback={<div className="flex h-screen items-center justify-center">Loading...</div>}>
+            <Routes>
+                <Route path="/login" element={<Login />} />
+                
+                <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+                    <Route index element={<Dashboard />} />
+                    <Route path="skills" element={<SkillsManagement />} />
+                    <Route path="admins" element={<StateAdmins />} />
+                    <Route path="institutes" element={<InstituteManagement />} />
+                    <Route path="employers" element={<EmployersManagement />} />
+                    <Route path="settings" element={<Settings />} />
+                    <Route path="reports" element={<ReportsAnalytics />} />
+                </Route>
+            </Routes>
+        </Suspense>
     );
 }
 

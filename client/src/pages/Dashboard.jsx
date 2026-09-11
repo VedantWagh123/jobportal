@@ -48,8 +48,8 @@ const SidebarLink = ({ item, onClick }) => {
     )
   }
 
-  const activeClass = 'bg-blue-50 text-blue-700 font-semibold'
-  const inactiveClass = 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+  const activeClass = 'bg-[#EFF4FF] text-blue-600 font-bold'
+  const inactiveClass = 'text-gray-500 hover:bg-gray-50 hover:text-gray-900 font-medium'
 
   return (
     <NavLink
@@ -76,14 +76,14 @@ const SidebarLink = ({ item, onClick }) => {
 const SidebarContent = ({ companyData, unreadCount, logout, onClose }) => {
   const navigate = useNavigate()
   return (
-    <div className="flex flex-col h-full">
-      {/* Company Greeting */}
-      <div className="px-5 py-6 border-b border-gray-100 flex flex-col shrink-0 bg-gradient-to-b from-blue-50/50 to-transparent relative">
-        <p className="text-[10px] font-extrabold text-blue-600 uppercase tracking-widest mb-1.5">Welcome back</p>
-        <h2 className="text-[17px] font-extrabold text-gray-900 truncate leading-tight pr-6">{companyData?.name || 'Recruiter'}</h2>
-        <div className="flex items-center gap-2 mt-2.5">
-           <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-md"><CheckCircle2 size={11}/> Verified</span>
+    <div className="flex flex-col h-full bg-white">
+      {/* Logo & Tagline */}
+      <div className="px-5 py-6 flex flex-col shrink-0 relative border-b border-gray-50">
+        <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
+          <img className="h-7 hover:opacity-90 transition-opacity" src={assets.logo} alt="InsiderJobs" />
         </div>
+        <p className="text-[10.5px] font-bold text-gray-400 mt-1.5 pl-1">Hire Smarter. Grow Faster.</p>
+        
         {onClose && (
           <button onClick={onClose} className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 lg:hidden">
             <X size={18} />
@@ -127,20 +127,18 @@ const SidebarContent = ({ companyData, unreadCount, logout, onClose }) => {
       </div>
 
       {/* Upgrade Card */}
-      <div className="px-3 pb-5 shrink-0">
-        <div className="bg-gradient-to-br from-violet-50 via-blue-50 to-indigo-50 border border-violet-100 rounded-2xl p-4 relative overflow-hidden">
-          <div className="absolute top-2 right-2 w-16 h-16 bg-violet-200/30 rounded-full blur-xl"></div>
+      <div className="px-3 pb-5 shrink-0 mt-auto">
+        <div className="bg-[#F7F9FC] border border-[#E8ECF4] rounded-2xl p-4 relative overflow-hidden">
           <div className="flex items-center gap-2 mb-2">
             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-sm">
               <Crown size={14} className="text-white" />
             </div>
             <span className="font-extrabold text-gray-900 text-sm">Upgrade to Pro</span>
-            <Zap size={12} className="text-violet-500 ml-auto" />
           </div>
-          <p className="text-[12px] text-gray-500 leading-relaxed mb-3">
-            Get advanced features, more visibility and better reach.
+          <p className="text-[11px] font-medium text-gray-500 leading-relaxed mb-3">
+            Get advanced analytics and more features.
           </p>
-          <button className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white text-[12px] font-bold py-2 rounded-xl transition-all shadow-md shadow-violet-500/20 flex items-center justify-center gap-1.5">
+          <button className="w-full bg-[#6366F1] hover:bg-[#4F46E5] text-white text-[12px] font-bold py-2.5 rounded-xl transition-all shadow-md shadow-indigo-500/20 flex items-center justify-center gap-1.5">
             Upgrade Now <ChevronRight size={13} />
           </button>
         </div>
@@ -225,9 +223,19 @@ const Dashboard = () => {
             <Menu size={20} />
           </button>
 
-          {/* Logo */}
-          <div className="flex-1 max-w-xl hidden sm:flex items-center">
-            <img onClick={() => navigate('/')} className="h-8 cursor-pointer hover:opacity-90 transition-opacity" src={assets.logo} alt="InsiderJobs" />
+          {/* Search Bar */}
+          <div className="flex-1 max-w-xl hidden sm:flex items-center ml-2">
+            <form onSubmit={handleSearchSubmit} className="relative w-full max-w-md">
+              <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input 
+                ref={searchInputRef}
+                type="text" 
+                placeholder="Search jobs, candidates, or anything..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 bg-[#F7F9FC] border border-[#E8ECF4] rounded-full text-[13px] text-gray-700 placeholder:text-gray-400 font-medium focus:outline-none focus:ring-2 focus:ring-blue-100 focus:bg-white transition-all shadow-sm"
+              />
+            </form>
           </div>
 
           {/* Right Side */}

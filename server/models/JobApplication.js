@@ -14,6 +14,10 @@ const JobApplicationSchema = new mongoose.Schema({
     date: { type: Number, required: true }
 });
 
+// Indexes for fast lookup
+JobApplicationSchema.index({ companyId: 1 });
+JobApplicationSchema.index({ jobId: 1 });
+
 const JobApplication = mongoose.model('JobApplication', JobApplicationSchema);
 
 export { ATS_STAGES };

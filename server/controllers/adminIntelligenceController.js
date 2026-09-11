@@ -84,7 +84,7 @@ export const getDashboardAnalytics = async (req, res) => {
         res.json({ success: true, analytics });
     } catch (error) {
         console.error("Error in getDashboardAnalytics:", error);
-        res.json({ success: false, message: error.message });
+        res.status(500).json({ success: false, message: error.message });
     }
 };
 
@@ -125,6 +125,6 @@ export const getDistrictIntelligence = async (req, res) => {
         const districts = await IntelligenceService.getDistrictIntelligence(filters);
         res.json({ success: true, districts });
     } catch (error) {
-        res.json({ success: false, message: error.message });
+        res.status(500).json({ success: false, message: error.message });
     }
 };

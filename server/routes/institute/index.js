@@ -2,6 +2,7 @@ import express from 'express';
 import { protectInstitute } from '../../middleware/instituteAuthMiddleware.js';
 import authRoutes from './authRoutes.js';
 import courseRoutes from './courseRoutes.js';
+import notificationRoutes from './notificationRoutes.js';
 
 import { createInstitute, getInstitutes, getInstituteById, updateInstitute } from '../../controllers/adminInstituteController.js';
 import { createCourse, getCourses, getCourseById, updateCourse } from '../../controllers/adminCourseController.js';
@@ -16,6 +17,7 @@ router.use('/auth', authRoutes);
 router.use(protectInstitute);
 
 router.use('/management', courseRoutes);
+router.use('/notifications', notificationRoutes);
 
 // Institute Profile APIs
 router.post('/profile', createInstitute);
@@ -43,6 +45,7 @@ router.put('/enrollments/:id', updateEnrollment);
 
 // Placement Results (Employer Feedback for institute's students)
 import { getInstitutePlacementResults } from '../../controllers/feedbackController.js';
-router.get('/management/placement-results', getInstitutePlacementResults);
+import { cacheMiddleware } from '../../utils/cache.js';
+router.get('/management/placement-results', cacheMiddleware(300), getInstitutePlacementResults);
 
 export default router;

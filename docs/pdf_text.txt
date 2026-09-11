@@ -298,7 +298,7 @@ Frontend Developer
        |
        +-- HTML
        +-- CSS
-       +-- JavaScript
+       +-- JavaScriptd
        |      +-- ES6
        |      +-- DOM
        |

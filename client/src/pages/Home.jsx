@@ -17,7 +17,7 @@ const Home = () => {
   const isProfileIncomplete = userData && (!userData.resume || !userData.college);
 
   return (
-    <div className='bg-gray-50/30 min-h-screen pb-12'>
+    <div className='bg-[#F8FAFC] min-h-screen pb-12'>
       <SEO title="Home" description="Find thousands of job opportunities across India, powered by the Government Skill Intelligence Platform." />
       
       {/* Profile Completion Alert / Banner */}

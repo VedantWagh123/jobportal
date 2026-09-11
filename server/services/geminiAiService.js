@@ -99,6 +99,24 @@ export const generateResponse = async (prompt, fallback = "") => {
     }
 };
 
+export const generateChatResponse = async (contents, fallback = "") => {
+    try {
+        if (!process.env.GEMINI_API_KEY) {
+            console.warn("[Gemini] API Key missing. Using fallback.");
+            return fallback;
+        }
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: contents, // Array of { role: 'user'|'model', parts: [{text: '...'}] }
+        });
+        return response.text;
+    } catch (error) {
+        console.error("[Gemini] Chat API Error:", error.message);
+        return fallback;
+    }
+};
+
 export const extractSkillsFromResume = async (pdfText) => {
     try {
         if (!process.env.GEMINI_API_KEY) {

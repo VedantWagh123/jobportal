@@ -124,13 +124,27 @@ export const getInstitutePlacementResults = async (req, res) => {
                 populate: { path: 'courseId', select: 'name' }
             });
 
-        // For each enrolled student, find if there's employer feedback
-        const results = await Promise.all(enrollments.map(async (enr) => {
-            const candidateId = enr.userId?._id?.toString() || enr.userId;
+        // Fetch all candidate IDs
+        const candidateIds = enrollments.map(enr => enr.userId?._id?.toString() || enr.userId);
 
-            const feedback = await EmployerFeedback.findOne({ candidateId })
-                .populate({ path: 'jobId', select: 'title' })
-                .sort({ submittedAt: -1 });
+        // Fetch all feedbacks for these candidates in ONE query to avoid N+1 problem
+        const feedbacks = await EmployerFeedback.find({ candidateId: { $in: candidateIds } })
+            .populate({ path: 'jobId', select: 'title' })
+            .sort({ submittedAt: -1 });
+
+        // Create a fast O(1) lookup map for feedbacks
+        const feedbackMap = {};
+        for (const fb of feedbacks) {
+            // Keep the first one found since they are sorted descending (latest first)
+            if (!feedbackMap[fb.candidateId]) {
+                feedbackMap[fb.candidateId] = fb;
+            }
+        }
+
+        // Construct results synchronously
+        const results = enrollments.map(enr => {
+            const candidateId = enr.userId?._id?.toString() || enr.userId;
+            const feedback = feedbackMap[candidateId];
 
             return {
                 studentName: enr.userId?.name || 'Unknown',
@@ -143,7 +157,7 @@ export const getInstitutePlacementResults = async (req, res) => {
                 overallComment: feedback?.overallComment || '',
                 feedbackDate: feedback?.submittedAt || null
             };
-        }));
+        });
 
         // Summary stats
         const hired = results.filter(r => r.placementStatus === 'Hired').length;
