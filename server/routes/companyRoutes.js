@@ -1,5 +1,5 @@
 import express from 'express'
-import { ChangeJobApplicationsStatus, changeVisiblity, getCompanyData, getCompanyJobApplicants, getCompanyPostedJobs, loginCompany, postJob, registerCompany, extractJobSkills, getNotifications, markNotificationRead, updateCompanyProfile } from '../controllers/companyController.js'
+import { ChangeJobApplicationsStatus, changeVisiblity, getCompanyData, getCompanyJobApplicants, getCompanyPostedJobs, loginCompany, postJob, editJob, registerCompany, extractJobSkills, getCompanyNotifications, markCompanyNotificationsRead, updateCompanyProfile } from '../controllers/companyController.js'
 import upload from '../config/multer.js'
 import { protectCompany } from '../middleware/authMiddleware.js'
 
@@ -16,6 +16,9 @@ router.get('/company', protectCompany, getCompanyData)
 
 // Post a job
 router.post('/post-job', protectCompany, postJob)
+
+// Edit a job
+router.put('/edit-job/:id', protectCompany, editJob)
 
 // Extract Skills
 router.post('/extract-skills', protectCompany, extractJobSkills)
@@ -38,8 +41,8 @@ router.post('/feedback', protectCompany, submitFeedback)
 router.get('/job-skills/:jobId', protectCompany, getJobSkillsForFeedback)
 
 // Notification routes
-router.get('/notifications', protectCompany, getNotifications)
-router.post('/notifications/read', protectCompany, markNotificationRead)
+router.get('/notifications', protectCompany, getCompanyNotifications)
+router.post('/notifications/read', protectCompany, markCompanyNotificationsRead)
 
 // Profile update
 router.post('/profile/update', protectCompany, upload.single('image'), updateCompanyProfile)

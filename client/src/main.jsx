@@ -4,6 +4,7 @@ import App from './App.jsx'
 import { BrowserRouter } from 'react-router-dom'
 import { AppContextProvider } from './context/AppContext.jsx'
 import { AdminContextProvider } from './context/AdminContext.jsx'
+import { SocketProvider } from './context/SocketContext.jsx'
 import { ClerkProvider } from '@clerk/clerk-react'
 
 // Import your publishable key
@@ -22,11 +23,13 @@ createRoot(document.getElementById('root')).render(
   <QueryClientProvider client={queryClient}>
     <ClerkProvider publishableKey={PUBLISHABLE_KEY} afterSignOutUrl="/">
       <BrowserRouter>
-        <AppContextProvider>
-          <AdminContextProvider>
-            <App />
-          </AdminContextProvider>
-        </AppContextProvider>
+        <SocketProvider>
+          <AppContextProvider>
+            <AdminContextProvider>
+              <App />
+            </AdminContextProvider>
+          </AppContextProvider>
+        </SocketProvider>
       </BrowserRouter>
     </ClerkProvider>
     <ReactQueryDevtools initialIsOpen={false} />

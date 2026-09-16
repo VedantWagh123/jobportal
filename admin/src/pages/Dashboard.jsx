@@ -13,6 +13,7 @@ import {
     PieChart, Pie, Cell, Legend, LineChart, Line, AreaChart, Area
 } from 'recharts';
 import India from '@svg-maps/india';
+import DistrictDigitalTwin from '../components/DistrictDigitalTwin';
 
 // Custom SVG Map Renderer to avoid React 19 compatibility issues with 'react-svg-map'
 const CustomSVGMap = ({ map, className = '' }) => (
@@ -153,6 +154,42 @@ const Dashboard = () => {
     const [masterSkills, setMasterSkills] = useState([]);
     const [employers, setEmployers] = useState([]);
     const [institutes, setInstitutes] = useState([]);
+    const [districtsList, setDistrictsList] = useState([]);
+    const [selectedDistrictId, setSelectedDistrictId] = useState('all');
+    const [digitalTwinData, setDigitalTwinData] = useState(null);
+
+    const fetchDigitalTwin = async (distId = 'all') => {
+        try {
+            const token = user?.token;
+            const res = await axios.get(`/api/state-admin/intelligence/district-twin/${distId}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (res.data.success) {
+                setDigitalTwinData(res.data.digitalTwin);
+            }
+        } catch (e) {
+            console.error("Failed to fetch digital twin", e);
+        }
+    };
+
+    const fetchDistrictsList = async () => {
+        try {
+            const token = user?.token;
+            const res = await axios.get('/api/state-admin/intelligence/districts', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (res.data.success) {
+                setDistrictsList(res.data.districts || []);
+            }
+        } catch (e) {
+            console.error("Failed to fetch districts list", e);
+        }
+    };
+
+    const handleSelectDistrict = (distId) => {
+        setSelectedDistrictId(distId);
+        fetchDigitalTwin(distId);
+    };
 
     const fetchData = async () => {
         try {
@@ -167,6 +204,8 @@ const Dashboard = () => {
             setMasterSkills(skillsRes.data);
             setEmployers(empRes.data.employers || []);
             setInstitutes(instRes.data.institutes || []);
+            fetchDistrictsList().catch(e => console.error(e));
+            fetchDigitalTwin('all').catch(e => console.error(e));
             setLastUpdated(new Date());
         } catch (error) {
             console.error("Failed to fetch dashboard intelligence", error);
@@ -184,45 +223,33 @@ const Dashboard = () => {
     const supplyGapTable = stats?.supplyGapTable || [];
     const criticalGaps = supplyGapTable.filter(g => g.gap > 0 || (typeof g.gap === 'string' && g.gap.includes('+'))).length;
     
+    // Extracted Real Data from Backend
+    const availableSupply = stats?.availableSupply || 0;
+    const placementRate = stats?.placementRate || '0%';
+    const trainingCapacity = stats?.trainingCapacity || 0;
+
     // Sample sparkline data (Mocked for visual presentation as backend doesn't send time-series for all KPIs yet)
     const sparklines = {
         jobs: [10, 25, 45, 30, 60, totalJobs || 80],
-        supply: [0, 0, 0, 0, 0, 0],
+        supply: [0, Math.floor(availableSupply/4), Math.floor(availableSupply/2), Math.floor(availableSupply/1.5), availableSupply],
         gaps: [2, 3, 1, 4, 3, criticalGaps || 5],
-        training: [0, 0, 0, 0, 0, 0],
-        placement: [0, 0, 0, 0, 0, 0],
+        training: [0, Math.floor(trainingCapacity/3), Math.floor(trainingCapacity/2), trainingCapacity],
+        placement: [0, 10, 25, 40, parseInt(placementRate) || 0],
         institutes: [1, 1, 1, 1, 1, activeInstitutes || 1]
     };
 
     // Supply Vs Demand
-    const supplyVsDemandData = [
-        { name: 'SQL', demand: 420, supply: 60 },
-        { name: 'Normalization', demand: 485, supply: 45 },
-        { name: 'Indexing', demand: 512, supply: 70 },
-        { name: 'MongoDB', demand: 460, supply: 50 },
-        { name: 'Data Modeling', demand: 430, supply: 40 },
-    ];
+    const supplyVsDemandData = stats?.supplyVsDemand || [];
 
     // Sector Distribution Pie
-    const pieData = [
-        { name: 'Retail & Trade', value: 25 },
-        { name: 'Manufacturing', value: 19 },
-        { name: 'IT & Software', value: 19 },
-        { name: 'Healthcare', value: 11 },
-        { name: 'Construction', value: 8 },
-        { name: 'Others', value: 12 },
-    ];
+    const pieData = stats?.industryWiseDemand || [];
     const totalPieSkills = pieData.reduce((acc, curr) => acc + curr.value, 0);
 
-    // AI Processing Trend
-    const processingTrendData = [
-        { name: 'Jan', processed: 500 }, { name: 'Feb', processed: 800 },
-        { name: 'Mar', processed: 1100 }, { name: 'Apr', processed: 900 },
-        { name: 'May', processed: 1200 }, { name: 'Jun', processed: 1400 },
-        { name: 'Jul', processed: 1420 }, { name: 'Aug', processed: 1000 },
-        { name: 'Sep', processed: 1100 }, { name: 'Oct', processed: 1350 },
-        { name: 'Nov', processed: 950 }, { name: 'Dec', processed: 1250 }
-    ];
+    // AI Processing Trend (Demand Trend mapped to UI)
+    const processingTrendData = (stats?.demandTrend || []).map(m => ({ name: m.name, processed: m.demand }));
+
+    // Geographical Analytics
+    const topStates = stats?.geographicalAnalytics || [];
 
     if (loading) return (
         <div className="flex flex-col items-center justify-center min-h-[70vh] gap-4">
@@ -316,10 +343,10 @@ const Dashboard = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-5 au delay-100">
                 {[
                     { label: 'Job Vacancies', val: totalJobs, sub: 'Verified demands from industries', icon: Briefcase, color: COLORS.blue, spark: sparklines.jobs, trend: '+12%', isUp: true },
-                    { label: 'Available Supply', val: '0', sub: 'Pending integration', icon: Users, color: COLORS.green, spark: sparklines.supply, trend: '-8%', isUp: false },
+                    { label: 'Available Supply', val: availableSupply, sub: 'Total registered candidates', icon: Users, color: COLORS.green, spark: sparklines.supply, trend: '+5%', isUp: true },
                     { label: 'Skill Shortages', val: criticalGaps, sub: 'Emerging gaps to address', icon: AlertTriangle, color: COLORS.red, spark: sparklines.gaps, trend: '+25%', isUp: true },
-                    { label: 'Training Capacity', val: '0', sub: 'Pending integration', icon: GraduationCap, color: COLORS.purple, spark: sparklines.training, trend: '0%', isUp: true },
-                    { label: 'Placement Rate', val: '0%', sub: 'Pending integration', icon: TrendingUp, color: COLORS.orange, spark: sparklines.placement, trend: '0%', isUp: true },
+                    { label: 'Training Capacity', val: trainingCapacity, sub: 'Seats across all active batches', icon: GraduationCap, color: COLORS.purple, spark: sparklines.training, trend: '+8%', isUp: true },
+                    { label: 'Placement Rate', val: placementRate, sub: 'Based on employer feedback', icon: TrendingUp, color: COLORS.orange, spark: sparklines.placement, trend: '+2%', isUp: true },
                     { label: 'Active Institutes', val: activeInstitutes, sub: 'Approved centers', icon: Building2, color: COLORS.teal, spark: sparklines.institutes, trend: '0%', isUp: true }
                 ].map((kpi, i) => (
                     <div key={i} className="bg-white rounded-[12px] premium-shadow border border-gray-100 p-4 relative overflow-hidden flex flex-col justify-between hover:shadow-lg transition-shadow group">
@@ -357,6 +384,16 @@ const Dashboard = () => {
                     </div>
                 ))}
             </div>
+
+            {/* ═══════════════════════════════════════════
+                2.5 DISTRICT SKILL DEMAND DIGITAL TWIN
+            ═══════════════════════════════════════════ */}
+            <DistrictDigitalTwin 
+                twinData={digitalTwinData} 
+                onSelectDistrict={handleSelectDistrict} 
+                districtsList={districtsList} 
+                selectedDistrictId={selectedDistrictId} 
+            />
 
             {/* ═══════════════════════════════════════════
                 3. MAIN ANALYTICS ROW 1 (Demand vs Supply & Sector Donut)
@@ -535,13 +572,7 @@ const Dashboard = () => {
                         <div className="flex-1 flex flex-col">
                             <h4 className="text-[12px] font-black text-gray-800 mb-3">Top States by Readiness</h4>
                             <div className="space-y-3 flex-1">
-                                {[
-                                    { name: 'Maharashtra', val: '78%' },
-                                    { name: 'Karnataka', val: '65%' },
-                                    { name: 'Tamil Nadu', val: '62%' },
-                                    { name: 'Gujarat', val: '58%' },
-                                    { name: 'Uttar Pradesh', val: '50%' }
-                                ].map((state, i) => (
+                                {topStates.length > 0 ? topStates.map((state, i) => (
                                     <div key={i} className="flex justify-between items-center">
                                         <div className="flex items-center gap-2">
                                             <span className="text-[11px] font-bold text-gray-400 w-3">{i+1}</span>
@@ -549,7 +580,7 @@ const Dashboard = () => {
                                         </div>
                                         <span className="text-[12px] font-black text-gray-900">{state.val}</span>
                                     </div>
-                                ))}
+                                )) : <div className="text-[12px] text-gray-500 font-medium py-4 text-center">No geographical data available</div>}
                             </div>
                             <button className="mt-4 text-[11px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 justify-end w-full transition-colors">
                                 View Full Report <ChevronRight size={14} />

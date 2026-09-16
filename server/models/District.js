@@ -4,6 +4,7 @@ const districtSchema = new mongoose.Schema({
     name: { type: String, required: true },
     state: { type: String, required: true },
     country: { type: String, default: 'India' },
+    actionedSkills: [{ type: String }], // Store skills that have been fulfilled via requirements
     createdAt: { type: Date, default: Date.now }
 });
 

@@ -18,6 +18,14 @@ export const protectCompany = async (req,res,next) => {
 
         req.company = await Company.findById(decoded.id).select('-password')
 
+        if (!req.company) {
+            return res.json({ success:false, message:'Not authorized, Login Again'})
+        }
+
+        if (req.company.status === 'Pending' || req.company.status === 'Banned') {
+            return res.json({ success:false, message: 'Your account is pending or banned. Access denied.'})
+        }
+
         next()
 
     } catch (error) {

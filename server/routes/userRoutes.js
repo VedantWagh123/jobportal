@@ -1,41 +1,47 @@
 import express from 'express'
-import { applyForJob, getUserData, syncUser, getUserJobApplications, updateUserResume, completeUserProfile, updateUserSkills, getTargetJobs, getCareerAnalysis, getMarketRecommendations, enrollInBatch, extractResumeSkillsAPI } from '../controllers/userController.js'
+import { applyForJob, getUserData, syncUser, getUserJobApplications, updateUserResume, completeUserProfile, updateUserSkills, getTargetJobs, getCareerAnalysis, getMarketRecommendations, enrollInBatch, extractResumeSkillsAPI, getAllPublicCourses, toggleSavedJob } from '../controllers/userController.js'
 import upload from '../config/multer.js'
-
+import { requireUser } from '../middleware/requireUser.js'
 
 const router = express.Router()
 
-// Get user Data
-router.get('/user', getUserData)
+// Get user Data (requireUser auto-creates/migrates the user record)
+router.get('/user', requireUser, getUserData)
 
-// Sync user Data
-router.post('/sync', syncUser)
+// Sync user Data (requireUser handles migration)
+router.post('/sync', requireUser, syncUser)
 
 // Apply for a job
-router.post('/apply', applyForJob)
+router.post('/apply', requireUser, applyForJob)
+
+// Toggle saved job
+router.post('/toggle-saved-job', requireUser, toggleSavedJob)
 
 // Get applied jobs data
-router.get('/applications', getUserJobApplications)
+router.get('/applications', requireUser, getUserJobApplications)
 
 // Update user profile (resume only)
-router.post('/update-resume', upload.single('resume'), updateUserResume)
+router.post('/update-resume', upload.single('resume'), requireUser, updateUserResume)
 
 // Complete user profile (multi-step form)
-router.post('/complete-profile', upload.fields([{ name: 'resume', maxCount: 1 }, { name: 'image', maxCount: 1 }]), completeUserProfile)
+router.post('/complete-profile', upload.fields([{ name: 'resume', maxCount: 1 }, { name: 'image', maxCount: 1 }]), requireUser, completeUserProfile)
 
 // Update user profile (skills)
-router.post('/update-skills', updateUserSkills)
+router.post('/update-skills', requireUser, updateUserSkills)
 
 // Extract Skills directly from uploaded resume (No DB save)
 router.post('/extract-resume-skills', upload.single('resume'), extractResumeSkillsAPI)
 
 // Career Path APIs
 router.get('/career/jobs', getTargetJobs)
-router.get('/career/skill-gap/:jobId', getCareerAnalysis)
-router.get('/career/market-recommendations', getMarketRecommendations)
+router.get('/career/skill-gap/:jobId', requireUser, getCareerAnalysis)
+router.get('/career/market-recommendations', requireUser, getMarketRecommendations)
+
+// Browse All Public Courses
+router.get('/courses', getAllPublicCourses)
 
 // Batch Enrollment
-router.post('/enroll', enrollInBatch)
+router.post('/enroll', requireUser, enrollInBatch)
 
 // Institute Quality Scores
 import { getInstituteScores } from '../controllers/feedbackController.js';
@@ -44,5 +50,13 @@ router.get('/institute-scores', getInstituteScores)
 // Chatbot
 import { chatWithAI } from '../controllers/chatbotController.js';
 router.post('/chat', chatWithAI);
+
+// Notifications
+import { getUserNotifications, markUserNotificationsRead, submitCourseReview } from '../controllers/userController.js';
+router.get('/notifications', requireUser, getUserNotifications);
+router.put('/notifications/mark-read', requireUser, markUserNotificationsRead);
+
+// Course Reviews
+router.post('/course-review', requireUser, submitCourseReview);
 
 export default router;

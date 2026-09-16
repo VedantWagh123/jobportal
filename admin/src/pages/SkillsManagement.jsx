@@ -64,6 +64,18 @@ const SkillsManagement = () => {
         }
     };
 
+    const handleDeleteMasterSkill = async (id) => {
+        if (!window.confirm('Are you sure you want to delete this master skill? This action cannot be undone.')) return;
+        try {
+            await axios.delete(`/api/super-admin/skills/master/${id}`, {
+                headers: { Authorization: `Bearer ${user.token}` }
+            });
+            setMasterSkills(masterSkills.filter(s => s._id !== id));
+        } catch (error) {
+            alert('Failed to delete master skill');
+        }
+    };
+
     const filteredMasterSkills = masterSkills.filter(skill => 
         skill.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
         (skill.aliases && skill.aliases.some(alias => alias.toLowerCase().includes(searchQuery.toLowerCase())))
@@ -191,6 +203,7 @@ const SkillsManagement = () => {
                                                 <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Category</th>
                                                 <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Aliases (Mapped Variants)</th>
                                                 <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Date Added</th>
+                                                <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-100">
@@ -211,6 +224,15 @@ const SkillsManagement = () => {
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-gray-500 text-sm">
                                                         {new Date(skill.createdAt).toLocaleDateString()}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                                                        <button 
+                                                            onClick={() => handleDeleteMasterSkill(skill._id)}
+                                                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                            title="Delete Master Skill"
+                                                        >
+                                                            <X size={18} />
+                                                        </button>
                                                     </td>
                                                 </tr>
                                             ))}

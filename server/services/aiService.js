@@ -1,9 +1,30 @@
 import { GoogleGenAI } from '@google/genai';
+import axios from 'axios';
 import Skill from "../models/Skill.js";
 import JobSkill from "../models/JobSkill.js";
 import UnresolvedSkill from "../models/UnresolvedSkill.js";
 import Job from "../models/Job.js";
 import JobIntelligence from "../models/JobIntelligence.js";
+
+const OLLAMA_URL = 'http://localhost:11434';
+const OLLAMA_MODEL = 'llava';
+
+// Fallback helper for Ollama text generation
+const callOllama = async (prompt, formatJSON = false) => {
+    try {
+        console.log("[Ollama] Sending request to local model...");
+        const response = await axios.post(`${OLLAMA_URL}/api/generate`, {
+            model: OLLAMA_MODEL,
+            prompt: prompt,
+            stream: false,
+            ...(formatJSON && { format: 'json' }) // Some Ollama versions support this flag
+        });
+        return response.data.response;
+    } catch (err) {
+        console.error("[Ollama] Fallback also failed:", err.message);
+        throw new Error("Both Gemini and Ollama failed.");
+    }
+};
 
 // Initialize Gemini SDK lazily to avoid dotenv hoisting issues
 const getAIInstance = () => {
@@ -57,17 +78,26 @@ export const parseJobDescription = async (jobId, title, description) => {
             Ensure no markdown formatting or backticks wrap the JSON response.
         `;
 
-        // 2. Call Gemini
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: prompt,
-            config: {
-                temperature: 0.1, // Keep it deterministic
-                responseMimeType: "application/json"
-            }
-        });
+        // 2. Call Gemini or Fallback to Ollama
+        let jsonString = "";
+        try {
+            if (!ai) throw new Error("GEMINI_API_KEY is not configured.");
+            const response = await ai.models.generateContent({
+                model: 'gemini-2.5-flash',
+                contents: prompt,
+                config: {
+                    temperature: 0.1, // Keep it deterministic
+                    responseMimeType: "application/json"
+                }
+            });
+            jsonString = response.text;
+        } catch (geminiError) {
+            console.warn(`[Job Intelligence] Gemini failed (${geminiError.message}). Falling back to Ollama...`);
+            jsonString = await callOllama(prompt, true);
+        }
 
-        const jsonString = response.text;
+        // Clean JSON string (remove markdown ticks if present)
+        jsonString = jsonString.replace(/```json/gi, '').replace(/```/g, '').trim();
         let extractedData;
         try {
             extractedData = JSON.parse(jsonString);
@@ -173,14 +203,7 @@ export const parseJobDescription = async (jobId, title, description) => {
 export const extractSimulationIntent = async (userPrompt) => {
     const ai = getAIInstance();
     if (!ai) {
-        console.warn("[AI Service] GEMINI_API_KEY is missing. Using Fallback Intent.");
-        return {
-            skill: "React (Fallback)",
-            district: "Overall",
-            proposedBatches: 2,
-            estimatedSeats: 100,
-            isFallback: true
-        };
+        console.warn("[AI Service] GEMINI_API_KEY is missing. Will try Ollama Fallback Intent.");
     }
 
     const prompt = `
@@ -192,6 +215,7 @@ export const extractSimulationIntent = async (userPrompt) => {
         
         Return ONLY a valid JSON object matching this schema exactly, and nothing else.
         {
+            "queryType": "specific_injection" or "open_ended_suggestion",
             "skill": "Extracted main skill name (e.g. Python, Java, Data Science) or null",
             "district": "Extracted city/district name or null",
             "proposedBatches": "Number of batches proposed (integer) or null",
@@ -201,6 +225,9 @@ export const extractSimulationIntent = async (userPrompt) => {
     `;
 
     try {
+        let responseText = "";
+        if (!ai) throw new Error("GEMINI_API_KEY missing");
+        
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: prompt,
@@ -209,19 +236,68 @@ export const extractSimulationIntent = async (userPrompt) => {
                 responseMimeType: "application/json"
             }
         });
-
-        const intent = JSON.parse(response.text);
+        responseText = response.text;
+        const intent = JSON.parse(responseText.replace(/```json/gi, '').replace(/```/g, '').trim());
         return { ...intent, isFallback: false };
     } catch (err) {
-        console.error("[AI Service] Intent extract failed or rate limited:", err.message);
-        // Fallback Intent
-        return {
-            skill: "React (Fallback)",
-            district: "Overall",
-            proposedBatches: 2,
-            estimatedSeats: 100,
-            isFallback: true
-        };
+        console.warn(`[AI Service] Intent extract failed (${err.message}). Falling back to Ollama...`);
+        try {
+            const ollamaText = await callOllama(prompt, true);
+            const intent = JSON.parse(ollamaText.replace(/```json/gi, '').replace(/```/g, '').trim());
+            return { ...intent, isFallback: true };
+        } catch (ollamaErr) {
+            console.error("[AI Service] Ollama intent fallback also failed:", ollamaErr.message);
+            // Final Static Fallback
+            return {
+                queryType: "specific_injection",
+                skill: "React (Fallback)",
+                district: "Overall",
+                proposedBatches: 2,
+                estimatedSeats: 100,
+                isFallback: true
+            };
+        }
+    }
+};
+
+/**
+ * Step 10b: AI What-If Simulator - Phase 2b: Open Ended Suggestion
+ */
+export const generateOpenEndedPrediction = async (userPrompt, topGaps) => {
+    const ai = getAIInstance();
+    if (!ai) {
+        console.warn("[AI Service] GEMINI_API_KEY is missing. Will try Ollama Open Ended Prediction.");
+    }
+
+    const prompt = `
+        You are an expert advisor for the Government Skill Development Mission.
+        The policymaker asks: "${userPrompt}"
+        
+        Here is the REAL-TIME Market Data showing top skill shortages (positive gap means shortage):
+        ${JSON.stringify(topGaps)}
+        
+        Provide a professional, actionable suggestion in Markdown format. Recommend which courses to open based on the data. Use bolding and bullet points where necessary. Keep it under 150 words.
+    `;
+
+    try {
+        if (!ai) throw new Error("GEMINI_API_KEY missing");
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: { temperature: 0.5 }
+        });
+        return { text: response.text, isFallback: false };
+    } catch (err) {
+        console.warn(`[AI Service] Open Ended Prediction failed (${err.message}). Falling back to Ollama...`);
+        try {
+            const ollamaText = await callOllama(prompt);
+            return { text: ollamaText, isFallback: true };
+        } catch (ollamaErr) {
+            return { 
+                text: `[STATIC FALLBACK]\nBased on the data, focus on high-demand skills.`,
+                isFallback: true
+            };
+        }
     }
 };
 
@@ -231,11 +307,7 @@ export const extractSimulationIntent = async (userPrompt) => {
 export const generateSimulationPrediction = async (intent, marketData) => {
     const ai = getAIInstance();
     if (!ai) {
-        console.warn("[AI Service] GEMINI_API_KEY is missing. Using Fallback Prediction.");
-        return { 
-            text: `[FALLBACK MODE - API KEY MISSING]\nBased on the current market data, adding these batches will significantly help reduce the skill gap for ${intent.skill} in ${intent.district}. We highly recommend proceeding with this policy action to ensure strong placements.`,
-            isFallback: true
-        };
+        console.warn("[AI Service] GEMINI_API_KEY is missing. Will try Ollama Fallback Prediction.");
     }
 
     const prompt = `
@@ -250,11 +322,12 @@ export const generateSimulationPrediction = async (intent, marketData) => {
         
         Based on this data, provide a professional, concise prediction of the outcome if these new batches are opened.
         Will the students get placed easily? Is there oversupply or undersupply? 
-        Give a clear recommendation.
+        Give a clear recommendation in Markdown format. Use bolding and bullet points if helpful.
         Keep your response under 4 sentences. Write in a direct, professional tone.
     `;
 
     try {
+        if (!ai) throw new Error("GEMINI_API_KEY missing");
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: prompt,
@@ -265,10 +338,58 @@ export const generateSimulationPrediction = async (intent, marketData) => {
 
         return { text: response.text, isFallback: false };
     } catch (err) {
-        console.error("[AI Service] Prediction failed or rate limited:", err.message);
-        return { 
-            text: `[FALLBACK MODE - API QUOTA EXCEEDED]\nBased on the current market data, adding these batches will significantly help reduce the skill gap for ${intent.skill} in ${intent.district}. We highly recommend proceeding with this policy action to ensure strong placements.`,
-            isFallback: true
-        };
+        console.warn(`[AI Service] Prediction failed (${err.message}). Falling back to Ollama...`);
+        try {
+            const ollamaText = await callOllama(prompt);
+            return { text: ollamaText, isFallback: true };
+        } catch (ollamaErr) {
+            return { 
+                text: `[STATIC FALLBACK]\nBased on the current market data, adding these batches will significantly help reduce the skill gap for ${intent.skill} in ${intent.district}. We highly recommend proceeding with this policy action to ensure strong placements.`,
+                isFallback: true
+            };
+        }
+    }
+};
+
+export const generatePolicyInsights = async (forecastData) => {
+    const ai = getAIInstance();
+    if (!ai) {
+        console.warn("[AI Service] GEMINI_API_KEY is missing. Will return fallback insights.");
+        return "AI Policy Insights are currently unavailable because the API key is not configured.";
+    }
+
+    const { emergingSkills, decliningSkills, shortages } = forecastData;
+
+    const summaryData = {
+        emerging: emergingSkills.map(s => `${s.skill} (+${s.growthPercentage}%)`),
+        declining: decliningSkills.map(s => `${s.skill} (${s.growthPercentage}%)`),
+        shortages: shortages.map(s => `${s.skill} (Gap: ${s.projectedGap})`)
+    };
+
+    const prompt = `
+        You are a senior data advisor for the State Skill Development Mission. 
+        I am giving you a highly condensed summary of our latest predictive skill forecast. 
+        
+        Emerging Skills: ${summaryData.emerging.join(', ') || 'None identified'}
+        Declining Skills: ${summaryData.declining.join(', ') || 'None identified'}
+        Projected Future Shortages: ${summaryData.shortages.join(', ') || 'None identified'}
+
+        Provide a short, highly professional policy interpretation (max 4 sentences).
+        What should the state government focus on? What are the risks of ignoring these trends?
+        Do not calculate numbers, just provide strategic advice based on these exact lists.
+    `;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                temperature: 0.3,
+            }
+        });
+        return response.text;
+    } catch (err) {
+        console.warn(`[AI Service] Policy insights failed: ${err.message}`);
+        return "AI Insight generation failed at this time. However, based on the data, the state should focus on expanding training capacity for the listed emerging and shortage skills.";
     }
 };

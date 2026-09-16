@@ -1,5 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, AuthContext } from './context/AuthContext';
+import { SocketProvider } from './context/SocketContext';
+import { ToastContainer } from 'react-toastify';
 import { useContext } from 'react';
 import { lazy, Suspense } from 'react';
 import Layout from './components/Layout';
@@ -44,11 +46,14 @@ function AppRoutes() {
 
 function App() {
     return (
-        <AuthProvider>
-            <Router>
-                <AppRoutes />
-            </Router>
-        </AuthProvider>
+        <SocketProvider>
+            <AuthProvider>
+                <Router>
+                    <ToastContainer />
+                    <AppRoutes />
+                </Router>
+            </AuthProvider>
+        </SocketProvider>
     );
 }
 

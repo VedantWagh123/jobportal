@@ -108,6 +108,8 @@ const StateAdmins = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [scope, setScope] = useState('state');
+    const [stateName, setStateName] = useState('');
+    const [imageFile, setImageFile] = useState(null);
     const [error, setError] = useState('');
     const [submitting, setSubmitting] = useState(false);
 
@@ -138,13 +140,27 @@ const StateAdmins = () => {
         setError('');
         setSubmitting(true);
         try {
-            const { data } = await axios.post('/api/super-admin/admins', 
-                { name, email, password, scope },
-                { headers: { Authorization: `Bearer ${user.token}` } }
-            );
+            const formData = new FormData();
+            formData.append('name', name);
+            formData.append('email', email);
+            formData.append('password', password);
+            formData.append('scope', scope);
+            if (scope === 'state' && stateName) {
+                formData.append('stateName', stateName);
+            }
+            if (imageFile) {
+                formData.append('image', imageFile);
+            }
+
+            const { data } = await axios.post('/api/super-admin/admins', formData, {
+                headers: { 
+                    Authorization: `Bearer ${user.token}`,
+                    'Content-Type': 'multipart/form-data'
+                }
+            });
             setAdmins([data, ...admins]);
             setIsModalOpen(false);
-            setName(''); setEmail(''); setPassword(''); setScope('state');
+            setName(''); setEmail(''); setPassword(''); setScope('state'); setStateName(''); setImageFile(null);
             showToast('✅ Admin account created successfully');
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to create admin');
@@ -299,9 +315,13 @@ const StateAdmins = () => {
                                 <tr key={admin._id} className="row-hover group transition-colors au bg-white hover:bg-gray-50/50" style={{ animationDelay: `${idx * 40}ms` }}>
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-3.5">
-                                            <div className="w-10 h-10 rounded-[14px] bg-gradient-to-br from-[#0B2757] to-[#1e488d] flex items-center justify-center font-black text-white text-[15px] shadow-sm shrink-0 ring-4 ring-gray-50 group-hover:scale-105 transition-transform">
-                                                {(admin.name || 'A')[0].toUpperCase()}
-                                            </div>
+                                            {admin.image ? (
+                                                <img src={admin.image} alt={admin.name} className="w-10 h-10 rounded-[14px] object-cover shadow-sm shrink-0 ring-4 ring-gray-50 group-hover:scale-105 transition-transform" />
+                                            ) : (
+                                                <div className="w-10 h-10 rounded-[14px] bg-gradient-to-br from-[#0B2757] to-[#1e488d] flex items-center justify-center font-black text-white text-[15px] shadow-sm shrink-0 ring-4 ring-gray-50 group-hover:scale-105 transition-transform">
+                                                    {(admin.name || 'A')[0].toUpperCase()}
+                                                </div>
+                                            )}
                                             <div>
                                                 <p className="font-bold text-gray-900 text-[14px] group-hover:text-[#0B2757] transition-colors">{admin.name}</p>
                                                 <p className="text-[12px] text-gray-500 flex items-center gap-1.5 mt-0.5"><Mail size={11} className="text-gray-400"/> {admin.email}</p>
@@ -376,11 +396,31 @@ const StateAdmins = () => {
                                     <option value="state">State Level (State Nodal Officer)</option>
                                 </select>
                             </div>
+                            {scope === 'state' && (
+                                <div>
+                                    <label className="block text-[11px] font-extrabold text-gray-600 uppercase tracking-wider mb-1.5">Select State</label>
+                                    <select value={stateName} onChange={e => setStateName(e.target.value)} required
+                                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-[13px] font-semibold text-gray-800 focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none transition-all appearance-none cursor-pointer">
+                                        <option value="">Select State</option>
+                                        {['Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka', 'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal']
+                                            .filter(state => !admins.some(a => a.stateName === state))
+                                            .map(s => (
+                                                <option key={s} value={s}>{s}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
                             <div>
                                 <label className="block text-[11px] font-extrabold text-gray-600 uppercase tracking-wider mb-1.5">Temporary Password</label>
                                 <input type="text" required value={password} onChange={e => setPassword(e.target.value)} 
                                     className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-[13px] font-semibold text-gray-800 focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none transition-all font-mono"
                                     placeholder="Temp@123" />
+                            </div>
+                            <div>
+                                <label className="block text-[11px] font-extrabold text-gray-600 uppercase tracking-wider mb-1.5">Profile Picture (Optional)</label>
+                                <input type="file" accept="image/*" onChange={e => setImageFile(e.target.files[0])} 
+                                    className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-[13px] font-medium text-gray-600 focus:bg-white outline-none file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-[12px] file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100"
+                                />
                             </div>
 
                             <div className="flex gap-3 pt-3">

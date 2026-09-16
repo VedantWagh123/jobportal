@@ -1,5 +1,7 @@
 import Company from '../../models/Company.js';
 import Job from '../../models/Job.js';
+import User from '../../models/User.js';
+import UserNotification from '../../models/UserNotification.js';
 
 // @desc    Get all employers
 // @route   GET /api/super-admin/employers
@@ -37,8 +39,23 @@ export const updateEmployerStatus = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Employer not found' });
         }
 
+        const previousStatus = employer.status;
         employer.status = status;
         await employer.save();
+
+        // If newly approved, check if there's a client/user with same email and send notification
+        if (status === 'Approved' && previousStatus !== 'Approved') {
+            const user = await User.findOne({ email: employer.email });
+            if (user) {
+                await UserNotification.create({
+                    userId: user._id,
+                    type: 'System',
+                    title: 'Employer Account Approved 🎉',
+                    message: `Your employer account for "${employer.name}" has been approved! You can now access your dashboard to post and manage jobs.`,
+                    link: '/dashboard'
+                });
+            }
+        }
 
         res.json({ success: true, message: `Employer status updated to ${status}`, employer });
     } catch (error) {
@@ -61,6 +78,24 @@ export const deleteEmployer = async (req, res) => {
         await Job.deleteMany({ companyId: req.params.id });
 
         res.json({ success: true, message: 'Employer and their jobs have been deleted' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// @desc    Get all jobs posted by a specific employer
+// @route   GET /api/super-admin/employers/:id/jobs
+// @access  Private/SuperAdmin
+export const getEmployerJobs = async (req, res) => {
+    try {
+        const employer = await Company.findById(req.params.id).select('name image email status');
+        if (!employer) {
+            return res.status(404).json({ success: false, message: 'Employer not found' });
+        }
+
+        const jobs = await Job.find({ companyId: req.params.id }).sort({ date: -1 });
+        
+        res.json({ success: true, employer, jobs });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

@@ -1,7 +1,49 @@
 import { GoogleGenAI } from '@google/genai';
+import axios from 'axios';
 import Job from '../models/Job.js';
 import Course from '../models/Course.js';
 import CurriculumAlert from '../models/CurriculumAlert.js';
+
+const OLLAMA_URL = 'http://localhost:11434';
+const OLLAMA_MODEL = 'llava';
+
+// Fallback helper for Ollama text generation
+const callOllama = async (prompt) => {
+    try {
+        console.log("[Ollama] Sending request to local model...");
+        const response = await axios.post(`${OLLAMA_URL}/api/generate`, {
+            model: OLLAMA_MODEL,
+            prompt: prompt,
+            stream: false
+        });
+        return response.data.response;
+    } catch (err) {
+        console.error("[Ollama] Fallback also failed:", err.message);
+        throw new Error("Both Gemini and Ollama failed.");
+    }
+};
+
+// Fallback helper for Ollama chat generation
+const callOllamaChat = async (contents) => {
+    try {
+        console.log("[Ollama] Sending chat request to local model...");
+        // Convert Gemini contents array to Ollama messages array
+        const messages = contents.map(msg => ({
+            role: msg.role === 'model' ? 'assistant' : 'user',
+            content: msg.parts.map(p => p.text).join('\n')
+        }));
+        
+        const response = await axios.post(`${OLLAMA_URL}/api/chat`, {
+            model: OLLAMA_MODEL,
+            messages: messages,
+            stream: false
+        });
+        return response.data.message.content;
+    } catch (err) {
+        console.error("[Ollama] Chat Fallback also failed:", err.message);
+        throw new Error("Both Gemini and Ollama failed.");
+    }
+};
 
 export const runAIAnalysis = async () => {
     try {
@@ -46,18 +88,23 @@ export const runAIAnalysis = async () => {
         ]
         `;
 
-        // 4. Call Gemini API
-        if (!process.env.GEMINI_API_KEY) throw new Error("GEMINI_API_KEY missing");
-        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: prompt,
-        });
-
-        const responseText = response.text;
+        // 4. Call Gemini API or fallback to Ollama
+        let responseText = "";
+        try {
+            if (!process.env.GEMINI_API_KEY) throw new Error("GEMINI_API_KEY missing");
+            const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+            const response = await ai.models.generateContent({
+                model: 'gemini-2.5-flash',
+                contents: prompt,
+            });
+            responseText = response.text;
+        } catch (geminiError) {
+            console.warn(`[Gemini] Failed (${geminiError.message}). Falling back to Ollama...`);
+            responseText = await callOllama(prompt);
+        }
         
         // Clean JSON string (remove markdown ticks if present)
-        const jsonStr = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+        const jsonStr = responseText.replace(/```json/gi, '').replace(/```/g, '').trim();
         const alerts = JSON.parse(jsonStr);
 
         // 5. Save Alerts to Database (Clear old active alerts first to avoid duplicates)
@@ -84,8 +131,8 @@ export const runAIAnalysis = async () => {
 export const generateResponse = async (prompt, fallback = "") => {
     try {
         if (!process.env.GEMINI_API_KEY) {
-            console.warn("[Gemini] API Key missing. Using fallback.");
-            return fallback;
+            console.warn("[Gemini] API Key missing. Falling back to Ollama.");
+            return await callOllama(prompt);
         }
         const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
         const response = await ai.models.generateContent({
@@ -94,16 +141,20 @@ export const generateResponse = async (prompt, fallback = "") => {
         });
         return response.text;
     } catch (error) {
-        console.error("[Gemini] API Error:", error.message);
-        return fallback;
+        console.warn(`[Gemini] API Error (${error.message}). Falling back to Ollama.`);
+        try {
+            return await callOllama(prompt);
+        } catch (ollamaErr) {
+            return fallback;
+        }
     }
 };
 
 export const generateChatResponse = async (contents, fallback = "") => {
     try {
         if (!process.env.GEMINI_API_KEY) {
-            console.warn("[Gemini] API Key missing. Using fallback.");
-            return fallback;
+            console.warn("[Gemini] API Key missing. Falling back to Ollama.");
+            return await callOllamaChat(contents);
         }
         const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
         const response = await ai.models.generateContent({
@@ -112,18 +163,17 @@ export const generateChatResponse = async (contents, fallback = "") => {
         });
         return response.text;
     } catch (error) {
-        console.error("[Gemini] Chat API Error:", error.message);
-        return fallback;
+        console.warn(`[Gemini] Chat API Error (${error.message}). Falling back to Ollama.`);
+        try {
+            return await callOllamaChat(contents);
+        } catch (ollamaErr) {
+            return fallback;
+        }
     }
 };
 
 export const extractSkillsFromResume = async (pdfText) => {
     try {
-        if (!process.env.GEMINI_API_KEY) {
-            console.warn("[Gemini] API Key missing. Skipping resume parsing.");
-            return [];
-        }
-        
         const prompt = `You are a strict ATS (Applicant Tracking System) AI. 
 Read the following text extracted from a candidate's resume.
 Your ONLY task is to extract a list of standard technical skills, programming languages, databases, tools, and frameworks (e.g., React, Node.js, AWS, Python, SQL, Git).
@@ -139,13 +189,23 @@ Resume Text:
 ${pdfText.substring(0, 15000)}
 `;
 
-        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: prompt,
-        });
-        
-        const aiResponse = response.text;
+        let aiResponse = "";
+        try {
+            if (!process.env.GEMINI_API_KEY) {
+                console.warn("[Gemini] API Key missing. Falling back to Ollama.");
+                aiResponse = await callOllama(prompt);
+            } else {
+                const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+                const response = await ai.models.generateContent({
+                    model: 'gemini-2.5-flash',
+                    contents: prompt,
+                });
+                aiResponse = response.text;
+            }
+        } catch (geminiError) {
+            console.warn(`[Gemini] Resume parsing failed (${geminiError.message}). Falling back to Ollama...`);
+            aiResponse = await callOllama(prompt);
+        }
         
         if (!aiResponse || aiResponse.trim() === "") {
             return [];

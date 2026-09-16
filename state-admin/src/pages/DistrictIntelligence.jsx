@@ -1,74 +1,97 @@
 import { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
+import { useSocket } from '../context/SocketContext';
 import { 
     MapPin, Briefcase, Building2, Users, Target, ArrowUpRight, 
     Download, ChevronDown, MoreVertical, TrendingUp, AlertTriangle, Lightbulb,
     CheckCircle2, AlertCircle
 } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from 'recharts';
-
-const TARGET_DISTRICTS = ['Nagpur', 'Pune', 'Mumbai'];
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
+import DistrictDigitalTwin from '../components/DistrictDigitalTwin';
+import DistrictIntelligenceModal from '../components/DistrictIntelligenceModal';
+import SendRequirementModal from '../components/SendRequirementModal';
 
 const DistrictIntelligence = () => {
     const { user } = useContext(AuthContext);
+    const { socket } = useSocket();
     const [districts, setDistricts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
-    useEffect(() => {
-        const fetchDistricts = async () => {
-            try {
-                const token = user?.token || localStorage.getItem('stateAdminToken');
-                const { data } = await axios.get('/api/state-admin/intelligence/districts', {
-                    headers: { token }
-                });
+    const [selectedDistrictId, setSelectedDistrictId] = useState('all');
+    const [digitalTwinData, setDigitalTwinData] = useState(null);
 
-                if (data.success) {
-                    // Filter specifically for Nagpur, Pune, and Mumbai
-                    const filtered = data.districts.filter(d => 
-                        TARGET_DISTRICTS.some(td => 
-                            d.districtName.toLowerCase().includes(td.toLowerCase()) || 
-                            d.districtName.toLowerCase() === 'mumbai city' || 
-                            d.districtName.toLowerCase() === 'mumbai suburban' 
-                        )
-                    );
-                    
-                    // Deduplicate or group if Mumbai has multiple
-                    const cleanDistricts = TARGET_DISTRICTS.map(td => {
-                        const found = filtered.filter(f => f.districtName.toLowerCase().includes(td.toLowerCase()));
-                        if (found.length > 0) {
-                            return {
-                                districtName: td,
-                                jobs: found.reduce((sum, f) => sum + f.jobs, 0),
-                                institutes: found.reduce((sum, f) => sum + f.institutes, 0),
-                                capacity: found.reduce((sum, f) => sum + f.capacity, 0),
-                                enrollments: found.reduce((sum, f) => sum + f.enrollments, 0),
-                            };
-                        } else {
-                            return {
-                                districtName: td,
-                                jobs: 0,
-                                institutes: 0,
-                                capacity: 0,
-                                enrollments: 0
-                            };
-                        }
-                    });
+    // Modal states
+    const [isInsightModalOpen, setIsInsightModalOpen] = useState(false);
+    
+    // Notification Modal states
+    const [isNotifyModalOpen, setIsNotifyModalOpen] = useState(false);
+    const [notifyTarget, setNotifyTarget] = useState(null);
 
-                    setDistricts(cleanDistricts);
-                } else {
-                    setError('Failed to fetch district data.');
-                }
-            } catch (err) {
-                setError('Error fetching district intelligence.');
-            } finally {
-                setLoading(false);
+    const fetchDigitalTwin = async (distId = 'all') => {
+        try {
+            const token = user?.token || localStorage.getItem('stateAdminToken');
+            const { data } = await axios.get(`/api/state-admin/intelligence/district-twin/${distId}`, {
+                headers: { token }
+            });
+            if (data.success) {
+                setDigitalTwinData(data.digitalTwin);
             }
+        } catch (e) {
+            console.error("Failed to fetch digital twin", e);
+        }
+    };
+
+    const handleSelectDistrict = (distId) => {
+        setSelectedDistrictId(distId);
+        fetchDigitalTwin(distId);
+    };
+
+    const fetchDistricts = async (silent = false) => {
+        try {
+            const token = user?.token || localStorage.getItem('stateAdminToken');
+            await fetchDigitalTwin(selectedDistrictId || 'all');
+            
+            const stateParam = user?.scope?.state ? `?state=${encodeURIComponent(user.scope.state)}` : '';
+            const { data } = await axios.get(`/api/state-admin/intelligence/districts${stateParam}`, {
+                headers: { token }
+            });
+
+            if (data.success) {
+                setDistricts(data.districts || []);
+            } else {
+                if (!silent) setError('Failed to fetch district data.');
+            }
+        } catch (err) {
+            if (!silent) setError('Error fetching district intelligence.');
+        } finally {
+            if (!silent) setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (user) fetchDistricts();
+    }, [user]);
+
+    useEffect(() => {
+        if (!socket) return;
+        
+        let timeoutId;
+        const handleStaleData = () => {
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(() => {
+                fetchDistricts(true); // silent refresh
+            }, 2000);
         };
 
-        fetchDistricts();
-    }, [user]);
+        socket.on('dashboard_stale', handleStaleData);
+        
+        return () => {
+            socket.off('dashboard_stale', handleStaleData);
+            clearTimeout(timeoutId);
+        };
+    }, [socket, selectedDistrictId, user]);
 
     if (loading) return (
         <div className="flex items-center justify-center min-h-[60vh]">
@@ -77,8 +100,9 @@ const DistrictIntelligence = () => {
     );
     if (error) return <div className="p-8 text-center text-red-500 font-medium">{error}</div>;
 
-    const maxJobs = Math.max(...districts.map(d => d.jobs), 1);
-    const maxCapacity = Math.max(...districts.map(d => d.capacity), 1);
+    const maxJobs = Math.max(...districts.map(d => d.jobs || 0), 1);
+    const maxCapacity = Math.max(...districts.map(d => d.capacity || 0), 1);
+    const maxScale = Math.max(maxJobs, maxCapacity);
 
     // KPI Calculations
     const totalJobs = districts.reduce((sum, d) => sum + d.jobs, 0);
@@ -94,8 +118,8 @@ const DistrictIntelligence = () => {
     }));
 
     return (
-        <div className="min-h-screen bg-[#F6F8FC] p-4 sm:p-6 lg:p-8 font-sans">
-            <div className="max-w-[1400px] mx-auto space-y-6">
+        <div className="min-h-full bg-[#F6F8FC] p-4 sm:p-6 lg:p-8 font-sans">
+            <div className="w-full mx-auto space-y-6">
                 
                 {/* Breadcrumbs */}
                 <div className="flex items-center text-[13px] text-gray-500 font-medium tracking-wide">
@@ -144,6 +168,14 @@ const DistrictIntelligence = () => {
                         </button>
                     </div>
                 </div>
+
+                {/* District Digital Twin Section */}
+                <DistrictDigitalTwin 
+                    twinData={digitalTwinData} 
+                    onSelectDistrict={handleSelectDistrict} 
+                    districtsList={districts} 
+                    selectedDistrictId={selectedDistrictId} 
+                />
 
                 {/* KPI Row */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -215,14 +247,21 @@ const DistrictIntelligence = () => {
                 {/* District Intelligence Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                     {districts.map((district, idx) => {
-                        const demandPercent = maxJobs > 0 ? Math.round((district.jobs / maxJobs) * 100) : 0;
-                        const supplyPercent = maxCapacity > 0 ? Math.round((district.capacity / maxCapacity) * 100) : 0;
+                        const demandPercent = maxScale > 0 ? Math.round((district.jobs / maxScale) * 100) : 0;
+                        const supplyPercent = maxScale > 0 ? Math.round((district.capacity / maxScale) * 100) : 0;
                         
                         // Logic for Pune or High Demand
                         const isHighDemand = demandPercent > 80 && demandPercent > supplyPercent;
 
                         return (
-                            <div key={idx} className="bg-white rounded-[20px] shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)] border border-gray-100 overflow-hidden flex flex-col hover:-translate-y-1 hover:shadow-[0_8px_30px_-4px_rgba(0,0,0,0.08)] transition-all duration-300">
+                            <div 
+                                key={idx} 
+                                onClick={() => {
+                                    setSelectedDistrictId(district.districtId);
+                                    setIsInsightModalOpen(true);
+                                }}
+                                className="bg-white rounded-[20px] shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)] border border-gray-100 overflow-hidden flex flex-col hover:-translate-y-1 hover:shadow-[0_8px_30px_-4px_rgba(0,0,0,0.1)] transition-all duration-300 cursor-pointer"
+                            >
                                 
                                 {/* Card Header with subtle visual */}
                                 <div className="bg-[#101828] p-5 relative overflow-hidden shrink-0">
@@ -392,13 +431,36 @@ const DistrictIntelligence = () => {
                                     else if (gapRounded > 0) { barColor = 'bg-amber-50'; progressColor = 'bg-amber-500'; }
 
                                     return (
-                                        <div key={i}>
+                                        <div key={i} className="relative group cursor-pointer pb-1">
                                             <div className="flex justify-between text-[12px] mb-1.5 font-medium">
                                                 <span className="text-gray-700">{d.districtName}</span>
                                                 <span className={gapRounded > 50 ? 'text-red-600 font-bold' : gapRounded > 0 ? 'text-amber-600 font-bold' : 'text-gray-500 font-bold'}>{gapRounded}%</span>
                                             </div>
                                             <div className={`w-full ${barColor} rounded-full h-1.5`}>
                                                 <div className={`${progressColor} h-1.5 rounded-full`} style={{ width: `${gapRounded}%` }}></div>
+                                            </div>
+
+                                            {/* Custom Hover Tooltip */}
+                                            <div className="absolute right-0 bottom-full mb-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none">
+                                                <div className={`bg-white p-3 rounded-xl border shadow-[0_8px_30px_rgba(0,0,0,0.12)] text-[12px] min-w-[220px] relative ${gapRounded > 0 ? 'border-red-100' : 'border-blue-100'}`}>
+                                                    <div className="flex items-center gap-2 mb-2 pb-2 border-b border-gray-100">
+                                                        <AlertTriangle size={14} className={gapRounded > 0 ? "text-red-500" : "text-blue-500"}/>
+                                                        <p className="font-bold text-gray-900 uppercase tracking-wider">{d.districtName}</p>
+                                                    </div>
+                                                    <div className="space-y-1.5 mb-2.5 text-gray-500 font-medium text-[11px]">
+                                                        <p className="flex justify-between"><span>Market Demand (Jobs):</span> <span className="font-bold text-gray-800">{demand}</span></p>
+                                                        <p className="flex justify-between"><span>Available Supply (Seats):</span> <span className="font-bold text-gray-800">{supply}</span></p>
+                                                        <div className="w-full h-px bg-gray-50 my-1"></div>
+                                                        <p className={`flex justify-between ${gapRounded > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                                                            <span>{gapRounded > 0 ? 'Shortage (Gap):' : 'Surplus:'}</span> 
+                                                            <span className="font-black text-[12px]">{gapRounded > 0 ? `-${demand - supply}` : `+${supply - demand}`}</span>
+                                                        </p>
+                                                    </div>
+                                                    <div className={`${gapRounded > 0 ? 'bg-red-50/80 border-red-100/50' : 'bg-emerald-50/80 border-emerald-100/50'} p-2 rounded-lg border`}>
+                                                        <p className={`text-[9px] font-black uppercase tracking-widest mb-0.5 ${gapRounded > 0 ? 'text-red-400' : 'text-emerald-500'}`}>Solution</p>
+                                                        <p className={`${gapRounded > 0 ? 'text-red-700' : 'text-emerald-700'} font-bold leading-tight`}>{gapRounded > 50 ? 'Increase Training Capacity' : gapRounded > 0 ? 'Start New Batches' : 'Monitor Situation'}</p>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     )
@@ -450,6 +512,28 @@ const DistrictIntelligence = () => {
                 </div>
 
             </div>
+
+            {/* Modals */}
+            <DistrictIntelligenceModal 
+                isOpen={isInsightModalOpen}
+                onClose={() => setIsInsightModalOpen(false)}
+                districtId={selectedDistrictId}
+                onNotifyClick={(districtData) => {
+                    setIsInsightModalOpen(false);
+                    // Open Send Requirement Modal and pass district name as target
+                    setNotifyTarget({ name: `All Institutes in ${districtData.districtName}`, districtId: districtData.districtId, topSkills: districtData.topShortages });
+                    setIsNotifyModalOpen(true);
+                }}
+            />
+
+            {isNotifyModalOpen && (
+                <SendRequirementModal 
+                    isOpen={isNotifyModalOpen}
+                    onClose={() => setIsNotifyModalOpen(false)}
+                    targetInstitute={notifyTarget}
+                    topSkills={notifyTarget?.topSkills}
+                />
+            )}
         </div>
     );
 };

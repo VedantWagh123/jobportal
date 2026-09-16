@@ -323,27 +323,24 @@ const ApplyJob = () => {
               </div>
 
               {/* Key Responsibilities */}
-              <div className='bg-white rounded-[24px] p-8 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)] border border-gray-100'>
-                <h2 className='text-xl font-extrabold text-gray-900 flex items-center gap-2.5 mb-6'>
-                  <CheckCircle size={22} className='text-blue-600' /> Key Responsibilities
-                </h2>
-                <ul className='space-y-4'>
-                  {[
-                    "Build and integrate LLM-based applications and AI-powered features.",
-                    "Design and implement RAG (Retrieval Augmented Generation) pipelines.",
-                    "Develop chatbots, AI agents and automate workflows using LLM APIs.",
-                    "Work with vector databases, embeddings and prompt engineering.",
-                    "Collaborate with product, design and engineering teams.",
-                    "Optimize performance, scalability and reliability of AI solutions.",
-                    "Stay updated with latest GenAI tools and research."
-                  ].map((resp, i) => (
-                    <li key={i} className='flex items-start gap-3.5 text-gray-600 text-[15px]'>
-                      <CheckCircle2 size={18} className='text-blue-500 shrink-0 mt-0.5 fill-blue-50' />
-                      <span>{resp}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              {JobData.responsibilities && JobData.responsibilities.trim() !== '<p><br></p>' && (
+                <div className='bg-white rounded-[24px] p-8 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)] border border-gray-100'>
+                  <h2 className='text-xl font-extrabold text-gray-900 flex items-center gap-2.5 mb-6'>
+                    <CheckCircle size={22} className='text-blue-600' /> Key Responsibilities
+                  </h2>
+                  <div className='rich-text text-gray-600 leading-relaxed text-[15px]' dangerouslySetInnerHTML={{ __html: JobData.responsibilities }}></div>
+                </div>
+              )}
+
+              {/* Requirements & Skills */}
+              {JobData.requirements && JobData.requirements.trim() !== '<p><br></p>' && (
+                <div className='bg-white rounded-[24px] p-8 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)] border border-gray-100'>
+                  <h2 className='text-xl font-extrabold text-gray-900 flex items-center gap-2.5 mb-6'>
+                    <Layers size={22} className='text-blue-600' /> Requirements & Skills
+                  </h2>
+                  <div className='rich-text text-gray-600 leading-relaxed text-[15px]' dangerouslySetInnerHTML={{ __html: JobData.requirements }}></div>
+                </div>
+              )}
 
               {/* Premium AI Skill Match Analyzer */}
               {userData && (

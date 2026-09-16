@@ -1,5 +1,6 @@
 import GovernmentAdmin from '../../models/GovernmentAdmin.js';
 import bcrypt from 'bcryptjs';
+import { v2 as cloudinary } from 'cloudinary';
 
 // @desc    Get all state admins
 // @route   GET /api/super-admin/admins
@@ -17,13 +18,23 @@ export const getAdmins = async (req, res) => {
 // @route   POST /api/super-admin/admins
 // @access  Private/SuperAdmin
 export const createAdmin = async (req, res) => {
-    const { name, email, password, scope } = req.body;
+    const { name, email, password, scope, stateName } = req.body;
 
     try {
         const adminExists = await GovernmentAdmin.findOne({ email });
 
         if (adminExists) {
             return res.status(400).json({ message: 'Admin with this email already exists' });
+        }
+
+        let imageUrl = '';
+        if (req.file) {
+            const b64 = Buffer.from(req.file.buffer).toString('base64');
+            const dataURI = `data:${req.file.mimetype};base64,${b64}`;
+            const result = await cloudinary.uploader.upload(dataURI, {
+                folder: 'job-portal/admins',
+            });
+            imageUrl = result.secure_url;
         }
 
         const salt = await bcrypt.genSalt(10);
@@ -33,7 +44,9 @@ export const createAdmin = async (req, res) => {
             name,
             email,
             passwordHash,
-            scope: scope || 'state'
+            scope: scope || 'state',
+            stateName: stateName || 'Maharashtra',
+            image: imageUrl
         });
 
         if (admin) {
@@ -42,6 +55,8 @@ export const createAdmin = async (req, res) => {
                 name: admin.name,
                 email: admin.email,
                 scope: admin.scope,
+                stateName: admin.stateName,
+                image: admin.image,
                 isActive: admin.isActive,
             });
         } else {

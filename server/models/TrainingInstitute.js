@@ -13,6 +13,8 @@ const instituteSchema = new mongoose.Schema({
     description: { type: String, default: "" },
     image: { type: String, default: "" }, // Cloudinary Image URL
     isApproved: { type: Boolean, default: false }, // Must be approved by Super Admin before login is allowed
+    qualityScore: { type: Number, default: 0 }, // Out of 5
+    totalRatings: { type: Number, default: 0 },
     createdAt: { type: Date, default: Date.now }
 });
 

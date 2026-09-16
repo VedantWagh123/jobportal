@@ -37,7 +37,6 @@ const App = () => {
     <div>
       <ErrorBoundary>
       <Suspense fallback={<Loading />}>
-        {showRecruiterLogin && <RecruiterLogin />}
         <ToastContainer />
         <Routes>
           {/* User Portal Routes wrapped in UserLayout */}
@@ -51,6 +50,8 @@ const App = () => {
             <Route path='/saved-jobs' element={<SavedJobs />} />
           </Route>
           
+          <Route path='/employer-auth' element={<RecruiterLogin />} />
+
           {/* Company Dashboard (Keeps its own layout) */}
           <Route path='/dashboard' element={<Dashboard />}>
             {

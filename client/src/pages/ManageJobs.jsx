@@ -247,7 +247,7 @@ const ManageJobs = () => {
         </div>
 
         {/* Table / List Area */}
-        <div className='flex-1 overflow-x-auto'>
+        <div className='flex-1 overflow-x-auto min-h-[280px]'>
           {processedJobs.length === 0 ? (
             <div className='p-16 flex flex-col items-center justify-center text-center'>
               <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center text-gray-400 mb-4 border border-gray-100 shadow-sm">
@@ -372,6 +372,16 @@ const ManageJobs = () => {
                             >
                               {isVisible ? <EyeOff size={15} className="text-orange-500" /> : <Eye size={15} className="text-emerald-500" />}
                               {isVisible ? 'Hide Job Posting' : 'Make Public'}
+                            </button>
+                            <button 
+                              onClick={(e) => { 
+                                e.stopPropagation();
+                                navigate(`/dashboard/add-job?edit=${job._id}`); 
+                                setOpenDropdownId(null); 
+                              }}
+                              className="w-full text-left px-4 py-2.5 text-[13px] font-semibold text-gray-700 hover:bg-gray-50 hover:text-blue-600 flex items-center gap-2"
+                            >
+                              <Code size={15} className="text-blue-500" /> Edit Job
                             </button>
                           </div>
                         )}

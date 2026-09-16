@@ -1,12 +1,15 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useContext } from 'react';
 import { AuthProvider, AuthContext } from './context/AuthContext';
+import { SocketProvider } from './context/SocketContext';
+import { ToastContainer } from 'react-toastify';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import WhatIfSimulator from './pages/WhatIfSimulator';
 import DistrictIntelligence from './pages/DistrictIntelligence';
 import PlacementInsights from './pages/PlacementInsights';
+import ReportsInsights from './pages/ReportsInsights';
 
 const ProtectedRoute = ({ children }) => {
     const { user, loading } = useContext(AuthContext);
@@ -26,7 +29,7 @@ const AppRoutes = () => {
                 <Route path="districts" element={<DistrictIntelligence />} />
                 <Route path="simulator" element={<WhatIfSimulator />} />
                 <Route path="placement-insights" element={<PlacementInsights />} />
-                <Route path="reports" element={<div className="p-8 text-gray-500">Reports module coming soon...</div>} />
+                <Route path="reports" element={<ReportsInsights />} />
             </Route>
         </Routes>
     );
@@ -34,11 +37,14 @@ const AppRoutes = () => {
 
 const App = () => {
     return (
-        <BrowserRouter>
-            <AuthProvider>
-                <AppRoutes />
-            </AuthProvider>
-        </BrowserRouter>
+        <SocketProvider>
+            <BrowserRouter>
+                <AuthProvider>
+                    <ToastContainer />
+                    <AppRoutes />
+                </AuthProvider>
+            </BrowserRouter>
+        </SocketProvider>
     );
 };
 

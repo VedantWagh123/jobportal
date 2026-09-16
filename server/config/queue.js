@@ -11,11 +11,28 @@ let connectionOptions = process.env.REDIS_URL || {
 
 // Add prefix to avoid collision if user is sharing a Redis instance across projects
 const sharedRedisConnection = new IORedis(connectionOptions, {
-    maxRetriesPerRequest: null
+    maxRetriesPerRequest: null,
+    enableReadyCheck: false,
+    family: 4, // Force IPv4 to fix ETIMEDOUT on some networks
+    tls: connectionOptions.includes('rediss://') ? { rejectUnauthorized: false } : undefined,
+    // Robust retry strategy to fix Upstash ECONNRESET idle drops
+    retryStrategy: (times) => {
+        return Math.max(Math.min(Math.exp(times), 20000), 1000);
+    },
+    reconnectOnError: (err) => {
+        const targetError = "ECONNRESET";
+        if (err.message.includes(targetError)) {
+            return true;
+        }
+        return false;
+    }
 });
 
 sharedRedisConnection.on('error', (err) => {
-    console.error('[Redis Error] Connection failed. Is Redis running or REDIS_URL correct?', err.message);
+    // Ignore generic ECONNRESET logs in console as the retryStrategy handles them silently now
+    if (err.code !== 'ECONNRESET') {
+        console.error('[Redis Error] Connection failed:', err.message);
+    }
 });
 
 // Create the Queue

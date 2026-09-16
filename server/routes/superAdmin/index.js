@@ -5,6 +5,7 @@ import dashboardRoutes from './dashboardRoutes.js';
 import adminManagementRoutes from './adminManagementRoutes.js';
 import instituteRoutes from './instituteRoutes.js';
 import employerRoutes from './employerRoutes.js';
+import notificationRoutes from './notificationRoutes.js';
 
 const router = express.Router();
 
@@ -14,5 +15,6 @@ router.use('/dashboard', dashboardRoutes);
 router.use('/admins', adminManagementRoutes);
 router.use('/institutes', instituteRoutes);
 router.use('/employers', employerRoutes);
+router.use('/notifications', notificationRoutes);
 
 export default router;

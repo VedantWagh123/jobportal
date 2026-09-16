@@ -82,3 +82,20 @@ export const rejectSkill = async (req, res) => {
         res.status(500).json({ message: 'Server error' });
     }
 };
+
+// @desc    Delete a Master Canonical Skill
+// @route   DELETE /api/super-admin/skills/master/:id
+// @access  Private/SuperAdmin
+export const deleteMasterSkill = async (req, res) => {
+    try {
+        const skill = await Skill.findByIdAndDelete(req.params.id);
+        
+        if (!skill) {
+            return res.status(404).json({ message: 'Skill not found' });
+        }
+
+        res.json({ message: 'Master skill deleted successfully' });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error' });
+    }
+};

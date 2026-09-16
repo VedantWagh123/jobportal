@@ -2,6 +2,7 @@ import { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
 import { Users, Plus, Calendar, Settings } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 
 const Batches = () => {
     const [batches, setBatches] = useState([]);
@@ -16,9 +17,9 @@ const Batches = () => {
     const [capacity, setCapacity] = useState(30);
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
-    
     const { user } = useContext(AuthContext);
-
+    const location = useLocation();
+    
     const fetchData = async () => {
         try {
             setLoading(true);
@@ -32,6 +33,9 @@ const Batches = () => {
                 setCourses(coursesRes.data.courses);
                 if (coursesRes.data.courses.length > 0) setCourseId(coursesRes.data.courses[0]._id);
             }
+            if (location.state?.prefillTarget) {
+                setIsAdding(true);
+            }
         } catch (error) {
             console.error(error);
         } finally {
@@ -41,7 +45,7 @@ const Batches = () => {
 
     useEffect(() => {
         if (user) fetchData();
-    }, [user]);
+    }, [user, location.state]);
 
     const handleAddBatch = async (e) => {
         e.preventDefault();

@@ -28,6 +28,13 @@ export const startJobProcessor = () => {
         // BullMQ will automatically retry based on the queue settings in config/queue.js
     });
 
+    worker.on('error', err => {
+        // Suppress network drops crashing the server
+        if(err.code !== 'ECONNRESET') {
+            console.error('[Job Processor] Worker error:', err.message);
+        }
+    });
+
     // Cleanup legacy pending jobs (for jobs created before Redis was added)
     // Run this once on boot just in case
     cleanupLegacyJobs();

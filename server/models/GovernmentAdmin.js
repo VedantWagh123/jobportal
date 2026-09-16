@@ -14,6 +14,8 @@ const governmentAdminSchema = new mongoose.Schema({
         enum: ['national', 'state', 'district'], 
         default: 'national' 
     },
+    stateName: { type: String, default: 'Maharashtra' },
+    image: { type: String, default: '' },
     isActive: { type: Boolean, default: true },
     createdAt: { type: Date, default: Date.now }
 });

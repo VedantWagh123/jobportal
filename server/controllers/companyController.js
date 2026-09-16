@@ -6,17 +6,23 @@ import fs from 'fs';
 import Job from "../models/Job.js";
 import District from "../models/District.js";
 import JobApplication from "../models/JobApplication.js";
+import UserNotification from "../models/UserNotification.js";
+import User from "../models/User.js";
 import { generateResponse } from "../services/geminiAiService.js";
 import { runAIAnalysis } from "../services/geminiAiService.js";
 import { parseJobDescription } from "../services/aiService.js";
 import Notification from "../models/Notification.js";
+import SuperAdminNotification from "../models/SuperAdminNotification.js";
+import Skill from "../models/Skill.js";
+import JobSkill from "../models/JobSkill.js";
 import { clearCache } from "../utils/cache.js";
 import { aiQueue } from "../config/queue.js";
+import { getIO } from "../config/socket.js";
 
 // Register a new company
 export const registerCompany = async (req, res) => {
 
-    const { name, email, password } = req.body
+    const { name, email, password, description, location, website, contactDetails, industry, companySize, foundedYear, keyResponsibilities, linkedinUrl } = req.body
 
     const imageFile = req.file;
 
@@ -51,18 +57,30 @@ export const registerCompany = async (req, res) => {
             name,
             email,
             password: hashPassword,
-            image: imageUrl
+            image: imageUrl,
+            status: 'Pending',
+            description: description || '',
+            location: location || '',
+            website: website || '',
+            contactDetails: contactDetails || '',
+            industry: industry || '',
+            companySize: companySize || '',
+            foundedYear: foundedYear || null,
+            keyResponsibilities: keyResponsibilities || '',
+            linkedinUrl: linkedinUrl || ''
         })
+
+        // Notify Super Admin
+        await SuperAdminNotification.create({
+            type: 'New_Employer',
+            title: 'New Employer Registration',
+            message: `${name} has registered and is pending approval.`,
+            link: '/admin/employers'
+        });
 
         res.json({
             success: true,
-            company: {
-                _id: company._id,
-                name: company.name,
-                email: company.email,
-                image: company.image
-            },
-            token: generateToken(company._id)
+            message: 'Registration submitted successfully! Your account is pending admin approval.'
         })
 
     } catch (error) {
@@ -130,10 +148,49 @@ export const getCompanyData = async (req, res) => {
 
 }
 
+// Helper to save manual skills into ontology and JobSkill
+const syncJobSkills = async (jobId, skillsArray) => {
+    if (!skillsArray || !Array.isArray(skillsArray)) return;
+    
+    // Clear existing skills if updating
+    await JobSkill.deleteMany({ jobId });
+    
+    for (const skillName of skillsArray) {
+        if (!skillName || typeof skillName !== 'string') continue;
+        const normalized = skillName.trim();
+        if (!normalized) continue;
+        
+        let skillDoc = await Skill.findOne({
+            $or: [
+                { name: { $regex: new RegExp(`^${normalized}$`, "i") } },
+                { aliases: { $regex: new RegExp(`^${normalized}$`, "i") } }
+            ]
+        });
+        
+        if (!skillDoc) {
+            skillDoc = await Skill.create({
+                name: normalized.charAt(0).toUpperCase() + normalized.slice(1),
+                category: "Technical Skill"
+            });
+        } else if (skillDoc.category === "Uncategorized" || !skillDoc.category) {
+            skillDoc.category = "Technical Skill";
+            await skillDoc.save();
+        }
+        
+        await JobSkill.create({
+            jobId,
+            skillId: skillDoc._id,
+            proficiency: 'Unspecified',
+            isCore: true,
+            extractedViaAI: false
+        });
+    }
+};
+
 // Post New Job
 export const postJob = async (req, res) => {
 
-    const { title, description, location, salary, level, category, vacancies, skills, jobType } = req.body
+    const { title, description, responsibilities, requirements, location, salary, level, category, vacancies, skills, jobType } = req.body
 
     const companyId = req.company._id
 
@@ -147,6 +204,8 @@ export const postJob = async (req, res) => {
         const newJob = new Job({
             title,
             description,
+            responsibilities: responsibilities || '',
+            requirements: requirements || '',
             location,
             districtId,
             salary,
@@ -160,6 +219,11 @@ export const postJob = async (req, res) => {
         })
 
         await newJob.save()
+        
+        // Sync manual skills to JobSkill ontology
+        if (skills && skills.length > 0) {
+            await syncJobSkills(newJob._id, skills);
+        }
 
         // Trigger AI Parsing asynchronously via Redis Queue
         try {
@@ -174,8 +238,32 @@ export const postJob = async (req, res) => {
 
         runAIAnalysis().catch(err => console.error("Background AI failed:", err));
 
-        // Invalidate public jobs cache
+        // Invalidate caches
         clearCache('/api/jobs');
+        clearCache('/api/state-admin');
+
+        // Emit real-time WebSockets event
+        try {
+            const io = getIO();
+            io.emit('new_job', { title: newJob.title, companyId: newJob.companyId });
+            io.emit('notification', { message: `A new job "${newJob.title}" was just posted!`, type: 'job' });
+            io.emit('dashboard_stale');
+
+            // Create persistent notifications for users
+            const users = await User.find({}).select('_id');
+            const notifications = users.map(u => ({
+                userId: u._id,
+                type: 'System',
+                title: 'New Job Posted',
+                message: `A new job "${newJob.title}" was just posted!`,
+                link: `/apply-job/${newJob._id}`
+            }));
+            if (notifications.length > 0) {
+                await UserNotification.insertMany(notifications);
+            }
+        } catch (err) {
+            console.error("Socket/Notification error:", err.message);
+        }
 
         res.json({ success: true, newJob })
 
@@ -186,6 +274,55 @@ export const postJob = async (req, res) => {
     }
 
 
+}
+
+// Edit Existing Job
+export const editJob = async (req, res) => {
+    try {
+        const companyId = req.company._id;
+        const jobId = req.params.id;
+        const { title, description, responsibilities, requirements, location, salary, level, category, vacancies, skills, jobType } = req.body;
+
+        const job = await Job.findOne({ _id: jobId, companyId });
+        if (!job) {
+            return res.status(404).json({ success: false, message: 'Job not found' });
+        }
+
+        let districtId = job.districtId;
+        if (location && location !== job.location) {
+            const dist = await District.findOne({ name: { $regex: new RegExp(`^${location.trim()}$`, 'i') } });
+            if (dist) districtId = dist._id;
+        }
+
+        job.title = title || job.title;
+        job.description = description || job.description;
+        if (responsibilities !== undefined) job.responsibilities = responsibilities;
+        if (requirements !== undefined) job.requirements = requirements;
+        job.location = location || job.location;
+        job.districtId = districtId;
+        job.salary = salary || job.salary;
+        job.level = level || job.level;
+        job.category = category || job.category;
+        job.jobType = jobType || job.jobType;
+        job.vacancies = vacancies || job.vacancies;
+        if (skills !== undefined) job.skills = skills;
+
+        await job.save();
+        
+        if (skills !== undefined && Array.isArray(skills)) {
+            await syncJobSkills(job._id, skills);
+        }
+
+        clearCache('/api/jobs');
+        clearCache('/api/state-admin');
+        try {
+            getIO().emit('dashboard_stale');
+        } catch (err) {}
+        
+        res.json({ success: true, message: 'Job updated successfully', job });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
 }
 
 // Get Company Job Applicants
@@ -253,12 +390,57 @@ export const ChangeJobApplicationsStatus = async (req, res) => {
         application.status = status;
         await application.save();
 
+        const userIdStr = application.userId.toString();
+        const notificationMessage = `Your job application status has been updated to: ${status}`;
+
+        // Create User Notification
+        await UserNotification.create({
+            userId: userIdStr,
+            type: 'Job_Status',
+            title: 'Application Status Update',
+            message: notificationMessage,
+            link: '/applications'
+        });
+
+        // Emit real-time WebSockets event to the candidate
+        try {
+            const io = getIO();
+            io.emit('candidate_notification', { 
+                userId: userIdStr, 
+                message: notificationMessage, 
+                type: 'job' 
+            });
+        } catch (err) {
+            console.error("Socket error:", err.message);
+        }
+
         res.json({ success: true, message: 'Status Changed' });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
 }
 
+// Get Company Notifications
+export const getCompanyNotifications = async (req, res) => {
+    try {
+        const companyId = req.company._id;
+        const notifications = await Notification.find({ companyId }).sort({ date: -1 }).limit(50);
+        res.json({ success: true, notifications });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// Mark Notifications as Read
+export const markCompanyNotificationsRead = async (req, res) => {
+    try {
+        const companyId = req.company._id;
+        await Notification.updateMany({ companyId, isRead: false }, { $set: { isRead: true } });
+        res.json({ success: true, message: 'Notifications marked as read' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
 
 // Change Job Visiblity
 export const changeVisiblity = async (req, res) => {
@@ -278,6 +460,10 @@ export const changeVisiblity = async (req, res) => {
 
         // Invalidate public jobs cache since visibility changed
         clearCache('/api/jobs');
+        clearCache('/api/state-admin');
+        try {
+            getIO().emit('dashboard_stale');
+        } catch (err) {}
 
         res.json({ success: true, job })
 

@@ -7,7 +7,7 @@ import {
   Bell, Settings, LogOut, Home, Briefcase, FileText, Users,
   BarChart2, MessageSquare, CreditCard, HelpCircle, Search,
   ChevronDown, Menu, X, Zap, Star, UserCircle, ChevronRight,
-  Globe, Link2, ExternalLink, Share2, Crown, CheckCircle2
+  Globe, Link2, ExternalLink, Share2, Crown, CheckCircle2, Clock
 } from 'lucide-react'
 
 const navMain = [
@@ -153,7 +153,10 @@ const Dashboard = () => {
   const [unreadCount, setUnreadCount] = useState(0)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
+  const [isNotifOpen, setIsNotifOpen] = useState(false)
+  const [notifications, setNotifications] = useState([])
   const profileRef = useRef(null)
+  const notifRef = useRef(null)
   
   // Search state & refs
   const [searchQuery, setSearchQuery] = useState('')
@@ -164,6 +167,7 @@ const Dashboard = () => {
       axios.get(backendUrl + '/api/company/notifications', { headers: { token: companyToken } })
         .then(res => {
           if (res.data.success) {
+            setNotifications(res.data.notifications)
             setUnreadCount(res.data.notifications.filter(n => !n.isRead).length)
           }
         }).catch(() => {})
@@ -174,6 +178,9 @@ const Dashboard = () => {
     const handleClickOutside = (e) => {
       if (profileRef.current && !profileRef.current.contains(e.target)) {
         setProfileOpen(false)
+      }
+      if (notifRef.current && !notifRef.current.contains(e.target)) {
+        setIsNotifOpen(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -195,10 +202,17 @@ const Dashboard = () => {
   const handleSearchSubmit = (e) => {
     e.preventDefault()
     if (searchQuery.trim()) {
-      // Navigate to Manage Jobs with search query in URL
       navigate(`/dashboard/manage-jobs?search=${encodeURIComponent(searchQuery.trim())}`)
-      searchInputRef.current?.blur() // Remove focus after search
+      searchInputRef.current?.blur()
     }
+  }
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      await axios.post(backendUrl + '/api/company/notifications/read', {}, { headers: { token: companyToken } })
+      setNotifications(notifications.map(n => ({ ...n, isRead: true })))
+      setUnreadCount(0)
+    } catch (err) {}
   }
 
   const logout = () => {
@@ -240,16 +254,72 @@ const Dashboard = () => {
 
           {/* Right Side */}
           <div className="ml-auto flex items-center gap-2">
-            {/* Notification */}
-            <button
-              onClick={() => navigate('/dashboard/notifications')}
-              className="relative p-2.5 rounded-xl hover:bg-gray-100 text-gray-500 transition-colors"
-            >
-              <Bell size={20} />
-              {unreadCount > 0 && (
-                <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 border-2 border-white rounded-full"></span>
+            {/* Notification Dropdown */}
+            <div className="relative" ref={notifRef}>
+              <button
+                onClick={() => setIsNotifOpen(!isNotifOpen)}
+                className="relative p-2.5 rounded-xl hover:bg-gray-100 text-gray-500 transition-colors"
+              >
+                <Bell size={20} />
+                {unreadCount > 0 && (
+                  <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 border-2 border-white rounded-full"></span>
+                )}
+              </button>
+
+              {isNotifOpen && (
+                <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-50 origin-top-right animate-in fade-in zoom-in duration-200">
+                  <div className="px-4 py-3 border-b border-slate-50 flex items-center justify-between">
+                      <h3 className="font-bold text-slate-900">Notifications</h3>
+                      {unreadCount > 0 && (
+                          <button onClick={handleMarkAllAsRead} className="text-[12px] font-semibold text-blue-600 hover:text-blue-700">
+                              Mark all read
+                          </button>
+                      )}
+                  </div>
+                  <div className="max-h-[320px] overflow-y-auto">
+                      {notifications.length > 0 ? (
+                          notifications.map(notification => (
+                              <div 
+                                  key={notification._id} 
+                                  className={`px-4 py-3 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-0 transition-colors ${!notification.isRead ? 'bg-blue-50/30' : ''}`}
+                              >
+                                  <div className="flex gap-3">
+                                      <div className={`mt-0.5 shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+                                          notification.type === 'New_Application' ? 'bg-emerald-100 text-emerald-600' :
+                                          notification.type === 'System_Alert' ? 'bg-amber-100 text-amber-600' :
+                                          'bg-blue-100 text-blue-600'
+                                      }`}>
+                                          {notification.type === 'System_Alert' ? <Settings size={14} /> :
+                                           notification.type === 'New_Application' ? <FileText size={14} /> :
+                                           <Bell size={14} />}
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                          <div className="flex justify-between items-start gap-2 mb-0.5">
+                                              <p className="text-[13px] font-bold text-slate-900 truncate">{notification.title}</p>
+                                              {!notification.isRead && <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0 mt-1"></span>}
+                                          </div>
+                                          <p className="text-[12px] text-slate-500 leading-tight line-clamp-2">{notification.message}</p>
+                                          <p className="text-[10px] font-medium text-slate-400 mt-1.5 flex items-center gap-1">
+                                              <Clock size={10} />
+                                              {new Date(notification.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' })}
+                                          </p>
+                                      </div>
+                                  </div>
+                              </div>
+                          ))
+                      ) : (
+                          <div className="py-8 px-4 text-center">
+                              <div className="w-12 h-12 rounded-full bg-slate-50 text-slate-300 mx-auto flex items-center justify-center mb-2">
+                                  <CheckCircle2 size={24} />
+                              </div>
+                              <p className="text-[13px] font-medium text-slate-500">All caught up!</p>
+                              <p className="text-[11px] text-slate-400 mt-0.5">No new notifications</p>
+                          </div>
+                      )}
+                  </div>
+                </div>
               )}
-            </button>
+            </div>
 
             {/* Company Profile */}
             {companyData && (

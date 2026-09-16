@@ -10,7 +10,7 @@ import {
 
 const UserSidebar = () => {
     const { user } = useUser();
-    const { setShowRecruiterLogin, companyToken, instituteToken, userApplications } = useContext(AppContext);
+    const { companyToken, instituteToken, userApplications } = useContext(AppContext);
     const location = useLocation();
 
     const isActive = (path) => location.pathname === path;
@@ -85,59 +85,46 @@ const UserSidebar = () => {
 
                     <div className='flex flex-col gap-1.5'>
                         {/* Employer Portal */}
-                        {companyToken ? (
-                            <Link
-                                to='/dashboard'
-                                target='_blank'
-                                rel='noopener noreferrer'
-                                className='flex items-center justify-between px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition group'
-                            >
-                                <div className='flex items-center gap-3'>
-                                    <Building2 size={18} className='text-gray-500 group-hover:text-gray-700' />
-                                    <span className='text-sm font-medium'>Employer</span>
-                                </div>
-                                <ArrowRight size={14} className='text-gray-400 group-hover:translate-x-0.5 transition-transform' />
-                            </Link>
-                        ) : (
-                            <button
-                                onClick={() => setShowRecruiterLogin(true)}
-                                className='w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition group'
-                            >
-                                <div className='flex items-center gap-3'>
-                                    <Building2 size={18} className='text-gray-500 group-hover:text-gray-700' />
-                                    <span className='text-sm font-medium'>Employer</span>
-                                </div>
-                                <ArrowRight size={14} className='text-gray-400 group-hover:translate-x-0.5 transition-transform' />
-                            </button>
-                        )}
+                        <button
+                            onClick={() => {
+                                if (companyToken) {
+                                    window.open('/dashboard', '_blank');
+                                } else {
+                                    window.open('/employer-auth', '_blank');
+                                }
+                            }}
+                            className='w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition group'
+                        >
+                            <div className='flex items-center gap-3'>
+                                <Building2 size={18} className='text-gray-500 group-hover:text-gray-700' />
+                                <span className='text-sm font-medium'>Employer</span>
+                            </div>
+                            <ArrowRight size={14} className='text-gray-400 group-hover:translate-x-0.5 transition-transform' />
+                        </button>
 
                         {/* Institute Portal */}
                         {instituteToken ? (
-                            <a
-                                href='http://localhost:5176/'
-                                target='_blank'
-                                rel='noopener noreferrer'
-                                className='flex items-center justify-between px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition group'
+                            <button
+                                onClick={() => window.location.href = 'http://localhost:5175/'}
+                                className='w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition group'
                             >
                                 <div className='flex items-center gap-3'>
                                     <GraduationCap size={18} className='text-gray-500 group-hover:text-gray-700' />
                                     <span className='text-sm font-medium'>Teach Skills</span>
                                 </div>
                                 <ArrowRight size={14} className='text-gray-400 group-hover:translate-x-0.5 transition-transform' />
-                            </a>
+                            </button>
                         ) : (
-                            <a
-                                href='http://localhost:5176/login'
-                                target='_blank'
-                                rel='noopener noreferrer'
-                                className='flex items-center justify-between px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition group'
+                            <button
+                                onClick={() => window.location.href = 'http://localhost:5175/login'}
+                                className='w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition group'
                             >
                                 <div className='flex items-center gap-3'>
                                     <GraduationCap size={18} className='text-gray-500 group-hover:text-gray-700' />
                                     <span className='text-sm font-medium'>Teach Skills</span>
                                 </div>
                                 <ArrowRight size={14} className='text-gray-400 group-hover:translate-x-0.5 transition-transform' />
-                            </a>
+                            </button>
                         )}
                     </div>
                 </div>

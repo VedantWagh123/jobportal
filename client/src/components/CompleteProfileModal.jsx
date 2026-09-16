@@ -74,7 +74,16 @@ const CompleteProfileModal = ({ isOpen, onClose }) => {
         if (!resumeFile) return toast.warning("Please select a resume file first.");
         setIsExtractingSkills(true);
         try {
-            const token = await getToken();
+            let token = await getToken();
+            // Retry once if token is null (Clerk session may not be ready)
+            if (!token) {
+                await new Promise(r => setTimeout(r, 1000));
+                token = await getToken();
+            }
+            if (!token) {
+                toast.error("Session expired. Please refresh the page and try again.");
+                return;
+            }
             const data = new FormData();
             data.append('resume', resumeFile);
             
@@ -104,7 +113,18 @@ const CompleteProfileModal = ({ isOpen, onClose }) => {
         setLoadingState('uploading');
 
         try {
-            const token = await getToken();
+            let token = await getToken();
+            // Retry once if Clerk session token is not ready yet
+            if (!token) {
+                await new Promise(r => setTimeout(r, 1500));
+                token = await getToken();
+            }
+            if (!token) {
+                setLoadingState('');
+                toast.error("Session expired. Please refresh the page and try again.");
+                return;
+            }
+
             const data = new FormData();
             
             data.append('phone', formData.phone);

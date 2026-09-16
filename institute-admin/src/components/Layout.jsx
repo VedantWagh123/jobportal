@@ -17,6 +17,7 @@ const Layout = () => {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [isNotificationOpen, setIsNotificationOpen] = useState(false);
     const [notifications, setNotifications] = useState([]);
+    const [selectedNotification, setSelectedNotification] = useState(null);
     
     const dropdownRef = useRef(null);
     const notificationRef = useRef(null);
@@ -65,6 +66,9 @@ const Layout = () => {
     };
 
     const handleNotificationClick = async (id) => {
+        const notif = notifications.find(n => n._id === id);
+        if (notif) setSelectedNotification(notif);
+
         try {
             await axios.put(`/api/institute/notifications/${id}/read`, {}, {
                 headers: { token: user.token }
@@ -360,6 +364,64 @@ const Layout = () => {
                     </div>
                 </main>
             </div>
+
+            {/* Notification Detail Modal */}
+            {selectedNotification && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                        <div className="p-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 flex items-start justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-blue-600">
+                                    <Bell size={20} />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-slate-800 leading-tight">
+                                        {selectedNotification.title}
+                                    </h3>
+                                    <p className="text-[11px] font-medium text-slate-500 mt-0.5 flex items-center gap-1">
+                                        <Clock size={12} />
+                                        {new Date(selectedNotification.date).toLocaleString()}
+                                    </p>
+                                </div>
+                            </div>
+                            <button 
+                                onClick={() => setSelectedNotification(null)}
+                                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-black/5 text-slate-400 hover:text-slate-600 transition-colors"
+                            >
+                                <X size={16} />
+                            </button>
+                        </div>
+                        
+                        <div className="p-5">
+                            <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
+                                {selectedNotification.message}
+                            </div>
+                            
+                            <div className="mt-6 flex items-center justify-end gap-3">
+                                <button 
+                                    onClick={() => setSelectedNotification(null)}
+                                    className="px-4 py-2 text-sm font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
+                                >
+                                    Dismiss
+                                </button>
+                                {selectedNotification.type === 'ActionRequired' && (
+                                    <button 
+                                        onClick={() => {
+                                            setSelectedNotification(null);
+                                            setIsNotificationOpen(false);
+                                            // As requested, navigate to the Add Course section
+                                            navigate('/courses');
+                                        }}
+                                        className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold py-2 px-5 rounded-xl shadow-md shadow-indigo-600/20 hover:shadow-lg transition-all active:scale-95 flex items-center gap-2"
+                                    >
+                                        <BookOpen size={16} /> Add Course
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

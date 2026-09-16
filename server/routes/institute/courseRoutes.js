@@ -1,7 +1,8 @@
 import express from 'express';
 import { protectInstitute } from '../../middleware/instituteAuthMiddleware.js';
+import upload from '../../config/multer.js';
 import { 
-    getMyCourses, createCourse, deleteCourse,
+    getMyCourses, createCourse, deleteCourse, updateCourseCurriculum, updateCourse,
     getMyBatches, createBatch, updateBatchStatus, updateBatch, getInstituteAlerts, extractCourseSkills, getBatchEnrollments, generateDashboardSummary, generateCoursePlan, getCurriculumGap
 } from '../../controllers/institute/instituteCourseController.js';
 
@@ -11,8 +12,10 @@ router.use(protectInstitute);
 
 // Courses
 router.get('/courses', getMyCourses);
-router.post('/courses', createCourse);
+router.post('/courses', upload.single('image'), createCourse);
 router.post('/extract-skills', extractCourseSkills);
+router.put('/courses/:id', upload.single('image'), updateCourse);
+router.put('/courses/:id/curriculum', updateCourseCurriculum);
 router.delete('/courses/:id', deleteCourse);
 
 // Batches

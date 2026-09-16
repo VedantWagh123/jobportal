@@ -1,5 +1,26 @@
 import { GoogleGenAI } from '@google/genai';
+import axios from 'axios';
 import Job from '../models/Job.js';
+
+const OLLAMA_URL = 'http://localhost:11434';
+const OLLAMA_MODEL = 'llava';
+
+// Fallback helper for Ollama text generation
+const callOllama = async (prompt) => {
+    try {
+        console.log("[Ollama Chatbot] Sending request to local model...");
+        const response = await axios.post(`${OLLAMA_URL}/api/generate`, {
+            model: OLLAMA_MODEL,
+            prompt: prompt,
+            stream: false,
+            format: 'json'
+        });
+        return response.data.response;
+    } catch (err) {
+        console.error("[Ollama Chatbot] Fallback also failed:", err.message);
+        throw new Error("Both Gemini and Ollama failed.");
+    }
+};
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
 const cleanText = (text) => text?.trim() || '';
@@ -13,11 +34,13 @@ export const chatWithAI = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Message is required' });
         }
 
+        let ai = null;
         if (!process.env.GEMINI_API_KEY) {
-            return res.status(500).json({ success: false, message: 'AI service not configured.' });
+            console.warn("[Chatbot] GEMINI_API_KEY missing. Will try Ollama Fallback.");
+        } else {
+            ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
         }
 
-        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
         // 1. Fetch Job Context (Top 30 latest active jobs)
         // We populate companyId so we can send full data to frontend later
@@ -72,16 +95,24 @@ INSTRUCTIONS:
 }
 IMPORTANT: Return ONLY the raw JSON string. Do NOT wrap it in \`\`\`json markdown blocks.`;
 
-        // 4. Generate AI Response
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: systemPrompt,
-        });
+        // 4. Generate AI Response (with Ollama Fallback)
+        let responseText = "";
+        try {
+            if (!ai) throw new Error("GEMINI_API_KEY missing");
+            const response = await ai.models.generateContent({
+                model: 'gemini-2.5-flash',
+                contents: systemPrompt,
+            });
+            responseText = response.text;
+        } catch (geminiError) {
+            console.warn(`[Chatbot] Gemini failed (${geminiError.message}). Falling back to Ollama...`);
+            responseText = await callOllama(systemPrompt);
+        }
 
         // 5. Parse AI Response safely
         let parsed;
         try {
-            let rawText = cleanText(response.text).replace(/```json/gi, '').replace(/```/g, '').trim();
+            let rawText = cleanText(responseText).replace(/```json/gi, '').replace(/```/g, '').trim();
             // Sometimes Gemini might add extra text before or after the JSON, so we extract the JSON part
             const jsonStart = rawText.indexOf('{');
             const jsonEnd = rawText.lastIndexOf('}');

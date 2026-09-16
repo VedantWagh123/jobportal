@@ -325,7 +325,11 @@ const CareerGap = () => {
                 {/* Course Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   {analysis.recommendations.map((rec, i) => (
-                    <div key={i} className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-[0_4px_20px_-8px_rgba(0,0,0,0.07)] hover:shadow-[0_8px_32px_-8px_rgba(0,0,0,0.12)] hover:border-violet-200 transition-all duration-300 flex flex-col gap-4">
+                    <div 
+                      key={i} 
+                      onClick={() => navigate('/upskilling')}
+                      className="cursor-pointer bg-white rounded-[20px] p-6 border border-gray-100 shadow-[0_4px_20px_-8px_rgba(0,0,0,0.07)] hover:shadow-[0_8px_32px_-8px_rgba(0,0,0,0.12)] hover:border-violet-200 transition-all duration-300 flex flex-col gap-4"
+                    >
                       {/* Course Header */}
                       <div className="flex items-start gap-3">
                         <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 flex items-center justify-center shrink-0">
@@ -375,7 +379,10 @@ const CareerGap = () => {
 
                         {rec.batchAvailable && rec.batchId ? (
                           <button
-                            onClick={() => handleEnroll(rec.batchId)}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleEnroll(rec.batchId);
+                            }}
                             disabled={enrollingBatchId === rec.batchId}
                             className="flex items-center gap-2 bg-gradient-to-r from-violet-500 to-indigo-600 hover:from-violet-600 hover:to-indigo-700 text-white font-bold text-[13px] px-5 py-2.5 rounded-xl shadow-md shadow-violet-500/20 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                           >

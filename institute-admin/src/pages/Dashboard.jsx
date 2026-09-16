@@ -129,9 +129,29 @@ const Dashboard = () => {
         scrollToBottom();
     }, [chatHistory, isChatLoading, botData]);
 
-    // Fetch Live Data
+    // Fetch Live Data — stale-while-revalidate for instant load
     useEffect(() => {
+        const CACHE_KEY = 'inst_dashboard_v1';
+        const CACHE_TTL = 60 * 1000; // 60 seconds
+
         const fetchAlerts = async () => {
+            // 1. Show cached data instantly (zero wait)
+            try {
+                const raw = sessionStorage.getItem(CACHE_KEY);
+                if (raw) {
+                    const { ts, data } = JSON.parse(raw);
+                    if (Date.now() - ts < CACHE_TTL) {
+                        setAlerts(data.alerts || []);
+                        if (data.metrics) setMetrics(data.metrics);
+                        return; // fresh enough — skip network
+                    }
+                    // stale: paint from cache immediately, then refresh below
+                    setAlerts(data.alerts || []);
+                    if (data.metrics) setMetrics(data.metrics);
+                }
+            } catch (_) {}
+
+            // 2. Fetch fresh in background
             try {
                 if (user?.token) {
                     const { data } = await axios.get('/api/institute/management/alerts', {
@@ -140,6 +160,11 @@ const Dashboard = () => {
                     if (data.success) {
                         setAlerts(data.alerts || []);
                         if (data.metrics) setMetrics(data.metrics);
+                        // Save to cache
+                        sessionStorage.setItem(CACHE_KEY, JSON.stringify({
+                            ts: Date.now(),
+                            data: { alerts: data.alerts, metrics: data.metrics }
+                        }));
                     }
                 }
             } catch (error) {
@@ -223,14 +248,8 @@ const Dashboard = () => {
         }
     }, [isBotOpen]);
     
-    // Using existing hardcoded placement data as requested to preserve functionality
-    const placementData = [
-        { name: 'Full Stack', placed: 85, enrolled: 100 },
-        { name: 'Data Science', placed: 60, enrolled: 80 },
-        { name: 'Cloud Ops', placed: 95, enrolled: 110 },
-        { name: 'UI/UX Design', placed: 40, enrolled: 50 },
-        { name: 'Cybersecurity', placed: 75, enrolled: 90 },
-    ];
+    // Using real placement data from backend
+    const placementData = metrics.placementData || [];
 
     const criticalAlert = alerts.find(a => a.severity === 'Critical');
 
@@ -291,8 +310,8 @@ const Dashboard = () => {
                 />
                 <StatCard 
                     title="Placement Rate" 
-                    value="78%" 
-                    subtitle="vs last quarter" 
+                    value={`${metrics.overallPlacementRate || 0}%`}
+                    subtitle="Overall Placed" 
                     bgClass="bg-amber-50" 
                     colorClass="text-amber-600" 
                     icon={<Activity size={22} />} 
@@ -360,17 +379,36 @@ const Dashboard = () => {
                         {alerts.length > 0 ? (
                             alerts.map((alert, idx) => {
                                 const style = getInsightColor(alert.skill || alert.skillName || "");
+                                const tooltipText = alert.recommendedAction
+                                    ? alert.recommendedAction
+                                    : `Launch a new course on ${alert.skill || alert.skillName} to fill this market gap.`;
                                 return (
-                                    <div key={idx} onClick={() => handleInsightClick(alert)} className={`p-4 rounded-xl border ${style.bg} ${style.border} flex items-start gap-3 group cursor-pointer hover:shadow-sm transition-all`}>
+                                    <div
+                                        key={idx}
+                                        onClick={() => handleInsightClick(alert)}
+                                        title={`⚠️ ${alert.skill || alert.skillName} Shortage — ${alert.severity || 'High'} Priority\n\n${alert.message}\n\n💡 Action: ${tooltipText}`}
+                                        className={`p-4 rounded-xl border ${style.bg} ${style.border} flex items-start gap-3 group cursor-pointer hover:shadow-md transition-all relative`}
+                                    >
+                                        {/* Hover tooltip badge */}
+                                        <div className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
+                                            <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wide ${alert.severity === 'Critical' ? 'bg-red-500 text-white' : 'bg-amber-400 text-white'}`}>
+                                                {alert.severity || 'Alert'}
+                                            </span>
+                                        </div>
+
                                         <div className={`p-2 rounded-lg bg-white shadow-sm shrink-0 ${style.text}`}>
                                             {style.icon}
                                         </div>
-                                        <div className="flex-1">
+                                        <div className="flex-1 min-w-0">
                                             <h4 className={`font-bold text-[13px] mb-1 capitalize ${style.text}`}>
                                                 {alert.skill || alert.skillName} Shortage
                                             </h4>
                                             <p className="text-[12px] text-slate-600 leading-snug line-clamp-2">
                                                 {alert.message}
+                                            </p>
+                                            {/* Inline action hint on hover */}
+                                            <p className="text-[11px] text-slate-400 italic mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 line-clamp-1">
+                                                💡 {tooltipText}
                                             </p>
                                         </div>
                                         <div className="shrink-0 text-slate-300 group-hover:text-slate-500 transition-colors mt-2">
@@ -414,39 +452,41 @@ const Dashboard = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 text-[13px]">
-                            <tr className="hover:bg-slate-50 transition-colors">
-                                <td className="px-6 py-4 font-bold text-slate-900">BTH-2026-A1</td>
-                                <td className="px-6 py-4 font-medium text-slate-700">Full Stack Web Development</td>
-                                <td className="px-6 py-4 text-slate-600">Rahul Sharma</td>
-                                <td className="px-6 py-4 text-slate-600 font-medium">42 / 50</td>
-                                <td className="px-6 py-4">
-                                    <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 font-bold px-2.5 py-1 rounded-md text-xs border border-emerald-100">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> In Progress
-                                    </span>
-                                </td>
-                            </tr>
-                            <tr className="hover:bg-slate-50 transition-colors">
-                                <td className="px-6 py-4 font-bold text-slate-900">BTH-2026-B2</td>
-                                <td className="px-6 py-4 font-medium text-slate-700">Data Science & ML</td>
-                                <td className="px-6 py-4 text-slate-600">Priya Patel</td>
-                                <td className="px-6 py-4 text-slate-600 font-medium">28 / 30</td>
-                                <td className="px-6 py-4">
-                                    <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 font-bold px-2.5 py-1 rounded-md text-xs border border-emerald-100">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> In Progress
-                                    </span>
-                                </td>
-                            </tr>
-                            <tr className="hover:bg-slate-50 transition-colors">
-                                <td className="px-6 py-4 font-bold text-slate-900">BTH-2026-C1</td>
-                                <td className="px-6 py-4 font-medium text-slate-700">Cloud Computing Fundamentals</td>
-                                <td className="px-6 py-4 text-slate-600">Amit Kumar</td>
-                                <td className="px-6 py-4 text-slate-600 font-medium">0 / 40</td>
-                                <td className="px-6 py-4">
-                                    <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-700 font-bold px-2.5 py-1 rounded-md text-xs border border-amber-100">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Upcoming
-                                    </span>
-                                </td>
-                            </tr>
+                            {metrics.liveBatches && metrics.liveBatches.length > 0 ? (
+                                metrics.liveBatches.map(batch => (
+                                    <tr key={batch._id} className="hover:bg-slate-50 transition-colors">
+                                        <td className="px-6 py-4 font-bold text-slate-900">{batch.batchCode}</td>
+                                        <td className="px-6 py-4 font-medium text-slate-700">{batch.courseId?.name || 'Unknown Course'}</td>
+                                        <td className="px-6 py-4 text-slate-600">{batch.trainerId?.name || 'Unassigned'}</td>
+                                        <td className="px-6 py-4 text-slate-600 font-medium">{batch.enrolledCount} / {batch.capacity}</td>
+                                        <td className="px-6 py-4">
+                                            {batch.status === 'In Progress' || batch.status === 'Active' ? (
+                                                <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 font-bold px-2.5 py-1 rounded-md text-xs border border-emerald-100">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> In Progress
+                                                </span>
+                                            ) : batch.status === 'Completed' ? (
+                                                <span className="inline-flex items-center gap-1.5 bg-blue-50 text-blue-700 font-bold px-2.5 py-1 rounded-md text-xs border border-blue-100">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span> Completed
+                                                </span>
+                                            ) : batch.status === 'Cancelled' ? (
+                                                <span className="inline-flex items-center gap-1.5 bg-red-50 text-red-700 font-bold px-2.5 py-1 rounded-md text-xs border border-red-100">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span> Cancelled
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-700 font-bold px-2.5 py-1 rounded-md text-xs border border-amber-100">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span> {batch.status || 'Upcoming'}
+                                                </span>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan="5" className="px-6 py-8 text-center text-slate-500 font-medium">
+                                        No active batches found. Create one to get started!
+                                    </td>
+                                </tr>
+                            )}
                         </tbody>
                     </table>
                 </div>

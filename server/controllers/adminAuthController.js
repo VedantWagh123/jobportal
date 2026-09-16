@@ -1,5 +1,5 @@
 import GovernmentAdmin from "../models/GovernmentAdmin.js";
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import generateAdminToken from "../utils/generateAdminToken.js";
 
 // Login Admin

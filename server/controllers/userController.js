@@ -8,6 +8,10 @@ import Batch from '../models/Batch.js';
 import Notification from '../models/Notification.js';
 import { v2 as cloudinary } from "cloudinary"
 import fs from 'fs';
+import Course from '../models/Course.js';
+import CourseSkill from '../models/CourseSkill.js';
+import CourseReview from '../models/CourseReview.js';
+import UserNotification from '../models/UserNotification.js';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const pdfParse = require('pdf-parse');
@@ -16,37 +20,65 @@ import { extractSkillsFromResume } from '../services/geminiAiService.js';
 
 // Get User Data
 export const getUserData = async (req, res) => {
-
-    const userId = req.auth.userId
-
     try {
-
-        const user = await User.findById(userId)
-
-        if (!user) {
-            return res.json({ success: false, message: 'User Not Found' })
-        }
-
+        // req.dbUser is pre-populated by requireUser middleware
+        const user = req.dbUser;
         res.json({ success: true, user })
-
     } catch (error) {
         res.status(500).json({ success: false, message: error.message })
     }
-
 }
 
 // Sync User Data (Fallback for local dev if webhooks fail)
 export const syncUser = async (req, res) => {
     const { name, email, image } = req.body;
-    const userId = req.auth.userId;
+    const userId = req.auth?.userId;
+    
+    if (!userId) {
+        return res.json({ success: false, message: 'Clerk authentication failed or token missing.' });
+    }
+
     try {
         let user = await User.findById(userId);
         if (!user) {
-            user = await User.create({ _id: userId, name, email, image, resume: '' });
+            // Check if user exists by email (Clerk recreation case)
+            let existingUser = await User.findOne({ email });
+            if (existingUser) {
+                // Clone the user to the new userId
+                const userData = existingUser.toObject();
+                userData._id = userId; // Set new Clerk ID
+                
+                user = await User.create(userData);
+                
+                // Update references in all related collections
+                await JobApplication.updateMany({ userId: existingUser._id }, { userId: userId });
+                await Enrollment.updateMany({ userId: existingUser._id }, { userId: userId });
+                await UserNotification.updateMany({ userId: existingUser._id }, { userId: userId });
+                await CourseReview.updateMany({ userId: existingUser._id }, { userId: userId });
+                
+                // Delete the old user
+                await User.findByIdAndDelete(existingUser._id);
+            } else {
+                user = await User.create({ _id: userId, name, email, image, resume: '' });
+            }
         } else {
+            // User already exists — preserve ALL app-managed profile fields.
+            // Only sync Clerk-managed identity fields (name, email).
+            // NEVER overwrite image: user may have uploaded a custom Cloudinary photo.
+            // NEVER touch resume, phone, address, city, college, skills — those are
+            // candidate profile data and must only be changed by explicit profile updates.
             user.name = name;
             user.email = email;
-            user.image = image;
+
+            // Only update image if user still has Clerk's CDN URL (no custom photo yet)
+            const hasCustomImage = user.image &&
+                !user.image.includes('clerk.com') &&
+                !user.image.includes('img.clerk') &&
+                !user.image.includes('gravatar.com');
+            if (!hasCustomImage && image) {
+                user.image = image;
+            }
+
             await user.save();
         }
         res.json({ success: true, user });
@@ -60,14 +92,13 @@ export const syncUser = async (req, res) => {
 export const applyForJob = async (req, res) => {
 
     const { jobId } = req.body
-
-    const userId = req.auth.userId
+    const userId = req.dbUser._id // from requireUser middleware
 
     try {
 
-        const isAlreadyApplied = await JobApplication.find({ jobId, userId })
+        const isAlreadyApplied = await JobApplication.findOne({ jobId, userId })
 
-        if (isAlreadyApplied.length > 0) {
+        if (isAlreadyApplied) {
             return res.json({ success: false, message: 'Already Applied' })
         }
 
@@ -84,7 +115,7 @@ export const applyForJob = async (req, res) => {
             date: Date.now()
         })
         
-        const user = await User.findById(userId);
+        const user = req.dbUser; // already available
 
         await Notification.create({
             companyId: jobData.companyId,
@@ -99,7 +130,28 @@ export const applyForJob = async (req, res) => {
     } catch (error) {
         res.status(500).json({ success: false, message: error.message })
     }
+}
 
+// Toggle Saved Job
+export const toggleSavedJob = async (req, res) => {
+    try {
+        const userId = req.dbUser._id;
+        const { jobId } = req.body;
+        
+        const user = req.dbUser;
+        const jobIndex = user.savedJobs.indexOf(jobId);
+        
+        if (jobIndex > -1) {
+            user.savedJobs.splice(jobIndex, 1);
+        } else {
+            user.savedJobs.push(jobId);
+        }
+        
+        await user.save();
+        res.json({ success: true, savedJobs: user.savedJobs, message: jobIndex > -1 ? 'Job removed from saved list' : 'Job saved successfully' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
 }
 
 // Get User Applied Applications Data
@@ -107,18 +159,18 @@ export const getUserJobApplications = async (req, res) => {
 
     try {
 
-        const userId = req.auth.userId
+        const userId = req.dbUser._id // from requireUser middleware
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 50;
 
         const applications = await JobApplication.find({ userId })
             .populate('companyId', 'name email image')
             .populate('jobId', 'title description location category level salary')
+            .skip((page - 1) * limit)
+            .limit(limit)
             .exec()
 
-        if (!applications) {
-            return res.json({ success: false, message: 'No job applications found for this user.' })
-        }
-
-        return res.json({ success: true, applications })
+        return res.json({ success: true, applications: applications || [] })
 
     } catch (error) {
         res.status(500).json({ success: false, message: error.message })
@@ -130,11 +182,9 @@ export const getUserJobApplications = async (req, res) => {
 export const updateUserResume = async (req, res) => {
     try {
 
-        const userId = req.auth.userId
-
-        const resumeFile = req.file
-
-        const userData = await User.findById(userId)
+        const userId = req.auth?.userId;
+        const resumeFile = req.file;
+        const userData = req.dbUser; // from requireUser middleware
 
         if (resumeFile) {
             try {
@@ -161,6 +211,14 @@ export const updateUserResume = async (req, res) => {
             }
 
             try {
+                // Clean up old resume from Cloudinary if it exists
+                if (userData.resume && userData.resume.includes('cloudinary.com')) {
+                    const oldPublicId = userData.resume.split('/').slice(-1)[0];
+                    if (oldPublicId) {
+                        await cloudinary.uploader.destroy(oldPublicId, { resource_type: 'raw' }).catch(err => console.warn("Failed to delete old resume:", err.message));
+                    }
+                }
+
                 const resumeUpload = await cloudinary.uploader.upload(resumeFile.path, { resource_type: 'raw' })
                 userData.resume = resumeUpload.secure_url
                 fs.unlink(resumeFile.path, (err) => {
@@ -186,13 +244,10 @@ export const updateUserResume = async (req, res) => {
 // Complete User Profile (Multi-step form details + File uploads)
 export const completeUserProfile = async (req, res) => {
     try {
-        const userId = req.auth.userId;
+        const userId = req.auth?.userId;
         const { phone, address, city, college } = req.body;
         
-        const userData = await User.findById(userId);
-        if (!userData) {
-            return res.status(404).json({ success: false, message: 'User not found' });
-        }
+        const userData = req.dbUser; // from requireUser middleware
 
         // Update fields if provided
         if (phone) userData.phone = phone;
@@ -216,6 +271,14 @@ export const completeUserProfile = async (req, res) => {
             if (req.files.resume && req.files.resume[0]) {
                 const resumeFile = req.files.resume[0];
                 try {
+                    // Clean up old resume from Cloudinary if it exists
+                    if (userData.resume && userData.resume.includes('cloudinary.com')) {
+                        const oldPublicId = userData.resume.split('/').slice(-1)[0];
+                        if (oldPublicId) {
+                            await cloudinary.uploader.destroy(oldPublicId, { resource_type: 'raw' }).catch(err => console.warn("Failed to delete old resume:", err.message));
+                        }
+                    }
+
                     const resumeUpload = await cloudinary.uploader.upload(resumeFile.path, { resource_type: 'raw' });
                     userData.resume = resumeUpload.secure_url;
                     fs.unlink(resumeFile.path, (err) => {
@@ -256,17 +319,14 @@ export const completeUserProfile = async (req, res) => {
 // Update User Skills
 export const updateUserSkills = async (req, res) => {
     try {
-        const userId = req.auth.userId;
-        const { skills } = req.body; // Expecting an array of strings
+        const { skills } = req.body;
 
         if (!Array.isArray(skills)) {
             return res.status(400).json({ success: false, message: 'Skills must be an array of strings' });
         }
 
-        const user = await User.findById(userId);
-        if (!user) return res.status(404).json({ success: false, message: 'User not found' });
-
-        user.skills = skills.map(s => String(s).trim()).filter(s => s); // Basic sanitization
+        const user = req.dbUser; // from requireUser middleware
+        user.skills = skills.map(s => String(s).trim()).filter(s => s);
         await user.save();
 
         res.json({ success: true, message: 'Skills updated successfully', skills: user.skills });
@@ -278,11 +338,16 @@ export const updateUserSkills = async (req, res) => {
 // Get Target Jobs for Dropdown
 export const getTargetJobs = async (req, res) => {
     try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 30;
+
         // Fetch only basic details of active jobs
         const jobs = await Job.find({ visible: true })
             .select('title location companyId')
             .populate('companyId', 'name image')
-            .sort({ date: -1 });
+            .sort({ date: -1 })
+            .skip((page - 1) * limit)
+            .limit(limit);
 
         res.json({ success: true, jobs });
     } catch (error) {
@@ -294,11 +359,8 @@ export const getTargetJobs = async (req, res) => {
 export const getCareerAnalysis = async (req, res) => {
     try {
         const { jobId } = req.params;
-        const userId = req.auth.userId;
 
-        const user = await User.findById(userId);
-        if (!user) return res.status(404).json({ success: false, message: 'User not found' });
-
+        const user = req.dbUser; // from requireUser middleware
         const candidateSkills = user.skills || [];
 
         const analysis = await SkillGapService.getCareerAnalysis(candidateSkills, jobId);
@@ -312,10 +374,7 @@ export const getCareerAnalysis = async (req, res) => {
 // Get Market Recommendations (Home Page)
 export const getMarketRecommendations = async (req, res) => {
     try {
-        const userId = req.auth.userId;
-        const user = await User.findById(userId);
-        if (!user) return res.status(404).json({ success: false, message: 'User not found' });
-
+        const user = req.dbUser; // from requireUser middleware
         const candidateSkills = user.skills || [];
         const normalizedCandSkills = await SkillGapService.normalizeCandidateSkills(candidateSkills);
         const candSkillIds = new Set(normalizedCandSkills.map(s => s._id.toString()));
@@ -456,6 +515,158 @@ export const extractResumeSkillsAPI = async (req, res) => {
         res.json({ success: true, skills: extractedSkills });
     } catch (error) {
         console.error("API EXTRACT SKILLS ERROR:", error.message);
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// Browse All Public Courses
+export const getAllPublicCourses = async (req, res) => {
+    try {
+        const userId = req.auth?.userId;
+        let userSkills = new Set();
+        let enrolledCourseIds = new Set();
+        
+        if (userId) {
+            const user = await User.findOne({ _id: userId });
+            if (user && user.skills) {
+                userSkills = new Set(user.skills.map(s => s.toLowerCase()));
+            }
+            
+            const enrollments = await Enrollment.find({ userId }).populate('batchId');
+            enrollments.forEach(e => {
+                if (e.batchId && e.batchId.courseId) {
+                    enrolledCourseIds.add(e.batchId.courseId.toString());
+                }
+            });
+        }
+
+        const courses = await Course.find({ isActive: true })
+            .populate({
+                path: 'instituteId',
+                populate: { path: 'districtId' }
+            });
+
+        const allCourseIds = courses.map(c => c._id);
+        const courseSkillsMap = await CourseSkill.find({ courseId: { $in: allCourseIds } }).populate('skillId');
+        
+        const batches = await Batch.find({ courseId: { $in: allCourseIds }, status: { $in: ['Planning', 'Active'] } });
+
+        const mappedCourses = courses.map(course => {
+            const cid = course._id.toString();
+            const skills = courseSkillsMap.filter(cs => cs.courseId.toString() === cid).map(cs => cs.skillId.name);
+            const cBatches = batches.filter(b => b.courseId.toString() === cid);
+            
+            let activeBatchId = null;
+            let totalStudents = 0;
+            if (cBatches.length > 0) {
+                activeBatchId = cBatches[0]._id;
+                totalStudents = cBatches.reduce((acc, curr) => acc + (curr.enrolledCount || 0), 0);
+            }
+
+            const isEnrolled = enrolledCourseIds.has(cid);
+            
+            let category = 'Others';
+            const skillsLower = skills.map(s => s.toLowerCase());
+            if (skillsLower.some(s => s.includes('ai') || s.includes('machine learning') || s.includes('llm') || s.includes('generative'))) {
+                category = 'AI & ML';
+            } else if (skillsLower.some(s => s.includes('data') || s.includes('analytics') || s.includes('sql') || s.includes('powerbi'))) {
+                category = 'Data & Analytics';
+            } else if (skillsLower.some(s => s.includes('design') || s.includes('ui') || s.includes('ux'))) {
+                category = 'Design';
+            } else if (skillsLower.some(s => s.includes('business') || s.includes('management') || s.includes('marketing'))) {
+                category = 'Business';
+            } else if (skillsLower.some(s => s.includes('react') || s.includes('node') || s.includes('java') || s.includes('python'))) {
+                category = 'Tech & Development';
+            }
+
+            return {
+                courseId: cid,
+                courseName: course.name,
+                courseDescription: course.description || '',
+                courseImage: course.image || '',
+                courseCurriculum: course.curriculum || [],
+                durationMonths: course.durationMonths || 0,
+                location: course.location || '',
+                instituteId: course.instituteId?._id,
+                instituteName: course.instituteId?.name || 'Unknown Institute',
+                districtName: course.instituteId?.districtId?.name || 'Online',
+                instituteQualityScore: course.instituteId?.qualityScore || 0,
+                instituteTotalRatings: course.instituteId?.totalRatings || 0,
+                courseRating: course.courseRating || 0,
+                totalCourseRatings: course.totalCourseRatings || 0,
+                coveredSkills: skills,
+                category: category,
+                batchAvailable: cBatches.length > 0,
+                batchId: activeBatchId,
+                totalStudents: totalStudents,
+                isEnrolled: isEnrolled,
+                createdAt: course.createdAt
+            };
+        });
+
+        let filteredCourses = mappedCourses;
+        if (userSkills.size > 0) {
+            filteredCourses = mappedCourses.filter(course => {
+                if (course.isEnrolled) return true;
+                const courseSkillsLower = course.coveredSkills.map(s => s.toLowerCase());
+                const hasOverlap = courseSkillsLower.some(s => userSkills.has(s));
+                return !hasOverlap;
+            });
+        }
+
+        filteredCourses.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        res.json({ success: true, courses: filteredCourses });
+    } catch (error) {
+        console.error('Error fetching all public courses:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+export const getUserNotifications = async (req, res) => {
+    try {
+        const userId = req.auth?.userId;
+        if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+        const notifications = await UserNotification.find({ userId }).sort({ date: -1 }).limit(50);
+        res.json({ success: true, notifications });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+export const markUserNotificationsRead = async (req, res) => {
+    try {
+        const userId = req.auth?.userId;
+        if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+        await UserNotification.updateMany({ userId, isRead: false }, { $set: { isRead: true } });
+        res.json({ success: true, message: 'Notifications marked as read' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+export const submitCourseReview = async (req, res) => {
+    try {
+        const userId = req.auth?.userId;
+        if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+        const { courseId, rating, review, notificationId } = req.body;
+        if (!courseId || !rating) return res.status(400).json({ success: false, message: 'Course ID and rating are required' });
+
+        await CourseReview.create({ userId, courseId, rating, review });
+
+        const course = await Course.findById(courseId);
+        if (course) {
+            const currentRating = course.courseRating || 0;
+            const currentTotal = course.totalCourseRatings || 0;
+            const newRating = ((currentRating * currentTotal) + rating) / (currentTotal + 1);
+            course.courseRating = Number(newRating.toFixed(1));
+            course.totalCourseRatings = currentTotal + 1;
+            await course.save();
+        }
+
+        if (notificationId) await UserNotification.findByIdAndDelete(notificationId);
+        res.json({ success: true, message: 'Course review submitted successfully' });
+    } catch (error) {
+        if (error.code === 11000) return res.status(400).json({ success: false, message: 'You have already reviewed this course' });
         res.status(500).json({ success: false, message: error.message });
     }
 };

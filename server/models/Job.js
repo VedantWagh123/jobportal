@@ -3,6 +3,8 @@ import mongoose from "mongoose";
 const jobSchema = new mongoose.Schema({
     title: { type: String, required: true },
     description: { type: String, required: true },
+    responsibilities: { type: String, default: '' },
+    requirements: { type: String, default: '' },
     location: { type: String, required: true },
     districtId: { type: mongoose.Schema.Types.ObjectId, ref: 'District' },
     category: { type: String, required: true },

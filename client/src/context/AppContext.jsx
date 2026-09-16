@@ -1,4 +1,4 @@
-import { createContext, useEffect, useState } from "react";
+import { createContext, useEffect, useState, useRef } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { useAuth, useUser } from "@clerk/clerk-react";
@@ -37,16 +37,35 @@ export const AppContextProvider = (props) => {
     const [userApplications, setUserApplications] = useState([])
     const [savedJobs, setSavedJobs] = useState([])
     const [isChatbotOpen, setIsChatbotOpen] = useState(false)
+    const prevUserRef = useRef(undefined)
 
     // Function to handle saved jobs
-    const toggleSaveJob = (jobId) => {
+    const toggleSaveJob = async (jobId) => {
+        // Optimistic UI update
         setSavedJobs(prev => {
             const updated = prev.includes(jobId) 
                 ? prev.filter(id => id !== jobId)
                 : [...prev, jobId];
+            // Still save to localStorage as a fallback for guest users
             localStorage.setItem('savedJobs', JSON.stringify(updated));
             return updated;
         });
+
+        // Persist to DB if logged in
+        if (user) {
+            try {
+                const token = await getToken();
+                const { data } = await axios.post(backendUrl + '/api/users/toggle-saved-job', 
+                    { jobId }, 
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
+                if (data.success) {
+                    setSavedJobs(data.savedJobs || []);
+                }
+            } catch (error) {
+                console.error("Failed to toggle saved job in DB:", error);
+            }
+        }
     }
 
     // --- React Query Implementations ---
@@ -99,8 +118,13 @@ export const AppContextProvider = (props) => {
     }, [jobsQueryData]);
 
     useEffect(() => {
-        if (companyQueryData) setCompanyData(companyQueryData);
+        if (companyQueryData) {
+            setCompanyData(companyQueryData);
+        }
     }, [companyQueryData]);
+
+    // Secondary enforcement: if company data loads, no strict email check anymore because user wants unlocked email.
+    // Session isolation is handled by tracking Clerk User ID.
 
     // Function to Fetch User Data
     const fetchUserData = async () => {
@@ -108,10 +132,16 @@ export const AppContextProvider = (props) => {
 
             const token = await getToken();
 
+            // Guard: If Clerk hasn't issued a token yet (race condition on load), skip silently
+            if (!token) {
+                console.warn('fetchUserData: Clerk token not ready yet, skipping.');
+                return;
+            }
+
             let { data } = await axios.get(backendUrl + '/api/users/user',
                 { headers: { Authorization: `Bearer ${token}` } })
 
-            if (!data.success && data.message === 'User Not Found' && user) {
+            if (!data.success && (data.message === 'User Not Found' || data.message === 'Clerk authentication failed or token missing.') && user) {
                 // Local dev fallback: if user not found but logged into Clerk, sync them manually
                 const syncResponse = await axios.post(backendUrl + '/api/users/sync', {
                     name: user.fullName || 'User',
@@ -123,14 +153,20 @@ export const AppContextProvider = (props) => {
 
             if (data.success) {
                 setUserData(data.user)
+                if (data.user.savedJobs) {
+                    setSavedJobs(data.user.savedJobs)
+                }
             } else {
-                if (data.message !== 'User Not Found') {
+                // Silently ignore auth/not-found errors — these are expected on first load
+                const silentMessages = ['User Not Found', 'Clerk authentication failed or token missing.'];
+                if (!silentMessages.includes(data.message)) {
                     toast.error(data.message)
                 }
             }
 
         } catch (error) {
-            toast.error(error.message)
+            console.error("Failed to fetch user data:", error);
+            // Suppress network/auth toasts on page load
         }
     }
 
@@ -140,17 +176,25 @@ export const AppContextProvider = (props) => {
 
             const token = await getToken()
 
+            // Guard: skip silently if token not ready
+            if (!token) return;
+
             const { data } = await axios.get(backendUrl + '/api/users/applications',
                 { headers: { Authorization: `Bearer ${token}` } }
             )
             if (data.success) {
                 setUserApplications(data.applications)
             } else {
-                toast.error(data.message)
+                // Silently ignore auth-related errors on load
+                const silentMessages = ['User Not Found', 'Clerk authentication failed or token missing.', 'Unauthorized: No Clerk session.'];
+                if (!silentMessages.includes(data.message)) {
+                    toast.error(data.message)
+                }
             }
 
         } catch (error) {
-            toast.error(error.message)
+            console.error("Failed to fetch user applications:", error);
+            // Suppress network/auth toasts silently
         }
     }
 
@@ -167,15 +211,6 @@ export const AppContextProvider = (props) => {
             setInstituteToken(storedInstituteToken)
         }
 
-        const storedSavedJobs = localStorage.getItem('savedJobs')
-        if (storedSavedJobs) {
-            try {
-                setSavedJobs(JSON.parse(storedSavedJobs))
-            } catch (e) {
-                console.error("Failed to parse saved jobs", e)
-            }
-        }
-
     }, [])
 
     // Fetch Company Data if Company Token is Available
@@ -184,18 +219,50 @@ export const AppContextProvider = (props) => {
     // Fetch User's Applications & Data if User is Logged In
     useEffect(() => {
         // Wait for Clerk to fully load before reacting to user state.
-        // Without this guard, on page refresh: user is null briefly (Clerk loading),
-        // so userData stays null and the Navbar shows Login. Once Clerk resolves,
-        // user becomes available and we fetch correctly.
         if (!isLoaded) return;
+        
         if (user) {
-            fetchUserData()
-            fetchUserApplications()
+            // Optimistically set user data using Clerk's provided info so UI updates instantly
+            setUserData(prev => prev || {
+                name: user.fullName || 'User',
+                email: user.primaryEmailAddress?.emailAddress,
+                image: user.imageUrl,
+            });
+            fetchUserData();
+            fetchUserApplications();
         } else {
             // User has signed out — clear user data
-            setUserData(null)
-            setUserApplications([])
+            setUserData(null);
+            setUserApplications([]);
         }
+
+        // --- Session Isolation via Clerk User ID ---
+        const storedClerkId = localStorage.getItem('lastClerkUserId');
+
+        if (user) {
+            // If a different Clerk user is detected (even across page reloads), purge old employer session
+            if (storedClerkId && storedClerkId !== user.id) {
+                console.warn("Security Event: Clerk user changed. Purging old employer session.");
+                setCompanyToken(null);
+                localStorage.removeItem('companyToken');
+                setCompanyData(null);
+                setInstituteToken(null);
+                localStorage.removeItem('instituteToken');
+            }
+            localStorage.setItem('lastClerkUserId', user.id);
+        } else {
+            // Candidate logged out or is a guest
+            if (storedClerkId) {
+                setCompanyToken(null);
+                localStorage.removeItem('companyToken');
+                setCompanyData(null);
+                setInstituteToken(null);
+                localStorage.removeItem('instituteToken');
+                localStorage.removeItem('lastClerkUserId');
+            }
+        }
+
+        prevUserRef.current = user;
     }, [user, isLoaded])
 
     const value = {

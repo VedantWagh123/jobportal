@@ -35,12 +35,28 @@ export const clerkWebhooks = async (req, res) => {
             }
 
             case 'user.updated': {
-                const userData = {
+                // SAFETY: Only update Clerk-managed identity fields (name, email).
+                // NEVER overwrite `image` here — the user may have uploaded a custom
+                // Cloudinary profile picture. Overwriting it with Clerk's image_url
+                // would silently destroy their uploaded photo on every Clerk event.
+                const clerkUpdateFields = {
                     email: data.email_addresses[0].email_address,
                     name: data.first_name + " " + data.last_name,
-                    image: data.image_url,
+                };
+
+                // Only sync image if the user still has Clerk's own CDN URL
+                // (meaning they never uploaded a custom profile picture).
+                const existingUser = await User.findById(data.id).select('image');
+                const hasCustomImage = existingUser?.image &&
+                    !existingUser.image.includes('clerk.com') &&
+                    !existingUser.image.includes('img.clerk') &&
+                    !existingUser.image.includes('gravatar.com');
+
+                if (!hasCustomImage) {
+                    clerkUpdateFields.image = data.image_url;
                 }
-                await User.findByIdAndUpdate(data.id, userData)
+
+                await User.findByIdAndUpdate(data.id, { $set: clerkUpdateFields });
                 res.json({})
                 break;
             }

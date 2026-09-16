@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
 import {
@@ -6,7 +6,7 @@ import {
     Search, ChevronLeft, ChevronRight, MoreHorizontal,
     XCircle, Clock, Eye, RefreshCw, AlertCircle, Home,
     ArrowUpDown, SortAsc, SortDesc, TrendingUp, Users,
-    Filter, Shield, MapPin
+    Filter, Shield, MapPin, X, FileText, ChevronDown, ChevronUp, Globe, Phone, Link, Calendar
 } from 'lucide-react';
 
 /* ─────────────────────────────────────────────────────────
@@ -205,6 +205,79 @@ const Toast = ({ msg }) => msg ? (
 ) : null;
 
 /* ─────────────────────────────────────────────────────────
+   SLIDE-OVER PANEL FOR JOBS
+───────────────────────────────────────────────────────── */
+const ViewEmployerPanel = ({ open, employer, jobs, loading, onClose }) => {
+    if (!open) return null;
+    return (
+        <div className="fixed inset-0 z-[200] flex justify-end overflow-hidden">
+            {/* Backdrop */}
+            <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" onClick={onClose} />
+            
+            {/* Slide-over panel */}
+            <div className="relative w-full max-w-md bg-[#f8fafc] h-full shadow-2xl flex flex-col transition-transform transform translate-x-0 border-l border-slate-200">
+                {/* Header */}
+                <div className="bg-white px-6 py-5 border-b border-slate-100 flex items-center justify-between shrink-0">
+                    <div className="flex items-center gap-4">
+                        <EmployerAvatar emp={employer} />
+                        <div className="min-w-0">
+                            <h2 className="text-[16px] font-black text-slate-900 truncate">{employer?.name}</h2>
+                            <p className="text-[12px] font-medium text-slate-500 flex items-center gap-1 truncate"><Mail size={12} className="shrink-0"/>{employer?.email}</p>
+                        </div>
+                    </div>
+                    <button onClick={onClose} className="p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-full transition-colors shrink-0"><X size={18}/></button>
+                </div>
+                
+                {/* Content */}
+                <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-[14px] font-bold text-slate-800 flex items-center gap-2"><Briefcase size={16} className="text-blue-500"/> Posted Jobs</h3>
+                        <span className="bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full text-[11px] font-bold">{jobs?.length || 0} Jobs</span>
+                    </div>
+
+                    {loading ? (
+                        <div className="flex flex-col items-center justify-center py-20 gap-3">
+                            <div className="w-8 h-8 rounded-full border-[3px] border-slate-200 border-t-blue-600 animate-spin" />
+                            <p className="text-[12px] font-bold text-slate-400">Loading jobs...</p>
+                        </div>
+                    ) : jobs && jobs.length > 0 ? (
+                        <div className="space-y-3">
+                            {jobs.map(job => (
+                                <div key={job._id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+                                    <div className="flex justify-between items-start mb-2 gap-2">
+                                        <h4 className="text-[14px] font-bold text-slate-900 line-clamp-2">{job.title}</h4>
+                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${job.visible ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
+                                            {job.visible ? 'Active' : 'Closed'}
+                                        </span>
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2">
+                                        <p className="text-[11px] font-medium text-slate-500 flex items-center gap-1"><MapPin size={12}/> {job.location}</p>
+                                        <p className="text-[11px] font-medium text-slate-500 flex items-center gap-1"><Briefcase size={12}/> {job.level}</p>
+                                        <p className="text-[11px] font-medium text-slate-500 flex items-center gap-1"><span className="font-bold text-slate-400">₹</span> {job.salary}</p>
+                                    </div>
+                                    <div className="mt-3 pt-3 border-t border-slate-50 flex justify-between items-center">
+                                        <p className="text-[10px] font-bold text-slate-400 flex items-center gap-1"><Clock size={11}/> Posted on {new Date(job.date).toLocaleDateString()}</p>
+                                        <p className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-md">{job.applicants || 0} Applicants</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="flex flex-col items-center justify-center py-16 text-center bg-white rounded-2xl border border-slate-100 border-dashed">
+                            <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center mb-3">
+                                <Briefcase size={24} className="text-slate-300" />
+                            </div>
+                            <p className="text-[13px] font-bold text-slate-600">No jobs posted yet</p>
+                            <p className="text-[11px] text-slate-400 mt-1 max-w-[200px]">This employer hasn't published any job listings on the platform.</p>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+/* ─────────────────────────────────────────────────────────
    SORT ICON
 ───────────────────────────────────────────────────────── */
 const SortIcon = ({ f, sf, sd }) =>
@@ -226,6 +299,10 @@ const EmployersManagement = () => {
     const [modal, setModal]                 = useState(null);   // { type, id, name }
     const [actionLoading, setActionLoading] = useState(null);
     const [toast, setToast]                 = useState('');
+    const [viewingEmp, setViewingEmp]       = useState(null);
+    const [expandedRow, setExpandedRow]     = useState(null);
+    const [empJobs, setEmpJobs]             = useState([]);
+    const [loadingJobs, setLoadingJobs]     = useState(false);
     const { user }                          = useContext(AuthContext);
     const PAGE = 8;
 
@@ -271,6 +348,25 @@ const EmployersManagement = () => {
         } catch (err) {
             showToast(`❌ ${err.response?.data?.message || 'Error deleting employer.'}`);
         } finally { setActionLoading(null); setModal(null); }
+    };
+
+    /* ── View Jobs ── */
+    const handleViewEmployer = async (emp) => {
+        setViewingEmp(emp);
+        setLoadingJobs(true);
+        setEmpJobs([]);
+        try {
+            const { data } = await axios.get(`/api/super-admin/employers/${emp._id}/jobs`, {
+                headers: { Authorization: `Bearer ${user.token}` }
+            });
+            if (data.success) {
+                setEmpJobs(data.jobs);
+            }
+        } catch (error) {
+            showToast('❌ Failed to load employer jobs');
+        } finally {
+            setLoadingJobs(false);
+        }
     };
 
     /* ── Stats ── */
@@ -553,14 +649,18 @@ const EmployersManagement = () => {
                                     </div>
                                 </td></tr>
                             ) : paginated.map((emp, idx) => (
-                                <tr key={emp._id}
+                                <React.Fragment key={emp._id}>
+                                <tr
                                     className="emp-row group transition-all duration-150 au"
                                     style={{ animationDelay: `${idx * 35}ms` }}>
 
                                     {/* Company Details */}
-                                    <td className="px-4 sm:px-6 py-4">
+                                    <td className="px-4 sm:px-6 py-4 cursor-pointer" onClick={() => setExpandedRow(expandedRow === emp._id ? null : emp._id)}>
                                         <div className="flex items-center gap-3">
-                                            <div className="relative group-hover:scale-105 transition-transform duration-300">
+                                            <div className="shrink-0">
+                                                {expandedRow === emp._id ? <ChevronUp size={16} className="text-gray-400"/> : <ChevronDown size={16} className="text-gray-400"/>}
+                                            </div>
+                                            <div className="relative group-hover:scale-105 transition-transform duration-300 shrink-0">
                                                 <EmployerAvatar emp={emp}/>
                                             </div>
                                             <div className="min-w-0">
@@ -594,8 +694,10 @@ const EmployersManagement = () => {
                                     <td className="px-4 sm:px-6 py-4">
                                         <div className="flex items-center justify-end gap-1.5">
                                             {/* View */}
-                                            <button className="p-1.5 rounded-lg hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors opacity-0 group-hover:opacity-100" title="View">
-                                                <Eye size={14}/>
+                                            <button 
+                                                onClick={() => handleViewEmployer(emp)}
+                                                className="p-1.5 rounded-lg hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors" title="View Jobs">
+                                                <Eye size={16} className="text-blue-500"/>
                                             </button>
 
                                             {/* Approve (shown for Pending or Banned) */}
@@ -629,6 +731,76 @@ const EmployersManagement = () => {
                                         </div>
                                     </td>
                                 </tr>
+                                
+                                {/* Expanded Details Row */}
+                                {expandedRow === emp._id && (
+                                    <tr className="bg-gray-50/50 border-b border-gray-100 sc">
+                                        <td colSpan={4} className="p-0">
+                                            <div className="px-8 py-6 flex flex-col md:flex-row gap-8">
+                                                
+                                                {/* Left column: Overview */}
+                                                <div className="flex-1 space-y-4">
+                                                    <div>
+                                                        <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5"><FileText size={12}/> Description</h4>
+                                                        <p className="text-[12px] text-gray-600 font-medium leading-relaxed bg-white p-3 rounded-xl border border-gray-100">{emp.description || 'No description provided.'}</p>
+                                                    </div>
+                                                    {emp.keyResponsibilities && (
+                                                        <div>
+                                                            <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5"><Briefcase size={12}/> Hiring Needs / Responsibilities</h4>
+                                                            <p className="text-[12px] text-gray-600 font-medium leading-relaxed bg-white p-3 rounded-xl border border-gray-100">{emp.keyResponsibilities}</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* Right column: Quick Facts */}
+                                                <div className="w-full md:w-72 space-y-3 shrink-0">
+                                                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 border-b border-gray-200 pb-1 flex items-center gap-1.5"><Building2 size={12}/> Company Profile</h4>
+                                                    
+                                                    <div className="bg-white rounded-xl border border-gray-100 overflow-hidden divide-y divide-gray-50">
+                                                        <div className="px-3 py-2 flex items-center justify-between">
+                                                            <span className="text-[11px] text-gray-500 font-medium flex items-center gap-1.5"><Building2 size={12} className="text-gray-400"/> Industry</span>
+                                                            <span className="text-[11px] font-bold text-gray-900">{emp.industry || '—'}</span>
+                                                        </div>
+                                                        <div className="px-3 py-2 flex items-center justify-between">
+                                                            <span className="text-[11px] text-gray-500 font-medium flex items-center gap-1.5"><Users size={12} className="text-gray-400"/> Size</span>
+                                                            <span className="text-[11px] font-bold text-gray-900">{emp.companySize || '—'}</span>
+                                                        </div>
+                                                        <div className="px-3 py-2 flex items-center justify-between">
+                                                            <span className="text-[11px] text-gray-500 font-medium flex items-center gap-1.5"><Calendar size={12} className="text-gray-400"/> Founded</span>
+                                                            <span className="text-[11px] font-bold text-gray-900">{emp.foundedYear || '—'}</span>
+                                                        </div>
+                                                        <div className="px-3 py-2 flex items-center justify-between">
+                                                            <span className="text-[11px] text-gray-500 font-medium flex items-center gap-1.5"><MapPin size={12} className="text-gray-400"/> Location</span>
+                                                            <span className="text-[11px] font-bold text-gray-900 truncate max-w-[120px]" title={emp.location}>{emp.location || '—'}</span>
+                                                        </div>
+                                                    </div>
+
+                                                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 mt-4 border-b border-gray-200 pb-1 flex items-center gap-1.5"><Phone size={12}/> Contact</h4>
+                                                    <div className="bg-white rounded-xl border border-gray-100 overflow-hidden divide-y divide-gray-50">
+                                                        <div className="px-3 py-2 flex items-center justify-between">
+                                                            <span className="text-[11px] text-gray-500 font-medium flex items-center gap-1.5"><Phone size={12} className="text-gray-400"/> Phone</span>
+                                                            <span className="text-[11px] font-bold text-gray-900">{emp.contactDetails || '—'}</span>
+                                                        </div>
+                                                        {emp.website && (
+                                                            <a href={emp.website.startsWith('http') ? emp.website : `https://${emp.website}`} target="_blank" rel="noreferrer" className="px-3 py-2 flex items-center justify-between hover:bg-gray-50 transition-colors group">
+                                                                <span className="text-[11px] text-gray-500 font-medium flex items-center gap-1.5"><Globe size={12} className="text-gray-400"/> Website</span>
+                                                                <span className="text-[11px] font-bold text-blue-600 truncate max-w-[120px] group-hover:underline">{emp.website}</span>
+                                                            </a>
+                                                        )}
+                                                        {emp.linkedinUrl && (
+                                                            <a href={emp.linkedinUrl.startsWith('http') ? emp.linkedinUrl : `https://${emp.linkedinUrl}`} target="_blank" rel="noreferrer" className="px-3 py-2 flex items-center justify-between hover:bg-blue-50/50 transition-colors group">
+                                                                <span className="text-[11px] text-gray-500 font-medium flex items-center gap-1.5"><Link size={12} className="text-blue-500"/> LinkedIn</span>
+                                                                <span className="text-[11px] font-bold text-blue-600 truncate max-w-[120px] group-hover:underline">View Profile</span>
+                                                            </a>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                            </div>
+                                        </td>
+                                    </tr>
+                                )}
+                                </React.Fragment>
                             ))}
                         </tbody>
                     </table>

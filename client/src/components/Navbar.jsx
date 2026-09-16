@@ -1,13 +1,15 @@
 import { useContext, useState, useRef, useEffect } from 'react'
 import { assets } from '../assets/assets'
-import { useClerk, useUser } from '@clerk/clerk-react'
+import { useAuth, useClerk, useUser } from '@clerk/clerk-react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { AppContext } from '../context/AppContext'
+import { useSocket } from '../context/SocketContext'
+import axios from 'axios'
 import {
     Bell, ChevronDown, User as UserIcon, Settings,
     HelpCircle, LogOut, Search, Bookmark, Sun, Briefcase,
     Building2, GraduationCap, TrendingUp, LayoutGrid, Lightbulb,
-    Command
+    Command, CheckCircle2
 } from 'lucide-react'
 
 
@@ -20,10 +22,61 @@ const Navbar = () => {
     const { userData, setIsProfileModalOpen, setIsViewProfileModalOpen, searchFilter, setSearchFilter, setIsSearched, savedJobs } = useContext(AppContext)
 
     const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+    const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
+    const [notifications, setNotifications] = useState([])
     const [isSearchFocused, setIsSearchFocused] = useState(false)
     const [localSearch, setLocalSearch] = useState('')
     const dropdownRef = useRef(null)
+    const notifRef = useRef(null)
     const searchRef = useRef(null)
+    const { getToken } = useAuth()
+    const { backendUrl } = useContext(AppContext)
+    const { socket } = useSocket()
+
+    const fetchNotifications = async () => {
+        if (!user) return;
+        try {
+            const token = await getToken();
+            const { data } = await axios.get(`${backendUrl}/api/users/notifications`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (data.success) {
+                setNotifications(data.notifications);
+            }
+        } catch (error) {
+            console.error("Error fetching notifications:", error);
+        }
+    }
+
+    const markNotificationsAsRead = async () => {
+        try {
+            const token = await getToken();
+            await axios.put(`${backendUrl}/api/users/notifications/mark-read`, {}, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            fetchNotifications();
+        } catch (error) {
+            console.error("Error marking as read:", error);
+        }
+    }
+
+    useEffect(() => {
+        if (user) {
+            fetchNotifications();
+        }
+    }, [user])
+
+    useEffect(() => {
+        if (socket && user) {
+            const handleNotif = (data) => {
+                if (data.userId === user.id) {
+                    fetchNotifications();
+                }
+            };
+            socket.on('candidate_notification', handleNotif);
+            return () => socket.off('candidate_notification', handleNotif);
+        }
+    }, [socket, user])
 
     useEffect(() => {
         setLocalSearch(searchFilter.title || '')
@@ -40,6 +93,9 @@ const Navbar = () => {
         const handleClickOutside = (event) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
                 setIsDropdownOpen(false)
+            }
+            if (notifRef.current && !notifRef.current.contains(event.target)) {
+                setIsNotificationsOpen(false)
             }
         }
         document.addEventListener('mousedown', handleClickOutside)
@@ -149,14 +205,52 @@ const Navbar = () => {
                             </button>
 
                             {/* Bell */}
-                            <button
-                                onClick={() => navigate('/applications')}
-                                className='relative p-2 text-gray-500 hover:bg-gray-100 rounded-xl transition'
-                                title='Notifications'
-                            >
-                                <Bell size={18} />
-                                <span className='absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 border-2 border-white rounded-full'></span>
-                            </button>
+                            <div className='relative' ref={notifRef}>
+                                <button
+                                    onClick={() => {
+                                        setIsNotificationsOpen(!isNotificationsOpen)
+                                        if (!isNotificationsOpen) {
+                                            markNotificationsAsRead();
+                                        }
+                                    }}
+                                    className='relative p-2 text-gray-500 hover:bg-gray-100 rounded-xl transition'
+                                    title='Notifications'
+                                >
+                                    <Bell size={18} />
+                                    {notifications.some(n => !n.isRead) && (
+                                        <span className='absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 border-2 border-white rounded-full'></span>
+                                    )}
+                                </button>
+
+                                {/* Notifications Dropdown */}
+                                {isNotificationsOpen && (
+                                    <div className='absolute top-full right-0 mt-3 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-50 flex flex-col max-h-[400px]'>
+                                        <div className='p-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center'>
+                                            <h3 className='font-bold text-gray-800 text-sm'>Notifications</h3>
+                                        </div>
+                                        <div className='overflow-y-auto flex-1'>
+                                            {notifications.length === 0 ? (
+                                                <div className='p-8 text-center text-gray-500 text-sm'>No new notifications</div>
+                                            ) : (
+                                                notifications.map((notif, index) => (
+                                                    <div key={index} onClick={() => { if(notif.link) navigate(notif.link); setIsNotificationsOpen(false); }} className={`p-4 border-b border-gray-50 hover:bg-blue-50/50 cursor-pointer transition ${notif.isRead ? 'opacity-75' : 'bg-white'}`}>
+                                                        <div className='flex items-start gap-3'>
+                                                            <div className={`p-2 rounded-full mt-1 ${notif.type === 'Job_Status' ? 'bg-emerald-100 text-emerald-600' : 'bg-blue-100 text-blue-600'}`}>
+                                                                <Bell size={14} />
+                                                            </div>
+                                                            <div>
+                                                                <p className='text-sm font-semibold text-gray-800 leading-tight'>{notif.title}</p>
+                                                                <p className='text-xs text-gray-600 mt-1 leading-relaxed'>{notif.message}</p>
+                                                                <p className='text-[10px] text-gray-400 mt-2 font-medium uppercase tracking-wider'>{new Date(notif.date).toLocaleString()}</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
 
                             <div className='w-px h-6 bg-gray-200'></div>
 

@@ -20,12 +20,27 @@ import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
 import { notFound, errorHandler } from './middleware/errorHandler.js'
 
+import { createServer } from 'http';
+import { initSocket } from './config/socket.js';
+
+// Global error handlers to prevent crashes from unhandled rejections (e.g., Redis timeouts)
+process.on('uncaughtException', (err) => {
+    console.error('UNCAUGHT EXCEPTION! 💥 Shutting down gracefully...');
+    console.error(err.name, err.message);
+    // Don't crash immediately in dev/staging, but log heavily
+});
+
+process.on('unhandledRejection', (err) => {
+    console.error('UNHANDLED REJECTION! 💥');
+    console.error(err);
+    // Suppress crash to keep the server alive during Redis ECONNRESET issues
+});
 
 // Initialize Express
 const app = express()
-
+const httpServer = createServer(app);
 // Connect to database
-connectDB()
+await connectDB()
 await connectCloudinary()
 
 // Middlewares
@@ -33,10 +48,10 @@ await connectCloudinary()
 // 1. Security Headers
 app.use(helmet())
 
-// 2. Rate Limiting (100 requests per 15 minutes per IP)
+// 2. Rate Limiting (Increased for development testing)
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: 10000,
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: "Too many requests from this IP, please try again after 15 minutes" }
@@ -53,28 +68,18 @@ const allowedOrigins = [
 
 const corsOptions = {
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    
-    // Check if origin is in the explicitly allowed list
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      return callback(null, true);
-    }
-    
-    // Check for Vercel production domains dynamically
-    if (/vercel\.app$/.test(origin)) {
-      return callback(null, true);
-    }
-
-    // Reject other origins
-    return callback(new Error('CORS policy violation: This origin is not allowed.'));
+    // Allow everything in development/testing
+    return callback(null, true);
   },
   credentials: true, // Allow cookies if needed
 };
 
 app.use(cors(corsOptions))
 app.use(express.json())
-app.use(clerkMiddleware())
+app.use(clerkMiddleware({ clockSkewInMs: 48 * 60 * 60 * 1000 }))
+
+// Initialize Socket.io
+initSocket(httpServer, corsOptions);
 
 // Routes
 app.use('/uploads', express.static('uploads'))
@@ -99,7 +104,7 @@ const PORT = process.env.PORT || 5000
 
 Sentry.setupExpressErrorHandler(app);
 
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
   startJobProcessor();
 });

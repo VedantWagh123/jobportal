@@ -1,15 +1,24 @@
-import { useState, useContext } from 'react';
+import { useState, useContext, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
-import { Sparkles, Send, BrainCircuit, AlertCircle, Briefcase, TrendingUp, Activity, BarChart2 } from 'lucide-react';
+import { Sparkles, Send, BrainCircuit, AlertCircle, Briefcase, TrendingUp, Activity, BarChart2, Lightbulb } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import ReactMarkdown from 'react-markdown';
 
 const WhatIfSimulator = () => {
     const { user } = useContext(AuthContext);
-    const [prompt, setPrompt] = useState('');
+    const location = useLocation();
+    const [prompt, setPrompt] = useState(location.state?.initialPrompt || '');
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState(null);
     const [error, setError] = useState('');
+
+    useEffect(() => {
+        if (location.state?.initialPrompt) {
+            setPrompt(location.state.initialPrompt);
+        }
+    }, [location.state?.initialPrompt]);
 
     const handleSimulate = async (e) => {
         e.preventDefault();
@@ -126,44 +135,56 @@ const WhatIfSimulator = () => {
                                 <BrainCircuit size={16} className="text-indigo-600"/> 
                                 AI Understood
                             </h3>
-                            <div className="space-y-3">
-                                <div>
-                                    <p className="text-xs text-gray-500">Target Skill</p>
-                                    <p className="font-semibold text-gray-900">{result?.intent?.skill || 'General'}</p>
+                            {result?.intent?.queryType === 'open_ended_suggestion' ? (
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-2 text-indigo-700 bg-indigo-50 p-3 rounded-xl border border-indigo-100">
+                                        <Lightbulb size={18} />
+                                        <p className="text-sm font-semibold">Open Ended Suggestion</p>
+                                    </div>
+                                    <p className="text-xs text-gray-500 mt-2">The AI is analyzing the top skill gaps across the state to provide you with the best course recommendations.</p>
                                 </div>
-                                <div>
-                                    <p className="text-xs text-gray-500">District Focus</p>
-                                    <p className="font-semibold text-gray-900">{result?.intent?.district || 'Overall'}</p>
+                            ) : (
+                                <div className="space-y-3">
+                                    <div>
+                                        <p className="text-xs text-gray-500">Target Skill</p>
+                                        <p className="font-semibold text-gray-900">{result?.intent?.skill || 'General'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-gray-500">District Focus</p>
+                                        <p className="font-semibold text-gray-900">{result?.intent?.district || 'Overall'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-gray-500">Proposed Injection</p>
+                                        <p className="font-semibold text-indigo-600">+{result?.intent?.estimatedSeats || 0} Seats ({result?.intent?.proposedBatches || 0} Batches)</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="text-xs text-gray-500">Proposed Injection</p>
-                                    <p className="font-semibold text-indigo-600">+{result?.intent?.estimatedSeats || 0} Seats ({result?.intent?.proposedBatches || 0} Batches)</p>
-                                </div>
-                            </div>
+                            )}
                         </div>
 
-                        <div className="bg-slate-900 p-5 rounded-xl border border-slate-800 shadow-sm text-white">
-                            <h3 className="text-sm font-bold mb-4 flex items-center gap-2 uppercase tracking-wider">
-                                <Activity size={16} className="text-emerald-400"/> 
-                                Current Reality
-                            </h3>
-                            <div className="space-y-4">
-                                <div className="flex justify-between items-end border-b border-slate-700 pb-2">
-                                    <p className="text-sm text-slate-400">Total Active Jobs</p>
-                                    <p className="text-xl font-bold">{result?.marketData?.activeJobs || 0}</p>
-                                </div>
-                                <div className="flex justify-between items-end border-b border-slate-700 pb-2">
-                                    <p className="text-sm text-slate-400">Current Enrolled</p>
-                                    <p className="text-xl font-bold">{result?.marketData?.currentSupply || 0}</p>
-                                </div>
-                                <div className="flex justify-between items-end">
-                                    <p className="text-sm text-slate-400">Current Gap</p>
-                                    <p className={`text-xl font-bold ${result?.marketData?.gap > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
-                                        {result?.marketData?.gap > 0 ? `+${result?.marketData?.gap} Shortage` : 'Balanced'}
-                                    </p>
+                        {result?.intent?.queryType !== 'open_ended_suggestion' && (
+                            <div className="bg-slate-900 p-5 rounded-xl border border-slate-800 shadow-sm text-white">
+                                <h3 className="text-sm font-bold mb-4 flex items-center gap-2 uppercase tracking-wider">
+                                    <Activity size={16} className="text-emerald-400"/> 
+                                    Current Reality
+                                </h3>
+                                <div className="space-y-4">
+                                    <div className="flex justify-between items-end border-b border-slate-700 pb-2">
+                                        <p className="text-sm text-slate-400">Total Active Jobs</p>
+                                        <p className="text-xl font-bold">{result?.marketData?.activeJobs || 0}</p>
+                                    </div>
+                                    <div className="flex justify-between items-end border-b border-slate-700 pb-2">
+                                        <p className="text-sm text-slate-400">Current Enrolled</p>
+                                        <p className="text-xl font-bold">{result?.marketData?.currentSupply || 0}</p>
+                                    </div>
+                                    <div className="flex justify-between items-end">
+                                        <p className="text-sm text-slate-400">Current Gap</p>
+                                        <p className={`text-xl font-bold ${result?.marketData?.gap > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                                            {result?.marketData?.gap > 0 ? `+${result?.marketData?.gap} Shortage` : 'Balanced'}
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        )}
                     </div>
 
                     {/* Right Column: AI Final Prediction */}
@@ -173,39 +194,39 @@ const WhatIfSimulator = () => {
                                 <Sparkles size={24} className="text-indigo-600"/> 
                                 Gemini AI Prediction
                             </h3>
-                            <div className="prose prose-indigo max-w-none text-gray-700 leading-relaxed mb-8">
+                            <div className="prose prose-indigo prose-sm max-w-none text-gray-700 leading-relaxed mb-8">
                                 {result?.prediction ? (
-                                    result.prediction.split('\n').map((paragraph, idx) => (
-                                        <p key={idx}>{paragraph}</p>
-                                    ))
+                                    <ReactMarkdown>{result.prediction}</ReactMarkdown>
                                 ) : (
                                     <p>Loading prediction...</p>
                                 )}
                             </div>
 
                             {/* Recharts Visualization */}
-                            <div className="bg-white p-6 rounded-xl border border-indigo-50 shadow-sm mt-6 mb-8">
-                                <h4 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2 uppercase tracking-wider">
-                                    <BarChart2 size={16} className="text-indigo-600"/> 
-                                    Impact Visualization
-                                </h4>
-                                <div className="h-[250px]">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#6b7280', fontSize: 13, fontWeight: 500}} dy={10} />
-                                            <YAxis axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: 12}} />
-                                            <Tooltip 
-                                                cursor={{fill: '#f8fafc'}}
-                                                contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.05)' }}
-                                            />
-                                            <Legend wrapperStyle={{ paddingTop: '15px' }} />
-                                            <Bar dataKey="Current State" fill="#94a3b8" radius={[4, 4, 0, 0]} barSize={40} />
-                                            <Bar dataKey="Simulated Future" fill="#4f46e5" radius={[4, 4, 0, 0]} barSize={40} />
-                                        </BarChart>
-                                    </ResponsiveContainer>
+                            {result?.intent?.queryType !== 'open_ended_suggestion' && (
+                                <div className="bg-white p-6 rounded-xl border border-indigo-50 shadow-sm mt-6 mb-8">
+                                    <h4 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2 uppercase tracking-wider">
+                                        <BarChart2 size={16} className="text-indigo-600"/> 
+                                        Impact Visualization
+                                    </h4>
+                                    <div className="h-[250px]">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#6b7280', fontSize: 13, fontWeight: 500}} dy={10} />
+                                                <YAxis axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: 12}} />
+                                                <Tooltip 
+                                                    cursor={{fill: '#f8fafc'}}
+                                                    contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.05)' }}
+                                                />
+                                                <Legend wrapperStyle={{ paddingTop: '15px' }} />
+                                                <Bar dataKey="Current State" fill="#94a3b8" radius={[4, 4, 0, 0]} barSize={40} />
+                                                <Bar dataKey="Simulated Future" fill="#4f46e5" radius={[4, 4, 0, 0]} barSize={40} />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </div>
                                 </div>
-                            </div>
+                            )}
                             
                             <div className="mt-auto pt-6 border-t border-indigo-100 flex gap-4">
                                 <button className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2">

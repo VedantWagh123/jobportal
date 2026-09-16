@@ -7,7 +7,11 @@ import Skill from '../../models/Skill.js';
 import CourseSkill from '../../models/CourseSkill.js';
 import JobSkill from '../../models/JobSkill.js';
 import Job from '../../models/Job.js';
+import JobApplication from '../../models/JobApplication.js';
 import { generateResponse } from '../../services/geminiAiService.js';
+import { v2 as cloudinary } from 'cloudinary';
+import { getIO } from '../../config/socket.js';
+import { clearCache } from '../../utils/cache.js';
 
 // --- COURSES ---
 export const getMyCourses = async (req, res) => {
@@ -22,12 +26,23 @@ export const getMyCourses = async (req, res) => {
 export const createCourse = async (req, res) => {
     try {
         const { name, description, durationMonths, skills, location } = req.body;
+        
+        // Upload thumbnail to Cloudinary if provided
+        let imageUrl = '';
+        if (req.file) {
+            const imageUpload = await cloudinary.uploader.upload(req.file.path, {
+                folder: 'job_portal/course_thumbnails'
+            });
+            imageUrl = imageUpload.secure_url;
+        }
+
         const course = await Course.create({
             instituteId: req.institute._id,
             name,
             description,
             durationMonths,
-            location: location || 'Online'
+            location: location || 'Online',
+            image: imageUrl
         });
 
         if (skills && Array.isArray(skills)) {
@@ -50,9 +65,60 @@ export const createCourse = async (req, res) => {
             }
         }
 
+        // Emit real-time WebSockets event
+        try {
+            const io = getIO();
+            io.emit('notification', { message: `New Course Added: "${course.name}"`, type: 'course' });
+        } catch (err) {
+            console.error("Socket error:", err.message);
+        }
+
         res.status(201).json({ success: true, course });
     } catch (error) {
         console.error("COURSE CREATE ERROR:", error);
+        res.status(500).json({ success: false, message: error.message || 'Server Error' });
+    }
+};
+
+export const updateCourse = async (req, res) => {
+    try {
+        const course = await Course.findOne({ _id: req.params.id, instituteId: req.institute._id });
+        if (!course) return res.status(404).json({ success: false, message: 'Course not found' });
+
+        const { name, description, durationMonths, location, skills } = req.body;
+
+        // Upload new thumbnail if provided
+        if (req.file) {
+            const imageUpload = await cloudinary.uploader.upload(req.file.path, {
+                folder: 'job_portal/course_thumbnails'
+            });
+            course.image = imageUpload.secure_url;
+        }
+
+        if (name) course.name = name;
+        if (description !== undefined) course.description = description;
+        if (durationMonths) course.durationMonths = durationMonths;
+        if (location) course.location = location;
+
+        await course.save();
+
+        // Update skills if provided
+        if (skills && Array.isArray(skills)) {
+            // Remove old skills
+            await CourseSkill.deleteMany({ courseId: course._id });
+            // Add new skills
+            for (const skillName of skills) {
+                const cleanName = skillName.trim();
+                if (!cleanName) continue;
+                let skill = await Skill.findOne({ name: { $regex: new RegExp(`^${cleanName}$`, 'i') } });
+                if (!skill) skill = await Skill.create({ name: cleanName });
+                await CourseSkill.create({ courseId: course._id, skillId: skill._id, proficiencyTaught: 'Intermediate' });
+            }
+        }
+
+        res.json({ success: true, course });
+    } catch (error) {
+        console.error("COURSE UPDATE ERROR:", error);
         res.status(500).json({ success: false, message: error.message || 'Server Error' });
     }
 };
@@ -93,6 +159,26 @@ export const deleteCourse = async (req, res) => {
     }
 };
 
+export const updateCourseCurriculum = async (req, res) => {
+    try {
+        const { curriculum } = req.body;
+        const course = await Course.findOneAndUpdate(
+            { _id: req.params.id, instituteId: req.institute._id },
+            { curriculum },
+            { new: true }
+        );
+        
+        if (!course) {
+            return res.status(404).json({ success: false, message: 'Course not found' });
+        }
+        
+        res.json({ success: true, course });
+    } catch (error) {
+        console.error("UPDATE CURRICULUM ERROR:", error);
+        res.status(500).json({ success: false, message: 'Failed to update curriculum' });
+    }
+};
+
 // --- BATCHES ---
 export const getMyBatches = async (req, res) => {
     try {
@@ -126,6 +212,11 @@ export const createBatch = async (req, res) => {
         // Populate course name for the response
         await batch.populate('courseId', 'name');
         
+        clearCache('/api/state-admin');
+        try {
+            getIO().emit('dashboard_stale');
+        } catch (err) {}
+
         res.status(201).json({ success: true, batch });
     } catch (error) {
         console.error("BATCH CREATE ERROR:", error);
@@ -157,35 +248,114 @@ export const getBatchEnrollments = async (req, res) => {
 export const getInstituteAlerts = async (req, res) => {
     try {
         const instituteId = req.institute._id;
-        const institute = await TrainingInstitute.findById(instituteId);
-        
-        // 1. Fetch Real Metrics
-        const activeCourses = await Course.countDocuments({ instituteId });
-        
-        // Count total students enrolled in this institute's batches
-        const batches = await Batch.find({ instituteId }, '_id');
-        const batchIds = batches.map(b => b._id);
-        const totalStudents = await Enrollment.countDocuments({ batchId: { $in: batchIds } });
 
-        // 2. Fetch AI Alerts filtered by District (or global)
-        const activeAlerts = await CurriculumAlert.find({ 
-            status: 'Active',
-            $or: [
-                { districtId: institute.districtId },
-                { districtId: null }, // Global alerts
-                { districtId: { $exists: false } }
-            ]
-        })
-        .sort({ severity: -1, createdAt: -1 })
-        .limit(3);
-            
-        res.json({ 
-            success: true, 
-            alerts: activeAlerts,
+        // ─── PARALLEL BATCH 1 ────────────────────────────────────────────────
+        // All queries that only need instituteId can fire simultaneously
+        const [institute, activeCourses, allBatches, allInstituteCourses] = await Promise.all([
+            TrainingInstitute.findById(instituteId),
+            Course.countDocuments({ instituteId }),
+            // Fetch batches with full populate so we don't need a second Batch query
+            Batch.find({ instituteId })
+                .sort({ createdAt: -1 })
+                .populate('courseId', 'name')
+                .populate('trainerId', 'name'),
+            Course.find({ instituteId }),
+        ]);
+
+        const batchIds = allBatches.map(b => b._id);
+        const instituteCourseIds = allInstituteCourses
+            .filter(c => c.isActive !== false)
+            .map(c => c._id);
+
+        // ─── PARALLEL BATCH 2 ────────────────────────────────────────────────
+        // Now fire all queries that depend on batch 1 results simultaneously
+        const [totalStudents, activeAlerts, coveredCourseSkills, allEnrollments] = await Promise.all([
+            Enrollment.countDocuments({ batchId: { $in: batchIds } }),
+            CurriculumAlert.find({
+                status: 'Active',
+                $or: [
+                    { districtId: institute?.districtId },
+                    { districtId: null },
+                    { districtId: { $exists: false } }
+                ]
+            }).sort({ severity: -1, createdAt: -1 }).limit(10),
+            CourseSkill.find({ courseId: { $in: instituteCourseIds } })
+                .populate('skillId', 'name'),
+            Enrollment.find({ batchId: { $in: batchIds } }).populate('batchId'),
+        ]);
+
+        // ─── PARALLEL BATCH 3 ────────────────────────────────────────────────
+        // Only needs userIds derived from enrollments
+        const userIds = [...new Set(allEnrollments.map(e => e.userId))];
+        const userApplications = userIds.length > 0
+            ? await JobApplication.find({ userId: { $in: userIds } })
+            : [];
+
+        // ─── COMPUTE ─────────────────────────────────────────────────────────
+
+        // Filter alerts — hide skills institute already covers
+        const alreadyCoveredSkillNames = new Set(
+            coveredCourseSkills
+                .filter(cs => cs.skillId)
+                .map(cs => cs.skillId.name.toLowerCase().trim())
+        );
+        const filteredAlerts = activeAlerts.filter(alert => {
+            const alertSkill = (alert.skill || alert.skillName || '').toLowerCase().trim();
+            if (!alertSkill) return true;
+            for (const coveredSkill of alreadyCoveredSkillNames) {
+                if (coveredSkill.includes(alertSkill) || alertSkill.includes(coveredSkill)) return false;
+            }
+            return true;
+        }).slice(0, 3);
+
+        // Live batches (top 5 from already-fetched allBatches)
+        const liveBatches = allBatches.slice(0, 5);
+
+        // Placement performance
+        const placementDataMap = new Map();
+        allInstituteCourses.forEach(c => {
+            placementDataMap.set(c._id.toString(), { name: c.name, enrolled: 0, placed: 0 });
+        });
+
+        const userAppMap = new Map();
+        userApplications.forEach(app => {
+            if (!userAppMap.has(app.userId.toString())) userAppMap.set(app.userId.toString(), []);
+            userAppMap.get(app.userId.toString()).push(app);
+        });
+
+        allEnrollments.forEach(enrollment => {
+            if (enrollment.batchId?.courseId) {
+                const courseIdStr = enrollment.batchId.courseId.toString();
+                if (placementDataMap.has(courseIdStr)) {
+                    const data = placementDataMap.get(courseIdStr);
+                    data.enrolled += 1;
+                    const apps = userAppMap.get(enrollment.userId?.toString()) || [];
+                    if (apps.some(app => app.status === 'Hired')) data.placed += 1;
+                }
+            }
+        });
+
+        let placementData = Array.from(placementDataMap.values()).filter(d => d.enrolled > 0);
+        if (placementData.length === 0) {
+            placementData = Array.from(placementDataMap.values()).slice(0, 5);
+        }
+
+        const totalEnrolledGlobal = placementData.reduce((acc, curr) => acc + curr.enrolled, 0);
+        const totalPlacedGlobal = placementData.reduce((acc, curr) => acc + curr.placed, 0);
+        const overallPlacementRate = totalEnrolledGlobal > 0
+            ? Math.round((totalPlacedGlobal / totalEnrolledGlobal) * 100)
+            : 0;
+
+        res.json({
+            success: true,
+            alerts: filteredAlerts,
             metrics: {
                 activeCourses,
                 totalStudents,
-                totalBatches: batches.length
+                totalBatches: allBatches.length,
+                liveBatches,
+                placementData,
+                overallPlacementRate
             }
         });
     } catch (error) {
@@ -204,6 +374,12 @@ export const updateBatchStatus = async (req, res) => {
         ).populate('courseId', 'name');
         
         if (!batch) return res.status(404).json({ success: false, message: 'Batch not found' });
+
+        clearCache('/api/state-admin');
+        try {
+            getIO().emit('dashboard_stale');
+        } catch (err) {}
+
         res.json({ success: true, batch });
     } catch (error) {
         res.status(500).json({ success: false, message: 'Server Error' });
@@ -227,6 +403,11 @@ export const updateBatch = async (req, res) => {
         await batch.save();
         await batch.populate('courseId', 'name');
         
+        clearCache('/api/state-admin');
+        try {
+            getIO().emit('dashboard_stale');
+        } catch (err) {}
+
         res.json({ success: true, message: 'Batch updated', batch });
     } catch (error) {
         console.error("BATCH UPDATE ERROR:", error);
@@ -363,51 +544,45 @@ CLICKED INSIGHT: ${JSON.stringify(insight)}`;
 // --- CURRICULUM GAP ---
 export const getCurriculumGap = async (req, res) => {
     try {
-        // 1. Get skills taught by this institute
-        const myCourses = await Course.find({ instituteId: req.institute._id }).select('_id');
-        const myCourseIds = myCourses.map(c => c._id);
-        const myCourseSkills = await CourseSkill.find({ courseId: { $in: myCourseIds } }).populate('skillId');
-        
-        // Normalize names to lowercase for robust comparison
-        const taughtSkillNamesRaw = myCourseSkills.map(cs => cs.skillId?.name || '').filter(Boolean);
-        const taughtSkillsLower = [...new Set(taughtSkillNamesRaw.map(s => s.toLowerCase()))];
-        const taughtSkillsActual = [...new Set(taughtSkillNamesRaw)];
+        // ─── PARALLEL BATCH 1 ────────────────────────────────────────────────
+        // Both are independent — fire simultaneously
+        const [myCourses, activeJobs] = await Promise.all([
+            Course.find({ instituteId: req.institute._id }).select('_id'),
+            Job.find({ status: 'Open' }).select('_id'),
+        ]);
 
-        // 2. Get top demanded skills from active Jobs
-        // In a real app we'd filter by district/state, here we aggregate globally
-        const activeJobs = await Job.find({ status: 'Open' }).select('_id');
+        const myCourseIds = myCourses.map(c => c._id);
         const activeJobIds = activeJobs.map(j => j._id);
 
-        const topJobSkills = await JobSkill.aggregate([
-            { $match: { jobId: { $in: activeJobIds } } },
-            { $group: { _id: "$skillId", demandCount: { $sum: 1 } } },
-            { $sort: { demandCount: -1 } },
-            { $limit: 25 }
+        // ─── PARALLEL BATCH 2 ────────────────────────────────────────────────
+        // Both depend on batch 1 results — fire simultaneously
+        const [myCourseSkills, topJobSkills] = await Promise.all([
+            CourseSkill.find({ courseId: { $in: myCourseIds } }).populate('skillId'),
+            JobSkill.aggregate([
+                { $match: { jobId: { $in: activeJobIds } } },
+                { $group: { _id: "$skillId", demandCount: { $sum: 1 } } },
+                { $sort: { demandCount: -1 } },
+                { $limit: 25 }
+            ]),
         ]);
 
         await Skill.populate(topJobSkills, { path: '_id', select: 'name' });
 
+        // ─── COMPUTE ─────────────────────────────────────────────────────────
+        const taughtSkillNamesRaw = myCourseSkills.map(cs => cs.skillId?.name || '').filter(Boolean);
+        const taughtSkillsLower = [...new Set(taughtSkillNamesRaw.map(s => s.toLowerCase()))];
+        const taughtSkillsActual = [...new Set(taughtSkillNamesRaw)];
+
         const marketDemand = topJobSkills
             .filter(js => js._id && js._id.name)
-            .map(js => ({
-                name: js._id.name,
-                demandCount: js.demandCount
-            }));
+            .map(js => ({ name: js._id.name, demandCount: js.demandCount }));
 
-        // 3. Identify Missing Skills (Gap)
         const missingSkills = marketDemand.filter(ms => !taughtSkillsLower.includes(ms.name.toLowerCase()));
-        
-        // We can also flag "Covered" skills for UI
-        const coveredSkills = marketDemand.filter(ms => taughtSkillsLower.includes(ms.name.toLowerCase()));
+        const coveredSkills  = marketDemand.filter(ms =>  taughtSkillsLower.includes(ms.name.toLowerCase()));
 
-        res.json({ 
-            success: true, 
-            gapData: {
-                taughtSkills: taughtSkillsActual,
-                marketDemand,
-                missingSkills,
-                coveredSkills
-            } 
+        res.json({
+            success: true,
+            gapData: { taughtSkills: taughtSkillsActual, marketDemand, missingSkills, coveredSkills }
         });
     } catch (error) {
         console.error("CURRICULUM GAP ERROR:", error);

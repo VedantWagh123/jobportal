@@ -179,3 +179,36 @@ Agar is project ko ekdum solid level pe le jana hai, toh yeh step-by-step karo:
 - **Implementation:** Local Ollama API (localhost:11434) ka use karke images bhejo aur JSON mein skills wapas paao.
 
 Agar tum chaho toh, main tumhe direct Code Edits provide kar sakta hu inmein se kisi bhi problem ko fix karne ya naye feature ko implement karne ke liye. Kahan se start karna hai batao?
+
+---
+
+## 🧠 7. Interview preparation & Business Logic (New Logic)
+
+> [!TIP]
+> Yeh questions aur unke logical answers tumhe kisi bhi SIH judge ya Recruiter ke saamne ek "Senior Developer" ya "Product Mindset" wala engineer sabit karenge.
+
+### Q1. Architecture & Design
+- **Q:** Alag-alag portals kyu banaye? (Micro-dashboards vs Single dashboard)
+- **Q:** State Admin ka data isolate kaise kiya? (State-wise RBAC and data filtering based on user session).
+- **Q:** Accounts sync/merge kaise kiye? (Clerk IDs vs DB Emails reconciliation logic).
+
+### Q2. Queue Implementation
+- **Q:** Resume parsing ke liye BullMQ/Redis kyu?
+  - **A:** Synchronous parsing mein API timeout ho jayegi agar 1000 bachhe ek saath upload karein. Queue async processing ensure karta hai.
+- **Q:** Gemini API ka fallback kya hai?
+  - **A:** Rate limit hit hone par system fallback karke local Ollama model switch ho jata hai.
+
+### Q3. The "Curriculum Gap" Scenario (Deep Business Logic)
+- **Scenario:** *300 Python Jobs (Demand), 300 Students taught (Supply), par sirf 200 place hue. Galti kiski aur aage kya hoga?*
+- **Breakdown of Faults:**
+  1. **Institute Ki Galti (Curriculum Gap):** Industry required "Django", but they taught only "Basic Syntax".
+  2. **Student Ki Galti (Employability Gap):** Poor soft skills or no portfolio projects.
+  3. **Government Ki Galti:** Monitored quantity (number trained) but not quality.
+- **How the 200 got placed despite incomplete training?**
+  1. *Self-Taught:* They used Udemy/YouTube to learn Django on their own.
+  2. *Varying Job Roles:* Some of the 300 jobs only needed basic Python (e.g. testing), or employers hired for attitude to train later.
+  3. *Better Soft Skills:* They presented themselves well.
+- **How Our AI Platform Handles the 100 Failed Students:**
+  1. **AI Micro-Upskilling:** Analyzes their exact feedback ("Lacks Django") and recommends a specific 1-month Bridge Course instead of a full course.
+  2. **Alternative Roles:** Suggests parallel paths (like QA Tester instead of Backend Dev) based on existing skills.
+  3. **Feedback Loop:** Flags the Institute on the State Dashboard with a "Curriculum Alert" for poor quality training.

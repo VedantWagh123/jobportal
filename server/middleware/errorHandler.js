@@ -7,6 +7,7 @@ export const notFound = (req, res, next) => {
 export const errorHandler = (err, req, res, next) => {
     let statusCode = res.statusCode === 200 ? 500 : res.statusCode;
     let message = err.message;
+    import('fs').then(fs => fs.appendFileSync('error_log.txt', new Date().toISOString() + '\\n' + err.stack + '\\n\\n'));
 
     // Handle mongoose CastError (invalid ObjectId)
     if (err.name === 'CastError' && err.kind === 'ObjectId') {

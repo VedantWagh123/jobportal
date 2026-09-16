@@ -11,13 +11,16 @@
   },
   "dependencies": {
     "@svg-maps/india": "^2.0.0",
+    "@tanstack/react-query": "^5.102.8",
     "axios": "^1.20.0",
     "lucide-react": "^1.41.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-is": "^19.2.8",
     "react-svg-map": "^2.2.0",
-    "recharts": "^3.10.1"
+    "react-toastify": "^11.1.0",
+    "recharts": "^3.10.1",
+    "socket.io-client": "^4.8.3"
   },
   "devDependencies": {
     "@types/react": "^19.2.18",

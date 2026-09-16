@@ -10,7 +10,8 @@ const userSchema = new mongoose.Schema({
     phone: { type: String },
     address: { type: String },
     city: { type: String },
-    college: { type: String }
+    college: { type: String },
+    savedJobs: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Job' }]
 })
 
 const User = mongoose.model('User', userSchema)
