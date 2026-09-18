@@ -33,8 +33,14 @@ export const AppContextProvider = (props) => {
     const [instituteToken, setInstituteToken] = useState(null)
     const [companyData, setCompanyData] = useState(null)
 
-    const [userData, setUserData] = useState(null)
-    const [userApplications, setUserApplications] = useState([])
+    const [userData, setUserData] = useState(() => {
+        const saved = localStorage.getItem('candidateUserData');
+        return saved ? JSON.parse(saved) : null;
+    })
+    const [userApplications, setUserApplications] = useState(() => {
+        const saved = localStorage.getItem('candidateUserApps');
+        return saved ? JSON.parse(saved) : [];
+    })
     const [savedJobs, setSavedJobs] = useState([])
     const [isChatbotOpen, setIsChatbotOpen] = useState(false)
     const prevUserRef = useRef(undefined)
@@ -153,6 +159,7 @@ export const AppContextProvider = (props) => {
 
             if (data.success) {
                 setUserData(data.user)
+                localStorage.setItem('candidateUserData', JSON.stringify(data.user))
                 if (data.user.savedJobs) {
                     setSavedJobs(data.user.savedJobs)
                 }
@@ -184,6 +191,7 @@ export const AppContextProvider = (props) => {
             )
             if (data.success) {
                 setUserApplications(data.applications)
+                localStorage.setItem('candidateUserApps', JSON.stringify(data.applications))
             } else {
                 // Silently ignore auth-related errors on load
                 const silentMessages = ['User Not Found', 'Clerk authentication failed or token missing.', 'Unauthorized: No Clerk session.'];
@@ -234,6 +242,8 @@ export const AppContextProvider = (props) => {
             // User has signed out — clear user data
             setUserData(null);
             setUserApplications([]);
+            localStorage.removeItem('candidateUserData');
+            localStorage.removeItem('candidateUserApps');
         }
 
         // --- Session Isolation via Clerk User ID ---

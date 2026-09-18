@@ -46,28 +46,28 @@ const UserSidebar = () => {
                             <Link
                                 key={path}
                                 to={path}
-                                className={`flex items-center justify-between px-3 py-2.5 rounded-xl transition-all duration-200 group
+                                className={`flex items-center justify-between px-3 py-2.5 rounded-[12px] transition-all duration-200 group
                                     ${active
-                                        ? 'bg-blue-600 text-white font-semibold shadow-md shadow-blue-500/20'
-                                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                                        ? 'bg-blue-50 text-blue-600 font-bold'
+                                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                                     }`}
                             >
                                 <div className='flex items-center gap-3'>
                                     <Icon
                                         size={18}
-                                        className={active ? 'text-white' : 'text-gray-500 group-hover:text-gray-700'}
+                                        className={active ? 'text-blue-600' : 'text-gray-500 group-hover:text-gray-700'}
                                     />
                                     <span className='text-sm font-medium'>{label}</span>
                                 </div>
                                 {badge !== null && badge !== undefined && (
                                     badgeType === 'count' ? (
                                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full leading-none
-                                            ${active ? 'bg-white/25 text-white' : 'bg-blue-100 text-blue-700'}`}>
+                                            ${active ? 'bg-blue-100 text-blue-700' : 'bg-blue-100 text-blue-700'}`}>
                                             {badge}
                                         </span>
                                     ) : (
                                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full leading-none
-                                            ${active ? 'bg-white/25 text-white' : 'bg-emerald-100 text-emerald-700'}`}>
+                                            ${active ? 'bg-emerald-100 text-emerald-700' : 'bg-emerald-100 text-emerald-700'}`}>
                                             {badge}
                                         </span>
                                     )
@@ -131,46 +131,39 @@ const UserSidebar = () => {
             </div>
 
             {/* ── Career Growth Widget ── */}
-            <div className='p-4 mt-auto'>
-                <div className='relative overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-50/80 border border-blue-100/60 rounded-[20px] p-4 text-gray-800 shadow-[0_2px_10px_rgba(37,99,235,0.05)]'>
-                    {/* Illustration Composition */}
-                    <div className='flex justify-center mb-3 relative'>
-                        <div className="relative w-14 h-14">
-                            <div className="absolute inset-0 bg-blue-200/40 rounded-full animate-pulse"></div>
-                            <div className="absolute inset-1.5 bg-white rounded-full flex items-center justify-center shadow-sm">
-                                <TrendingUp size={20} className="text-blue-600" strokeWidth={2.5} />
-                            </div>
-                            <div className="absolute -top-1 -right-1 w-5 h-5 bg-amber-400 rounded-full border-2 border-white flex items-center justify-center shadow-sm">
-                                <span className="text-[9px] text-amber-900 font-extrabold">★</span>
-                            </div>
+            <div className='p-4 mt-auto mb-2'>
+                <div className='relative bg-[#F8FAFC] border border-gray-100 rounded-[20px] p-5 text-gray-800 flex flex-col items-center text-center'>
+                    <div className='flex justify-center mb-4'>
+                        <div className="w-12 h-12 bg-amber-100/80 rounded-full flex items-center justify-center">
+                            <Crown size={22} className="text-amber-500" fill="currentColor" />
                         </div>
                     </div>
 
-                    <h4 className='font-bold text-[13px] text-center leading-snug mb-3.5 text-gray-800'>Upgrade Your Career Journey</h4>
+                    <h4 className='font-bold text-[14px] leading-snug mb-4 text-gray-900 px-2'>Upgrade Your Career Journey</h4>
                     
-                    <ul className="flex flex-col gap-2 mb-4 px-1">
-                        <li className="flex items-start gap-2">
-                            <div className="mt-0.5 w-[14px] h-[14px] shrink-0 flex items-center justify-center rounded-full bg-blue-600 text-white shadow-sm">
+                    <ul className="flex flex-col gap-2.5 mb-5 w-full text-left">
+                        <li className="flex items-start gap-2.5">
+                            <div className="mt-0.5 w-[14px] h-[14px] shrink-0 flex items-center justify-center rounded-full bg-blue-600 text-white">
                                 <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                             </div>
                             <span className="text-[11px] font-medium text-gray-600 leading-tight">Get personalized job matches</span>
                         </li>
-                        <li className="flex items-start gap-2">
-                            <div className="mt-0.5 w-[14px] h-[14px] shrink-0 flex items-center justify-center rounded-full bg-blue-600 text-white shadow-sm">
+                        <li className="flex items-start gap-2.5">
+                            <div className="mt-0.5 w-[14px] h-[14px] shrink-0 flex items-center justify-center rounded-full bg-blue-600 text-white">
                                 <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                             </div>
                             <span className="text-[11px] font-medium text-gray-600 leading-tight">Track your career growth</span>
                         </li>
-                        <li className="flex items-start gap-2">
-                            <div className="mt-0.5 w-[14px] h-[14px] shrink-0 flex items-center justify-center rounded-full bg-blue-600 text-white shadow-sm">
+                        <li className="flex items-start gap-2.5">
+                            <div className="mt-0.5 w-[14px] h-[14px] shrink-0 flex items-center justify-center rounded-full bg-blue-600 text-white">
                                 <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                             </div>
                             <span className="text-[11px] font-medium text-gray-600 leading-tight">Unlock expert insights</span>
                         </li>
                     </ul>
 
-                    <button className='w-full bg-blue-600 text-white text-[12px] font-bold py-2 rounded-[10px] hover:bg-blue-700 hover:shadow-md transition-all duration-200'>
-                        Explore More &rarr;
+                    <button className='w-full bg-blue-600 text-white text-[12px] font-bold py-2.5 rounded-[12px] hover:bg-blue-700 transition-colors flex items-center justify-center gap-1'>
+                        Explore More <ArrowRight size={14} />
                     </button>
                 </div>
             </div>

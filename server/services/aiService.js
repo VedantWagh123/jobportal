@@ -5,16 +5,21 @@ import JobSkill from "../models/JobSkill.js";
 import UnresolvedSkill from "../models/UnresolvedSkill.js";
 import Job from "../models/Job.js";
 import JobIntelligence from "../models/JobIntelligence.js";
+import SystemSetting from '../models/SystemSetting.js';
 
-const OLLAMA_URL = 'http://localhost:11434';
-const OLLAMA_MODEL = 'llava';
+// Helper to get dynamic configs
+const getOllamaConfig = () => ({
+    url: process.env.OLLAMA_URL || 'http://localhost:11434',
+    model: process.env.OLLAMA_MODEL || 'llava'
+});
 
 // Fallback helper for Ollama text generation
 const callOllama = async (prompt, formatJSON = false) => {
     try {
-        console.log("[Ollama] Sending request to local model...");
-        const response = await axios.post(`${OLLAMA_URL}/api/generate`, {
-            model: OLLAMA_MODEL,
+        const { url, model } = getOllamaConfig();
+        console.log(`[Ollama] Sending request to local model (${model})...`);
+        const response = await axios.post(`${url}/api/generate`, {
+            model: model,
             prompt: prompt,
             stream: false,
             ...(formatJSON && { format: 'json' }) // Some Ollama versions support this flag
@@ -81,6 +86,11 @@ export const parseJobDescription = async (jobId, title, description) => {
         // 2. Call Gemini or Fallback to Ollama
         let jsonString = "";
         try {
+            const settings = await SystemSetting.findOne();
+            if (settings && settings.forceOllama) {
+                console.log("[System] Force Ollama is ON. Bypassing Gemini...");
+                throw new Error("Forced Ollama Bypass");
+            }
             if (!ai) throw new Error("GEMINI_API_KEY is not configured.");
             const response = await ai.models.generateContent({
                 model: 'gemini-2.5-flash',
@@ -226,6 +236,11 @@ export const extractSimulationIntent = async (userPrompt) => {
 
     try {
         let responseText = "";
+        const settings = await SystemSetting.findOne();
+        if (settings && settings.forceOllama) {
+            console.log("[System] Force Ollama is ON. Bypassing Gemini...");
+            throw new Error("Forced Ollama Bypass");
+        }
         if (!ai) throw new Error("GEMINI_API_KEY missing");
         
         const response = await ai.models.generateContent({
@@ -280,6 +295,11 @@ export const generateOpenEndedPrediction = async (userPrompt, topGaps) => {
     `;
 
     try {
+        const settings = await SystemSetting.findOne();
+        if (settings && settings.forceOllama) {
+            console.log("[System] Force Ollama is ON. Bypassing Gemini...");
+            throw new Error("Forced Ollama Bypass");
+        }
         if (!ai) throw new Error("GEMINI_API_KEY missing");
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
@@ -327,6 +347,11 @@ export const generateSimulationPrediction = async (intent, marketData) => {
     `;
 
     try {
+        const settings = await SystemSetting.findOne();
+        if (settings && settings.forceOllama) {
+            console.log("[System] Force Ollama is ON. Bypassing Gemini...");
+            throw new Error("Forced Ollama Bypass");
+        }
         if (!ai) throw new Error("GEMINI_API_KEY missing");
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
@@ -380,6 +405,11 @@ export const generatePolicyInsights = async (forecastData) => {
     `;
 
     try {
+        const settings = await SystemSetting.findOne();
+        if (settings && settings.forceOllama) {
+            console.log("[System] Force Ollama is ON. Bypassing Gemini...");
+            throw new Error("Forced Ollama Bypass");
+        }
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: prompt,

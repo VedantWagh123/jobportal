@@ -176,7 +176,7 @@ const Upskilling = () => {
 
     return (
         <div className="bg-slate-50 min-h-screen pb-20 font-sans">
-            <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-8 lg:px-12 py-8">
+            <div className="w-full px-4 sm:px-6 lg:px-10 xl:px-12 py-8">
                 
                 {/* === PAGE HEADER === */}
                 <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 mb-8">
@@ -191,7 +191,7 @@ const Upskilling = () => {
                     </div>
                     
                     {/* Decorative Banner Right Side */}
-                    <div className="hidden md:flex items-center gap-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-indigo-100 rounded-2xl p-5 shadow-sm min-w-[300px]">
+                    <div className="hidden lg:flex items-center gap-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-indigo-100 rounded-2xl p-5 shadow-sm min-w-[300px]">
                         <div className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center text-indigo-600">
                             <GraduationCap size={24} />
                         </div>
@@ -289,7 +289,7 @@ const Upskilling = () => {
                         )}
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6 xl:gap-8">
                         {sortedCourses.map((course, index) => {
                             const badge = getStatusBadge(course, index);
                             const fallbackGradient = `linear-gradient(135deg, hsl(${(index * 50) % 360}, 70%, 50%), hsl(${((index + 1) * 70) % 360}, 60%, 40%))`;
@@ -297,12 +297,12 @@ const Upskilling = () => {
                             return (
                                 <div 
                                     key={course.courseId} 
-                                    className="bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col group cursor-pointer"
+                                    className="bg-white rounded-[1.25rem] border border-slate-100 overflow-hidden hover:shadow-2xl hover:shadow-blue-900/5 transition-all duration-300 flex flex-col group cursor-pointer ring-1 ring-slate-900/5"
                                     onClick={() => setSelectedCourse(course)}
                                 >
                                     
                                     {/* Image Section */}
-                                    <div className="relative h-32 w-full bg-slate-100 overflow-hidden">
+                                    <div className="relative h-44 w-full bg-slate-100 overflow-hidden">
                                         {course.courseImage ? (
                                             <img 
                                                 src={course.courseImage} 
@@ -333,9 +333,9 @@ const Upskilling = () => {
                                     </div>
 
                                     {/* Content Section */}
-                                    <div className="p-3.5 flex flex-col flex-1">
-                                        <div className="mb-3 flex-1">
-                                            <h3 className="font-extrabold text-slate-900 text-[15px] leading-tight mb-1 line-clamp-2" title={course.courseName}>
+                                    <div className="p-5 flex flex-col flex-1">
+                                        <div className="mb-4 flex-1">
+                                            <h3 className="font-extrabold text-slate-900 text-base leading-tight mb-1.5 line-clamp-2 group-hover:text-blue-600 transition-colors" title={course.courseName}>
                                                 {course.courseName}
                                             </h3>
                                             <p className="text-slate-500 text-xs font-medium mb-2">{course.instituteName}</p>

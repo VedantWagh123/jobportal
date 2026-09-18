@@ -268,4 +268,38 @@ To achieve "Lightning Fast" speeds and enterprise-grade code quality, several ad
 - **Frontend Integration:** Added a real-time Notification Bell in the Institute Header. When an Institute updates their profile, a system notification is automatically generated and pushed to the bell dropdown. Includes "Mark All as Read" functionality for a clean UX.
 
 ---
+
+## 📈 **[16-Sep-2026] Latest Major Additions (Real-Time & Advanced Intelligence)**
+
+### 1. Real-Time Bidirectional Communication (WebSockets/Socket.io)
+- **The Theory:** Modern systems require instant updates without the latency and server overload of HTTP Polling. By implementing WebSockets, the server can actively "push" data to connected clients the exact millisecond an event occurs.
+- **Backend Architecture:** Created `server/config/socket.js` to initialize an isolated Socket.io instance. It manages secure connections, rooms based on User Roles (e.g., `state_admin_room`, `institute_room_<ID>`), and real-time event broadcasting.
+- **Frontend Integration:** Implemented `SocketContext.jsx` across all 4 React portals (Admin, State Admin, Institute Admin, Client). This Context Provider wraps the entire React component tree, establishing a persistent, single TCP connection that components can hook into for listening to real-time events.
+
+### 2. Segmented Multi-Tier Notification Engine
+- **The Theory:** Different personas in the ecosystem require tailored, isolated notification pipelines. A monolithic notification table would become a bottleneck and mix concerns.
+- **Architecture:** Segregated Notification Models into isolated collections:
+  - `UserNotification.js`: Alerts for candidates (e.g., job application status, course recommendations).
+  - `InstituteNotification.js` & `StateAdminNotification.js`: Alerts for administrative coordination.
+  - `SuperAdminNotification.js`: System-wide critical alerts.
+- **Controllers & Routing:** Dedicated controllers (`adminNotificationController`, `stateAdminNotificationController`) expose APIs to mark notifications as read and manage notification history, ensuring real-time UI synchrony via Sockets.
+
+### 3. District Digital Twin (State Admin Portal)
+- **The Theory (Digital Twin):** A Digital Twin is a virtual representation of a physical system. In this context, it visually simulates the "Skill Health" and employment landscape of a geographical district in real-time.
+- **Implementation:** Created `DistrictDigitalTwin.jsx`, `DistrictIntelligenceModal.jsx`, and `DistrictSectorDeepDive.jsx` in the State Admin frontend. 
+- **Features:** 
+  - Uses interactive visual maps and metric cards to show real-time Job Demand vs. Training Supply.
+  - Helps State Administrators instantly identify localized skill shortages (e.g., "High demand for Python in Pune, but 0 active batches").
+  - Deep-dive into specific industrial sectors within a district.
+
+### 4. Requirement Broadcast Engine (Macro to Micro Execution)
+- **The Theory:** Identifying a skill gap is only step one. The system must provide actionable tools for policymakers to bridge that gap immediately.
+- **Implementation (`SendRequirementModal.jsx`):** State Admins can now select a specific district experiencing a skill shortage and instantly broadcast a "New Batch Requirement" to all Government Institutes in that region.
+- **Workflow:** The State Admin issues the mandate -> The backend routes it to targeted Institutes -> `Socket.io` pushes it live to the Institute's Notification Bell -> Institutes can immediately act and launch AI-generated curriculums to meet the state mandate.
+
+### 5. Advanced Skill Categorization & Ontology Engine
+- **The Theory:** AI matching is only as good as the underlying data structure. Flat skill arrays lead to false negatives. Skills must be grouped into hierarchical domains (e.g., React -> Frontend -> Software Engineering).
+- **Implementation:** Added intelligence scripts like `categorizeSkills.js`, `checkSkills.js`, and `seedSkills.js`. These scripts utilize clustering algorithms and AI to categorize raw skills into structured domains, drastically improving the deterministic math engine's accuracy when calculating Candidate-to-Job match percentages.
+
+---
 *Document officially tracks the Intelligence Layer Architecture for the GSoC platform extension.*

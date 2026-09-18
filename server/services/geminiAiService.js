@@ -3,19 +3,25 @@ import axios from 'axios';
 import Job from '../models/Job.js';
 import Course from '../models/Course.js';
 import CurriculumAlert from '../models/CurriculumAlert.js';
+import SystemSetting from '../models/SystemSetting.js';
 
-const OLLAMA_URL = 'http://localhost:11434';
-const OLLAMA_MODEL = 'llava';
+// Helper to get dynamic configs
+const getOllamaConfig = () => ({
+    url: process.env.OLLAMA_URL || 'http://localhost:11434',
+    model: process.env.OLLAMA_MODEL || 'llava'
+});
 
 // Fallback helper for Ollama text generation
 const callOllama = async (prompt) => {
     try {
-        console.log("[Ollama] Sending request to local model...");
-        const response = await axios.post(`${OLLAMA_URL}/api/generate`, {
-            model: OLLAMA_MODEL,
+        const { url, model } = getOllamaConfig();
+        console.log(`[Ollama] Sending request to local model (${model})...`);
+        const response = await axios.post(`${url}/api/generate`, {
+            model: model,
             prompt: prompt,
-            stream: false
-        });
+            stream: false,
+            keep_alive: "1h"
+        }, { timeout: 15000 });
         return response.data.response;
     } catch (err) {
         console.error("[Ollama] Fallback also failed:", err.message);
@@ -26,22 +32,28 @@ const callOllama = async (prompt) => {
 // Fallback helper for Ollama chat generation
 const callOllamaChat = async (contents) => {
     try {
-        console.log("[Ollama] Sending chat request to local model...");
+        const { url, model } = getOllamaConfig();
+        console.log(`[Ollama] Sending chat request to local model (${model})...`);
         // Convert Gemini contents array to Ollama messages array
         const messages = contents.map(msg => ({
             role: msg.role === 'model' ? 'assistant' : 'user',
             content: msg.parts.map(p => p.text).join('\n')
         }));
         
-        const response = await axios.post(`${OLLAMA_URL}/api/chat`, {
-            model: OLLAMA_MODEL,
+        const response = await axios.post(`${url}/api/chat`, {
+            model: model,
             messages: messages,
-            stream: false
-        });
+            stream: false,
+            keep_alive: "1h"
+        }, { timeout: 20000 });
         return response.data.message.content;
     } catch (err) {
-        console.error("[Ollama] Chat Fallback also failed:", err.message);
-        throw new Error("Both Gemini and Ollama failed.");
+        let errorMsg = "OLLAMA_CONNECTION_FAILED";
+        if (err.response && err.response.data && err.response.data.error) {
+            errorMsg = err.response.data.error; // e.g. "model 'llama3' not found, try pulling it first"
+        }
+        console.error("[Ollama] Chat Fallback also failed:", err.message, "-", errorMsg);
+        throw new Error(errorMsg);
     }
 };
 
@@ -88,9 +100,14 @@ export const runAIAnalysis = async () => {
         ]
         `;
 
-        // 4. Call Gemini API or fallback to Ollama
+        // 4. Check Global Setting for Ollama Bypass
         let responseText = "";
         try {
+            const settings = await SystemSetting.findOne();
+            if (settings && settings.forceOllama) {
+                console.log("[System] Force Ollama is ON. Bypassing Gemini...");
+                throw new Error("Forced Ollama Bypass");
+            }
             if (!process.env.GEMINI_API_KEY) throw new Error("GEMINI_API_KEY missing");
             const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
             const response = await ai.models.generateContent({
@@ -130,6 +147,11 @@ export const runAIAnalysis = async () => {
 
 export const generateResponse = async (prompt, fallback = "") => {
     try {
+        const settings = await SystemSetting.findOne();
+        if (settings && settings.forceOllama) {
+            console.log("[System] Force Ollama is ON. Bypassing Gemini...");
+            return await callOllama(prompt);
+        }
         if (!process.env.GEMINI_API_KEY) {
             console.warn("[Gemini] API Key missing. Falling back to Ollama.");
             return await callOllama(prompt);
@@ -152,6 +174,11 @@ export const generateResponse = async (prompt, fallback = "") => {
 
 export const generateChatResponse = async (contents, fallback = "") => {
     try {
+        const settings = await SystemSetting.findOne();
+        if (settings && settings.forceOllama) {
+            console.log("[System] Force Ollama is ON. Bypassing Gemini...");
+            return await callOllamaChat(contents);
+        }
         if (!process.env.GEMINI_API_KEY) {
             console.warn("[Gemini] API Key missing. Falling back to Ollama.");
             return await callOllamaChat(contents);
@@ -163,11 +190,24 @@ export const generateChatResponse = async (contents, fallback = "") => {
         });
         return response.text;
     } catch (error) {
+        // If it was our forced Ollama bypass, it would have been caught or returned earlier.
+        // But if callOllamaChat throws an error, it will be caught here.
+        const { model } = getOllamaConfig();
+        if (error.message === "OLLAMA_CONNECTION_FAILED" || error.code === 'ECONNREFUSED') {
+            return `Ollama Connection Failed: Please ensure Ollama is running locally on port 11434 and the '${model}' model is installed.`;
+        }
+        if (error.message.includes("model") && error.message.includes("not found")) {
+            return `Ollama Error: ${error.message}. Please open a terminal and run 'ollama run ${model}' to download the model.`;
+        }
+
         console.warn(`[Gemini] Chat API Error (${error.message}). Falling back to Ollama.`);
         try {
             return await callOllamaChat(contents);
         } catch (ollamaErr) {
-            return fallback;
+            if (ollamaErr.message && ollamaErr.message !== "OLLAMA_CONNECTION_FAILED") {
+                return `Ollama Error: ${ollamaErr.message}`;
+            }
+            return `Ollama Connection Failed: Please ensure Ollama is running locally on port 11434 and the '${model}' model is installed.`;
         }
     }
 };
@@ -191,6 +231,11 @@ ${pdfText.substring(0, 15000)}
 
         let aiResponse = "";
         try {
+            const settings = await SystemSetting.findOne();
+            if (settings && settings.forceOllama) {
+                console.log("[System] Force Ollama is ON. Bypassing Gemini...");
+                throw new Error("Forced Ollama Bypass");
+            }
             if (!process.env.GEMINI_API_KEY) {
                 console.warn("[Gemini] API Key missing. Falling back to Ollama.");
                 aiResponse = await callOllama(prompt);

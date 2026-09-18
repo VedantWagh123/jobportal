@@ -39,6 +39,8 @@ const CompleteProfileModal = ({ isOpen, onClose }) => {
     // File states
     const [resumeFile, setResumeFile] = useState(null);
     const [imageFile, setImageFile] = useState(null);
+    const [removeImage, setRemoveImage] = useState(false);
+    const [removeResume, setRemoveResume] = useState(false);
     
     // Refs for hidden inputs
     const resumeRef = useRef(null);
@@ -133,6 +135,9 @@ const CompleteProfileModal = ({ isOpen, onClose }) => {
             data.append('college', formData.college);
             data.append('skills', JSON.stringify(formData.skills));
             
+            if (removeImage && !imageFile) data.append('removeImage', 'true');
+            if (removeResume && !resumeFile) data.append('removeResume', 'true');
+
             if (resumeFile) data.append('resume', resumeFile);
             if (imageFile) data.append('image', imageFile);
 
@@ -289,14 +294,19 @@ const CompleteProfileModal = ({ isOpen, onClose }) => {
                             
                             {/* Profile Photo Upload */}
                             <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center hover:border-blue-500 transition cursor-pointer bg-gray-50 group" onClick={() => imageRef.current.click()}>
-                                <input type="file" ref={imageRef} hidden accept="image/*" onChange={(e) => setImageFile(e.target.files[0])} />
-                                {imageFile || userData?.image ? (
+                                <input type="file" ref={imageRef} hidden accept="image/*" onChange={(e) => { setImageFile(e.target.files[0]); setRemoveImage(false); }} />
+                                {imageFile || (userData?.image && !removeImage) ? (
                                     <div className="flex flex-col items-center">
                                         <div className="w-16 h-16 rounded-full overflow-hidden mb-2 border-2 border-blue-500">
                                             <img src={imageFile ? URL.createObjectURL(imageFile) : userData.image} alt="Preview" className="w-full h-full object-cover" />
                                         </div>
                                         <p className="text-sm font-medium text-gray-800">{imageFile ? imageFile.name : 'Existing Photo'}</p>
-                                        <p className="text-xs text-blue-600 mt-1 hover:underline">Change Photo</p>
+                                        <div className="flex gap-4 mt-1">
+                                            <p className="text-xs text-blue-600 hover:underline">Change Photo</p>
+                                            {userData?.image && !imageFile && (
+                                                <p className="text-xs text-red-500 hover:underline" onClick={(e) => { e.stopPropagation(); setRemoveImage(true); }}>Remove</p>
+                                            )}
+                                        </div>
                                     </div>
                                 ) : (
                                     <div className="py-2">
@@ -311,12 +321,17 @@ const CompleteProfileModal = ({ isOpen, onClose }) => {
 
                             {/* Resume Upload */}
                             <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center hover:border-blue-500 transition cursor-pointer bg-gray-50 group" onClick={() => resumeRef.current.click()}>
-                                <input type="file" ref={resumeRef} hidden accept=".pdf,.doc,.docx" onChange={(e) => setResumeFile(e.target.files[0])} />
-                                {resumeFile || userData?.resume ? (
+                                <input type="file" ref={resumeRef} hidden accept=".pdf,.doc,.docx" onChange={(e) => { setResumeFile(e.target.files[0]); setRemoveResume(false); }} />
+                                {resumeFile || (userData?.resume && !removeResume) ? (
                                     <div className="flex flex-col items-center">
                                         <FileText size={32} className="text-blue-600 mb-2" />
                                         <p className="text-sm font-medium text-gray-800">{resumeFile ? resumeFile.name : 'Existing Resume Uploaded'}</p>
-                                        <p className="text-xs text-blue-600 mt-1 hover:underline">{resumeFile ? 'Change Resume' : 'Upload New Resume'}</p>
+                                        <div className="flex gap-4 mt-1">
+                                            <p className="text-xs text-blue-600 hover:underline">{resumeFile ? 'Change Resume' : 'Upload New Resume'}</p>
+                                            {userData?.resume && !resumeFile && (
+                                                <p className="text-xs text-red-500 hover:underline" onClick={(e) => { e.stopPropagation(); setRemoveResume(true); }}>Remove</p>
+                                            )}
+                                        </div>
                                     </div>
                                 ) : (
                                     <div className="py-2">

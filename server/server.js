@@ -15,6 +15,7 @@ import instituteRoutes from './routes/institute/index.js'
 import { clerkMiddleware } from '@clerk/express'
 import superAdminRoutes from './routes/superAdmin/index.js'
 import intelligenceRoutes from './routes/intelligenceRoutes.js'
+import resumeRoutes from './routes/resumeRoutes.js'
 import { startJobProcessor } from './services/jobProcessor.js'
 import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
@@ -92,6 +93,7 @@ app.use('/api/users', userRoutes)
 app.use('/api/state-admin', stateAdminRoutes)
 app.use('/api/institute', instituteRoutes)
 app.use('/api/intelligence', intelligenceRoutes)
+app.use('/api/resumes', resumeRoutes)
 
 // Super Admin
 app.use('/api/super-admin', superAdminRoutes)

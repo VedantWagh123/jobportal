@@ -256,18 +256,9 @@ class SkillGapService {
                 status: { $in: ['Planning', 'Active'] }
             });
 
-            // Fetch ALL skills taught by this course to check for overlap
-            const allCourseSkills = await CourseSkill.find({ courseId: cid }).populate('skillId');
-            const allCourseSkillNames = allCourseSkills.filter(cs => cs.skillId).map(cs => cs.skillId.name);
-            
-            const candSkillsLower = candidateSkills.map(s => s.toLowerCase());
-            const hasOverlap = allCourseSkillNames.some(s => candSkillsLower.includes(s.toLowerCase()));
-            
-            if (hasOverlap) {
-                // The candidate already possesses at least one skill taught by this course.
-                // Based on user feedback, do not suggest courses that teach skills they already know.
-                continue;
-            }
+            // We no longer filter out courses based on overlap. 
+            // If the course teaches at least one missing skill (which it does, otherwise it wouldn't be in this loop), 
+            // it is a valid recommendation.
 
             const coveredSkillsArr = Array.from(courseCoverageMap.get(cid).coveredSkills);
             

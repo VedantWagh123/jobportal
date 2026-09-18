@@ -1,6 +1,7 @@
-import { useState, useContext } from 'react';
+import { useState, useContext, useEffect } from 'react';
 import { AuthContext } from '../context/AuthContext';
-import { Save, User, Bell, Shield, Key } from 'lucide-react';
+import { Save, User, Bell, Shield, Key, Bot } from 'lucide-react';
+import axios from 'axios';
 
 const Toast = ({ msg }) => msg ? (
     <div className="fixed bottom-6 right-6 z-[200] bg-gray-950/95 text-white px-5 py-3 rounded-2xl shadow-2xl text-[12px] font-bold flex items-center gap-2 border border-white/10 animate-in slide-in-from-bottom-5">
@@ -19,7 +20,44 @@ const Settings = () => {
     const [email, setEmail] = useState(user?.email || 'admin@platform.gov');
     const [avatar, setAvatar] = useState(user?.avatar || null);
 
+    // AI Settings State
+    const [forceOllama, setForceOllama] = useState(false);
+    const [isAiSaving, setIsAiSaving] = useState(false);
+
+    useEffect(() => {
+        const fetchSettings = async () => {
+            try {
+                const { data } = await axios.get('/api/super-admin/settings', {
+                    headers: { Authorization: `Bearer ${user?.token}` }
+                });
+                if (data.success && data.settings) {
+                    setForceOllama(data.settings.forceOllama);
+                }
+            } catch (error) {
+                console.error("Failed to fetch settings", error);
+            }
+        };
+        if (user) fetchSettings();
+    }, [user]);
+
     const showToast = (m) => { setToastMsg(m); setTimeout(() => setToastMsg(''), 3500); };
+
+    const handleToggleOllama = async () => {
+        const newValue = !forceOllama;
+        setForceOllama(newValue);
+        setIsAiSaving(true);
+        try {
+            await axios.post('/api/super-admin/settings', { forceOllama: newValue }, {
+                headers: { Authorization: `Bearer ${user?.token}` }
+            });
+            showToast(newValue ? '✅ System switched to Local Ollama AI' : '✅ System switched to Google Gemini AI');
+        } catch (error) {
+            setForceOllama(!newValue); // revert
+            showToast('❌ Failed to update AI settings');
+        } finally {
+            setIsAiSaving(false);
+        }
+    };
 
     const handleAvatarChange = (e) => {
         const file = e.target.files[0];
@@ -59,6 +97,7 @@ const Settings = () => {
                     <nav className="space-y-1">
                         {[
                             { id: 'profile', label: 'My Profile', icon: <User size={18} /> },
+                            { id: 'ai', label: 'AI Engine', icon: <Bot size={18} /> },
                             { id: 'security', label: 'Security', icon: <Shield size={18} /> },
                             { id: 'notifications', label: 'Notifications', icon: <Bell size={18} /> }
                         ].map(tab => (
@@ -145,7 +184,39 @@ const Settings = () => {
                         </div>
                     )}
 
-                    {activeTab !== 'profile' && (
+                    {activeTab === 'ai' && (
+                        <div className="space-y-6">
+                            <div>
+                                <h2 className="text-lg font-bold text-gray-900">AI Engine Configurations</h2>
+                                <p className="text-sm text-gray-500">Manage the core artificial intelligence models powering the platform.</p>
+                            </div>
+                            
+                            <div className="bg-gray-50 border border-gray-100 rounded-2xl p-6 flex items-start justify-between">
+                                <div>
+                                    <h3 className="font-bold text-gray-900 mb-1 flex items-center gap-2">
+                                        Force Local LLM (Ollama)
+                                        {forceOllama && <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-black rounded-full uppercase tracking-wider">Active</span>}
+                                    </h3>
+                                    <p className="text-[13px] text-gray-500 max-w-[400px]">
+                                        By default, the system uses Google Gemini for fast job parsing. Enabling this will force the entire platform to bypass Gemini and securely use your local Ollama instance instead.
+                                    </p>
+                                </div>
+                                <button 
+                                    onClick={handleToggleOllama}
+                                    disabled={isAiSaving}
+                                    className={`relative inline-flex h-7 w-14 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-opacity-75 ${forceOllama ? 'bg-blue-600' : 'bg-gray-300'} ${isAiSaving ? 'opacity-50' : ''}`}
+                                >
+                                    <span className="sr-only">Toggle Ollama</span>
+                                    <span
+                                        aria-hidden="true"
+                                        className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${forceOllama ? 'translate-x-7' : 'translate-x-0'}`}
+                                    />
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab !== 'profile' && activeTab !== 'ai' && (
                         <div className="flex flex-col items-center justify-center h-64 text-gray-400">
                             <Shield size={48} className="mb-4 opacity-20" />
                             <h3 className="text-lg font-bold text-gray-700 mb-1">Coming Soon</h3>

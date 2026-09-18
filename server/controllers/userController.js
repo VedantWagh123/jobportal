@@ -1,3 +1,5 @@
+import axios from 'axios';
+import { generateResumePdf } from '../utils/pdfGenerator.js';
 import Job from "../models/Job.js"
 import JobApplication from "../models/JobApplication.js"
 import User from "../models/User.js"
@@ -14,7 +16,7 @@ import CourseReview from '../models/CourseReview.js';
 import UserNotification from '../models/UserNotification.js';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
-const pdfParse = require('pdf-parse');
+const pdfParse = require('pdf-parse-new');
 const mammoth = require('mammoth');
 import { extractSkillsFromResume } from '../services/geminiAiService.js';
 
@@ -670,3 +672,120 @@ export const submitCourseReview = async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 };
+
+// Sync Builder Resume to Profile
+export const syncResumeToProfile = async (req, res) => {
+    try {
+        const userId = req.auth?.userId;
+        const { resumeData } = req.body;
+        const userData = req.dbUser;
+
+        if (!resumeData) return res.status(400).json({ success: false, message: "Resume data required" });
+
+        // Generate PDF Buffer
+        const pdfBuffer = await generateResumePdf({ 
+            summary: '',
+            experience: [],
+            projects: [],
+            skills: { technical: [], programmingLanguages: [], frameworks: [], databases: [], tools: [], softSkills: [] },
+            education: [],
+            certifications: [],
+            ...resumeData, 
+            resumeName: resumeData.personalInfo?.fullName ? `${resumeData.personalInfo.fullName} Resume` : 'Resume',
+            template: resumeData.template || 'ATS Classic'
+        });
+        
+        // Write to temp file
+        const tempPath = `./uploads/temp_${Date.now()}.pdf`;
+        fs.writeFileSync(tempPath, pdfBuffer);
+
+        // Upload to Cloudinary
+        try {
+            if (userData.resume && userData.resume.includes('cloudinary.com')) {
+                const oldPublicId = userData.resume.split('/').slice(-1)[0].split('.')[0];
+                if (oldPublicId) {
+                    await cloudinary.uploader.destroy(oldPublicId, { resource_type: 'image' }).catch(() => {});
+                    await cloudinary.uploader.destroy(oldPublicId + '.pdf', { resource_type: 'raw' }).catch(() => {});
+                }
+            }
+            const resumeUpload = await cloudinary.uploader.upload(tempPath, { resource_type: 'raw' });
+            userData.resume = resumeUpload.secure_url;
+        } catch (error) {
+            console.warn("Cloudinary upload failed for sync", error);
+        } finally {
+            fs.unlink(tempPath, () => {});
+        }
+
+        // Sync Data Fields
+        if (resumeData.personalInfo) {
+            if (resumeData.personalInfo.phone) userData.phone = resumeData.personalInfo.phone;
+            if (resumeData.personalInfo.location) userData.city = resumeData.personalInfo.location;
+        }
+
+        let allSkills = [];
+        if (resumeData.skills) {
+            const { technical, programmingLanguages, frameworks, databases, tools, softSkills } = resumeData.skills;
+            const collect = (arr) => arr ? arr.map(s => typeof s === 'string' ? s : s.name).filter(Boolean) : [];
+            allSkills = [
+                ...collect(technical),
+                ...collect(programmingLanguages),
+                ...collect(frameworks),
+                ...collect(databases),
+                ...collect(tools),
+                ...collect(softSkills)
+            ];
+        }
+
+        if (allSkills.length > 0) {
+            const existingSkills = userData.skills || [];
+            userData.skills = [...new Set([...existingSkills, ...allSkills])];
+        }
+
+        await userData.save();
+        res.json({ success: true, message: "Resume successfully synced to profile!", user: userData });
+    } catch (error) {
+        console.error("Sync Resume Error:", error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+export const extractProfileSkills = async (req, res) => {
+    try {
+        const userId = req.auth?.userId;
+        const userData = await User.findOne({ _id: userId });
+        
+        if (!userData || !userData.resume) {
+            return res.status(400).json({ success: false, message: "No resume found to extract skills from" });
+        }
+
+        let extractedText = '';
+
+        try {
+            const response = await axios.get(userData.resume, { responseType: 'arraybuffer' });
+            if (userData.resume.toLowerCase().endsWith('.pdf') || userData.resume.includes('/raw/upload/')) {
+                const pdfData = await pdfParse(response.data);
+                if (pdfData && pdfData.text) extractedText = pdfData.text;
+            }
+        } catch (downloadError) {
+            console.error("Failed to download resume for extraction:", downloadError);
+            return res.status(500).json({ success: false, message: "Failed to download resume from server" });
+        }
+
+        if (extractedText) {
+            const extractedSkills = await extractSkillsFromResume(extractedText);
+            if (extractedSkills.length > 0) {
+                const existingSkills = userData.skills || [];
+                userData.skills = [...new Set([...existingSkills, ...extractedSkills])];
+                await userData.save();
+                return res.json({ success: true, message: 'Skills extracted successfully', user: userData });
+            } else {
+                return res.status(400).json({ success: false, message: 'No recognizable skills found in the resume' });
+            }
+        } else {
+            return res.status(400).json({ success: false, message: 'Failed to extract text from the resume document' });
+        }
+    } catch (error) {
+        console.error("Error extracting profile skills:", error);
+        return res.status(500).json({ success: false, message: error.message });
+    }
+}

@@ -2,16 +2,38 @@ import React, { useContext } from 'react';
 import { AppContext } from '../context/AppContext';
 import { useUser } from '@clerk/clerk-react';
 import { X, MapPin, Phone, GraduationCap, Mail, FileText, Download, ExternalLink, Edit2 } from 'lucide-react';
+import axios from 'axios';
+import { toast } from 'react-toastify';
 
 const ViewProfileModal = ({ isOpen, onClose }) => {
-    const { userData, setIsProfileModalOpen } = useContext(AppContext);
-    const { user } = useUser();
+    const { userData, setUserData, setIsProfileModalOpen, backendUrl } = useContext(AppContext);
+    const { user, getToken } = useUser();
+    const [extracting, setExtracting] = React.useState(false);
 
     if (!isOpen) return null;
 
     const handleEditClick = () => {
         onClose();
         setIsProfileModalOpen(true);
+    };
+
+    const handleExtractSkills = async () => {
+        if (!userData?.resume) return toast.error("No resume found to extract skills from");
+        try {
+            setExtracting(true);
+            const token = await getToken();
+            const { data } = await axios.post(`${backendUrl}/api/users/profile/extract-skills`, {}, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (data.success) {
+                setUserData(data.user);
+                toast.success("Skills extracted successfully!");
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.message || "Failed to extract skills");
+        } finally {
+            setExtracting(false);
+        }
     };
 
     return (
@@ -109,7 +131,7 @@ const ViewProfileModal = ({ isOpen, onClose }) => {
                                 <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Resume</h3>
                                 {userData?.resume ? (
                                     <a 
-                                        href={userData.resume ? userData.resume.replace('/upload/', '/upload/fl_attachment/') : '#'}
+                                        href={userData.resume ? userData.resume : '#'}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="flex items-center justify-between p-3 border border-gray-200 rounded-xl hover:border-blue-300 hover:bg-blue-50/50 transition group cursor-pointer"
@@ -140,9 +162,20 @@ const ViewProfileModal = ({ isOpen, onClose }) => {
 
                     {/* AI Extracted Skills */}
                     <div className="mt-6 bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
-                        <div className="flex items-center gap-2 mb-4 border-b border-gray-50 pb-3">
-                            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Candidate Skills</h3>
-                            <span className="bg-purple-100 text-purple-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-purple-200 shadow-sm flex items-center gap-1">✨ AI Extracted</span>
+                        <div className="flex items-center justify-between mb-4 border-b border-gray-50 pb-3">
+                            <div className="flex items-center gap-2">
+                                <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Candidate Skills</h3>
+                                <span className="bg-purple-100 text-purple-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-purple-200 shadow-sm flex items-center gap-1">✨ AI Extracted</span>
+                            </div>
+                            {userData?.resume && (
+                                <button 
+                                    onClick={handleExtractSkills} 
+                                    disabled={extracting}
+                                    className="text-xs bg-indigo-50 text-indigo-600 hover:bg-indigo-100 px-3 py-1.5 rounded-lg font-bold transition disabled:opacity-50 flex items-center gap-1"
+                                >
+                                    {extracting ? "Extracting..." : "Re-extract Skills"}
+                                </button>
+                            )}
                         </div>
                         
                         {userData?.skills && (Array.isArray(userData.skills) ? userData.skills : typeof userData.skills === 'string' ? userData.skills.split(',') : []).length > 0 ? (

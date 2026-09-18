@@ -347,7 +347,7 @@ const ViewApplications = () => {
                       {/* Resume */}
                       <td className='px-4 py-4 text-center'>
                         <a 
-                          href={app.userId.resume ? app.userId.resume.replace('/upload/', '/upload/fl_attachment/') : '#'} 
+                          href={app.userId.resume ? app.userId.resume : '#'} 
                           target='_blank' 
                           rel='noopener noreferrer'
                           className='inline-flex items-center justify-center gap-1.5 w-8 h-8 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all shadow-sm'
@@ -641,7 +641,7 @@ const ViewApplications = () => {
             {/* Modal Footer */}
             <div className='p-5 border-t border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row justify-between items-center gap-4 shrink-0'>
               <a 
-                href={viewCandidate.userId.resume ? viewCandidate.userId.resume.replace('/upload/', '/upload/fl_attachment/') : '#'} 
+                href={viewCandidate.userId.resume ? viewCandidate.userId.resume : '#'} 
                 target='_blank' 
                 rel='noopener noreferrer'
                 className='w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl font-bold shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-2'

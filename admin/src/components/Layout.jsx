@@ -6,6 +6,7 @@ import {
     LayoutDashboard, BookOpen, LogOut, Settings, Users, 
     Building, Shield, Search, Bell, Maximize, ChevronDown, BarChart2, Menu, X, CheckCheck, Clock
 } from 'lucide-react';
+import SmartAssistantModal from './SmartAssistantModal';
 
 const Layout = () => {
     const { logout, user } = useContext(AuthContext);
@@ -387,6 +388,9 @@ const Layout = () => {
                     <Outlet />
                 </div>
             </main>
+
+            {/* Smart AI Assistant Modal */}
+            <SmartAssistantModal />
         </div>
     );
 };

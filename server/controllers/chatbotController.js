@@ -1,26 +1,5 @@
-import { GoogleGenAI } from '@google/genai';
-import axios from 'axios';
 import Job from '../models/Job.js';
-
-const OLLAMA_URL = 'http://localhost:11434';
-const OLLAMA_MODEL = 'llava';
-
-// Fallback helper for Ollama text generation
-const callOllama = async (prompt) => {
-    try {
-        console.log("[Ollama Chatbot] Sending request to local model...");
-        const response = await axios.post(`${OLLAMA_URL}/api/generate`, {
-            model: OLLAMA_MODEL,
-            prompt: prompt,
-            stream: false,
-            format: 'json'
-        });
-        return response.data.response;
-    } catch (err) {
-        console.error("[Ollama Chatbot] Fallback also failed:", err.message);
-        throw new Error("Both Gemini and Ollama failed.");
-    }
-};
+import { generateResponse } from '../services/geminiAiService.js';
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
 const cleanText = (text) => text?.trim() || '';
@@ -32,13 +11,6 @@ export const chatWithAI = async (req, res) => {
 
         if (!message?.trim()) {
             return res.status(400).json({ success: false, message: 'Message is required' });
-        }
-
-        let ai = null;
-        if (!process.env.GEMINI_API_KEY) {
-            console.warn("[Chatbot] GEMINI_API_KEY missing. Will try Ollama Fallback.");
-        } else {
-            ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
         }
 
 
@@ -95,19 +67,13 @@ INSTRUCTIONS:
 }
 IMPORTANT: Return ONLY the raw JSON string. Do NOT wrap it in \`\`\`json markdown blocks.`;
 
-        // 4. Generate AI Response (with Ollama Fallback)
-        let responseText = "";
-        try {
-            if (!ai) throw new Error("GEMINI_API_KEY missing");
-            const response = await ai.models.generateContent({
-                model: 'gemini-2.5-flash',
-                contents: systemPrompt,
-            });
-            responseText = response.text;
-        } catch (geminiError) {
-            console.warn(`[Chatbot] Gemini failed (${geminiError.message}). Falling back to Ollama...`);
-            responseText = await callOllama(systemPrompt);
-        }
+        // 4. Generate AI Response using Centralized Engine (with Ollama Fallback / Forced Switch)
+        const fallbackJSON = JSON.stringify({
+            isJobSearch: false,
+            textResponse: "Oops! 😅 I'm having a small hiccup connecting to my AI brain. Please try again in a moment!",
+            selectedJobIds: []
+        });
+        const responseText = await generateResponse(systemPrompt, fallbackJSON);
 
         // 5. Parse AI Response safely
         let parsed;

@@ -25,10 +25,10 @@ const Hero = () => {
     }
 
     return (
-        <div className='px-6 lg:px-8 mx-auto my-6'>
+        <div className='px-6 lg:px-8 mx-auto my-10'>
             
             {/* Hero Main Card */}
-            <div className='bg-gradient-to-br from-[#F5F8FF] to-[#E8F0FF] rounded-[2rem] p-6 md:p-8 lg:p-12 relative overflow-hidden flex flex-col md:flex-row items-center border border-blue-50/50 shadow-sm'>
+            <div className='bg-gradient-to-br from-[#F5F8FF] to-[#E8F0FF] rounded-[2rem] px-6 py-12 md:px-10 md:py-16 lg:px-12 lg:py-20 relative overflow-hidden flex flex-col md:flex-row items-center border border-blue-50/50 shadow-sm'>
                 
                 {/* Left Content */}
                 <div className="relative z-10 w-full md:w-[55%] lg:w-[50%] pt-4 md:pr-8">
@@ -94,10 +94,10 @@ const Hero = () => {
                 </div>
 
                 {/* Right Image Container */}
-                <div className="hidden md:flex relative z-10 w-[45%] lg:w-[50%] h-[420px] items-end justify-center mt-10 md:mt-0">
+                <div className="hidden md:flex relative z-10 w-[45%] lg:w-[50%] h-[500px] xl:h-[550px] items-end justify-center mt-10 md:mt-0">
                     
                     {/* Background Yellow Circle */}
-                    <div className="absolute top-[50%] right-[10%] -translate-y-1/2 w-[340px] h-[340px] bg-gradient-to-tr from-[#FFF2B2] to-[#FFE24B] rounded-full -z-10 opacity-60"></div>
+                    <div className="absolute top-[50%] right-[10%] -translate-y-1/2 w-[380px] h-[380px] xl:w-[420px] xl:h-[420px] bg-gradient-to-tr from-[#FFF2B2] to-[#FFE24B] rounded-full -z-10 opacity-60"></div>
 
                     {/* Decorative dashes */}
                     <div className="absolute top-12 right-12 flex flex-col gap-2 rotate-12 opacity-80 animate-float-delayed">
@@ -154,7 +154,7 @@ const Hero = () => {
                     </div>
 
                     {/* The main character image */}
-                    <img src={assets.app_main_img} alt="Career Professional" className="max-w-[340px] w-full h-[450px] object-cover object-top z-10 drop-shadow-[0_25px_35px_rgba(0,0,0,0.2)] absolute bottom-0 right-6" />
+                    <img src={assets.app_main_img} alt="Career Professional" className="max-w-[380px] xl:max-w-[420px] w-full h-[530px] xl:h-[580px] object-cover object-top z-10 drop-shadow-[0_25px_35px_rgba(0,0,0,0.2)] absolute bottom-0 right-6" />
 
                     {/* Bottom Right Card */}
                     <div className="absolute bottom-10 -right-6 bg-white/95 backdrop-blur-sm p-3.5 pr-6 rounded-2xl shadow-[0_12px_30px_rgb(0,0,0,0.12)] border border-white flex items-center gap-3 z-30 hover:-translate-y-1.5 transition-transform duration-300 animate-float-delayed">

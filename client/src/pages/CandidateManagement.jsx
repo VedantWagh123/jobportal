@@ -131,7 +131,7 @@ const CandidateManagement = () => {
                             <div className='mt-auto pt-4 border-t border-gray-100 flex justify-between items-center'>
                                 <span className='text-xs text-gray-500 font-medium'>Applied to {cand.appliedJobs.length} job(s)</span>
                                 {cand.resume && (
-                                    <a href={cand.resume.replace('/upload/', '/upload/fl_attachment/')} target='_blank' rel='noopener noreferrer' className='text-sm font-bold text-blue-600 hover:text-blue-700'>
+                                    <a href={cand.resume ? cand.resume : '#'} target='_blank' rel='noopener noreferrer' className='text-sm font-bold text-blue-600 hover:text-blue-700'>
                                         View Resume
                                     </a>
                                 )}

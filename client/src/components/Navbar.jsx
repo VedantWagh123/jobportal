@@ -9,7 +9,7 @@ import {
     Bell, ChevronDown, User as UserIcon, Settings,
     HelpCircle, LogOut, Search, Bookmark, Sun, Briefcase,
     Building2, GraduationCap, TrendingUp, LayoutGrid, Lightbulb,
-    Command, CheckCircle2
+    Command, CheckCircle2, FileText
 } from 'lucide-react'
 
 
@@ -114,28 +114,27 @@ const Navbar = () => {
         return () => window.removeEventListener('keydown', handler)
     }, [])
 
+    const isCareerToolsActive = location.pathname.includes('/resumes');
+
     return (
         <div className='bg-white border-b border-gray-100 py-3 sticky top-0 z-40 shadow-[0_1px_10px_rgba(0,0,0,0.05)]'>
             <div className='px-4 lg:px-6 flex items-center gap-3'>
 
-                {/* ── Dynamic Greeting ── */}
+                {/* ── Search Bar ── */}
                 <div className="hidden lg:flex items-center flex-1">
-                    <div className="flex items-center gap-3 pl-4 border-l-[3px] border-blue-600/20 rounded-sm py-0.5">
-                        <p className="text-sm font-medium text-gray-500">
-                            <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 font-extrabold tracking-tight">
-                                {user ? `Welcome back, ${user.firstName || user.fullName?.split(' ')[0]}!` : 'Ready for your next big move?'}
-                            </span> 
-                        </p>
-                        <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-100 px-2.5 py-1 rounded-lg">
-                            <span className="relative flex h-1.5 w-1.5">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
-                            </span>
-                            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mt-px">
-                                {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                            </span>
-                        </div>
-                    </div>
+                    <form onSubmit={handleSearch} className="flex items-center bg-[#F3F4F6] hover:bg-[#E5E7EB] border border-transparent rounded-full px-4 py-2 w-full max-w-[320px] transition-all focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-300">
+                        <Search size={16} className="text-gray-400 shrink-0" />
+                        <input
+                            ref={searchRef}
+                            type="text"
+                            placeholder="Search jobs, skills, or career tools..."
+                            value={localSearch}
+                            onChange={(e) => setLocalSearch(e.target.value)}
+                            onFocus={() => setIsSearchFocused(true)}
+                            onBlur={() => setIsSearchFocused(false)}
+                            className="bg-transparent border-none outline-none text-sm font-medium text-gray-700 w-full ml-2 placeholder-gray-400"
+                        />
+                    </form>
                 </div>
 
                 {/* ── Quick Actions Navigation (Center) ── */}
@@ -163,14 +162,36 @@ const Navbar = () => {
                         </div>
                     </Link>
 
-                    {/* Action: Career Tools */}
-                    <div className="group flex items-center gap-2.5 px-2 lg:px-3 py-1.5 bg-white border border-gray-100 rounded-[12px] shadow-[0_1px_2px_rgba(0,0,0,0.02)] hover:shadow-[0_4px_12px_rgba(139,92,246,0.08)] hover:border-violet-100 hover:bg-violet-50/30 transition-all duration-200 cursor-pointer" title="Career Tools">
-                        <div className="p-1.5 rounded-[8px] bg-violet-50 text-violet-600 group-hover:scale-110 transition-transform duration-200">
-                            <Briefcase size={16} strokeWidth={2.5} />
+                    {/* Action: Career Tools (Dropdown) */}
+                    <div className="relative group">
+                        <div className={`flex items-center gap-2.5 px-2 lg:px-3 py-1.5 rounded-[12px] shadow-[0_1px_2px_rgba(0,0,0,0.02)] transition-all duration-200 cursor-pointer ${isCareerToolsActive ? 'bg-violet-50/80 border border-violet-100' : 'bg-white border border-gray-100 hover:shadow-[0_4px_12px_rgba(139,92,246,0.08)] hover:border-violet-100 hover:bg-violet-50/30'}`}>
+                            <div className={`p-1.5 rounded-[8px] transition-transform duration-200 ${isCareerToolsActive ? 'bg-violet-600 text-white' : 'bg-violet-50 text-violet-600 group-hover:scale-110'}`}>
+                                <Briefcase size={16} strokeWidth={2.5} />
+                            </div>
+                            <div className="hidden lg:flex flex-col">
+                                <span className={`text-[13px] font-bold leading-tight ${isCareerToolsActive ? 'text-violet-900' : 'text-gray-700 group-hover:text-violet-700'}`}>Career Tools</span>
+                                <span className={`text-[9px] font-semibold uppercase tracking-wide leading-none mt-0.5 ${isCareerToolsActive ? 'text-violet-500' : 'text-gray-400'}`}>Grow</span>
+                            </div>
                         </div>
-                        <div className="hidden lg:flex flex-col">
-                            <span className="text-[13px] font-bold text-gray-700 leading-tight group-hover:text-violet-700">Career Tools</span>
-                            <span className="text-[9px] font-semibold text-gray-400 uppercase tracking-wide leading-none mt-0.5">Grow</span>
+
+                        {/* Dropdown Menu */}
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-56 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform origin-top translate-y-2 group-hover:translate-y-0 z-50">
+                            <div className="bg-white rounded-xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] border border-gray-100 p-2 relative">
+                                {/* Arrow pointer */}
+                                <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-t border-l border-gray-100 transform rotate-45"></div>
+                                
+                                <Link to="/resumes" className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-violet-50 transition-colors group/item">
+                                    <div className="bg-violet-100 text-violet-600 p-1.5 rounded-md mt-0.5 group-hover/item:scale-110 transition-transform">
+                                        <FileText size={16} />
+                                    </div>
+                                    <div>
+                                        <div className="text-sm font-bold text-gray-800 group-hover/item:text-violet-700">Resume Builder</div>
+                                        <div className="text-[10px] text-gray-500 font-medium leading-tight mt-0.5">Create ATS-friendly resumes with AI</div>
+                                    </div>
+                                </Link>
+                                
+                                {/* Placeholder for future tools */}
+                            </div>
                         </div>
                     </div>
 

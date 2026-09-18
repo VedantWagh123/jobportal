@@ -185,7 +185,7 @@ const Applications = () => {
                     </div>
                     <h3 className="font-bold text-emerald-900 text-lg relative z-10">Resume Uploaded</h3>
                     <p className="text-[13px] text-emerald-700 font-medium mt-1 mb-4 relative z-10">Your profile is ready for applications.</p>
-                    <a target='_blank' href={userData.resume.replace('/upload/', '/upload/fl_attachment/')} rel="noreferrer" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl transition-colors relative z-10">
+                    <a target='_blank' href={userData.resume ? userData.resume : '#'} rel="noreferrer" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl transition-colors relative z-10">
                       View Resume
                     </a>
                   </div>
