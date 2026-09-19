@@ -140,15 +140,22 @@ const ViewApplications = () => {
     }
 
     // Direct advance
+    const originalApplicants = [...applicants];
+    setApplicants(prev => prev.map(app => 
+      app._id === applicant._id ? { ...app, status: newStatus } : app
+    ));
+
     try {
       const { data } = await axios.post(backendUrl + '/api/company/change-status', { id: applicant._id, status: newStatus }, { headers: { token: companyToken } })
       if (data.success) {
         toast.success(`Moved to ${newStatus.replace(/_/g, ' ')}`)
-        fetchCompanyJobApplications()
+        // fetchCompanyJobApplications() in background (optional, state already updated)
       } else {
+        setApplicants(originalApplicants);
         toast.error(data.message)
       }
     } catch (error) {
+      setApplicants(originalApplicants);
       toast.error(error.message)
     }
   }
@@ -159,26 +166,36 @@ const ViewApplications = () => {
     if (missing) return toast.error(`Please rate "${missing}" before submitting.`)
 
     setSubmittingFeedback(true)
+    const targetAppId = feedbackTarget.application._id;
+    const finalStatus = feedbackTarget.finalStatus;
+    
+    // Optimistic UI for feedback submission
+    const originalApplicants = [...applicants];
+    setApplicants(prev => prev.map(app => 
+      app._id === targetAppId ? { ...app, status: finalStatus, feedbackSubmitted: true } : app
+    ));
+
     try {
       const ratingsArray = jobSkills.map(s => ({ skillName: s, rating: skillRatings[s] }))
       const { data } = await axios.post(
         backendUrl + '/api/company/feedback',
         {
-          applicationId: feedbackTarget.application._id,
-          finalStatus: feedbackTarget.finalStatus,
+          applicationId: targetAppId,
+          finalStatus: finalStatus,
           skillRatings: ratingsArray,
           overallComment
         },
         { headers: { token: companyToken } }
       )
       if (data.success) {
-        toast.success(`Feedback submitted! Candidate marked as ${feedbackTarget.finalStatus}.`)
+        toast.success(`Feedback submitted! Candidate marked as ${finalStatus}.`)
         setFeedbackTarget(null)
-        fetchCompanyJobApplications()
       } else {
+        setApplicants(originalApplicants);
         toast.error(data.message)
       }
     } catch (error) {
+      setApplicants(originalApplicants);
       toast.error(error.response?.data?.message || error.message)
     } finally {
       setSubmittingFeedback(false)

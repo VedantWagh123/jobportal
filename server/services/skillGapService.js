@@ -242,6 +242,8 @@ class SkillGapService {
             }
         });
 
+        const candidateSkillsSet = new Set((candidateSkills || []).map(s => s.toLowerCase()));
+
         // Now fetch active courses and their institutes
         const recommendedCourses = [];
         for (const cid of courseIdSet) {
@@ -256,9 +258,19 @@ class SkillGapService {
                 status: { $in: ['Planning', 'Active'] }
             });
 
-            // We no longer filter out courses based on overlap. 
-            // If the course teaches at least one missing skill (which it does, otherwise it wouldn't be in this loop), 
-            // it is a valid recommendation.
+            // Filter out courses if candidate already knows > 30% of the skills taught in this course
+            const allCourseSkills = await CourseSkill.find({ courseId: cid }).populate('skillId');
+            const allCourseSkillNames = allCourseSkills.map(cs => cs.skillId?.name?.toLowerCase()).filter(Boolean);
+            
+            if (allCourseSkillNames.length > 0 && candidateSkillsSet.size > 0) {
+                const matchedCount = allCourseSkillNames.filter(s => candidateSkillsSet.has(s)).length;
+                const matchPercentage = matchedCount / allCourseSkillNames.length;
+                
+                // Do not suggest if > 30% of course skills are already known to the user
+                if (matchPercentage > 0.3) {
+                    continue;
+                }
+            }
 
             const coveredSkillsArr = Array.from(courseCoverageMap.get(cid).coveredSkills);
             

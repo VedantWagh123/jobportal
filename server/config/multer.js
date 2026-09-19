@@ -10,6 +10,32 @@ const storage = multer.diskStorage({
     }
 });
 
-const upload = multer({ storage })
+const fileFilter = (req, file, cb) => {
+    // Allowed file types (Images and Resumes)
+    const allowedMimeTypes = [
+        'image/jpeg', 
+        'image/png', 
+        'image/jpg', 
+        'image/webp',
+        'image/svg+xml',
+        'application/pdf', 
+        'application/msword', 
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ];
 
-export default upload
+    if (allowedMimeTypes.includes(file.mimetype)) {
+        cb(null, true);
+    } else {
+        cb(new Error(`Security Error: Invalid file type (${file.mimetype}). Only Images (JPG, PNG, WebP) and Resumes (PDF, DOC) are allowed.`), false);
+    }
+};
+
+const upload = multer({ 
+    storage,
+    fileFilter,
+    limits: {
+        fileSize: 10 * 1024 * 1024 // 10 MB max size
+    }
+});
+
+export default upload;

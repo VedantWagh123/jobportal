@@ -30,6 +30,7 @@ const CareerGap = lazy(() => import('./pages/CareerGap'))
 const SavedJobs = lazy(() => import('./pages/SavedJobs'))
 const ResumeDashboard = lazy(() => import('./pages/ResumeDashboard'))
 const ResumeBuilder = lazy(() => import('./pages/ResumeBuilder'))
+const SmartMatch = lazy(() => import('./pages/SmartMatch'))
 
 const App = () => {
 
@@ -51,6 +52,7 @@ const App = () => {
             <Route path='/career-gap' element={<CareerGap />} />
             <Route path='/saved-jobs' element={<SavedJobs />} />
             <Route path='/resumes' element={<ResumeDashboard />} />
+            <Route path='/smart-match' element={<SmartMatch />} />
           </Route>
           
           {/* Standalone Full-Screen Routes */}

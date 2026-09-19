@@ -69,6 +69,8 @@ export const parseJobDescription = async (jobId, title, description) => {
             Do not extract soft skills (e.g. "communication", "teamwork").
             Also infer the normalized job role (e.g., 'Frontend Developer', 'Data Scientist') and the experience required (e.g., '0-2 years', '5+ years').
             
+            CRITICAL INSTRUCTION FOR REGIONAL LANGUAGES: The job description might be written in English, Hinglish, Hindi, or a mix of regional Indian languages (e.g., "Accounting ka kaam aana chahiye Tally pe"). You must semantically understand the mixed text and ALWAYS map the extracted technical skills to standard English canonical names (e.g., extract "Tally" and "Accounting").
+            
             Job Title: ${title}
             Job Description: ${cleanedDescription}
             

@@ -1,11 +1,11 @@
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useContext, Fragment } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
 import {
     Building2, Check, X, Loader2, AlertCircle, Search, Filter,
     ChevronLeft, ChevronRight, MoreHorizontal, CheckCircle2,
     XCircle, Clock, ArrowUpDown, SortAsc, SortDesc, Eye,
-    Mail, MapPin, Award, RefreshCw, Shield, Home
+    Mail, MapPin, Award, RefreshCw, Shield, Home, Phone, Star
 } from 'lucide-react';
 
 /* ─────────────────────────────────────────────────────────
@@ -164,6 +164,79 @@ const SortIcon = ({ f, sf, sd }) =>
     sf!==f ? <ArrowUpDown size={11} className="text-gray-300 ml-1"/>
            : sd==='asc' ? <SortAsc size={11} className="text-blue-500 ml-1"/> : <SortDesc size={11} className="text-blue-500 ml-1"/>;
 
+/* ─────────────────────────────────────────────────────────
+   EXPANDED DETAILS UI
+───────────────────────────────────────────────────────── */
+const ExpandedDetails = ({ inst }) => (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-5 bg-white/60 backdrop-blur-sm rounded-2xl shadow-inner border border-gray-100 mt-2 mb-3 mx-2" style={{animation: 'slideUp 0.3s ease-out'}}>
+        <div className="flex gap-4">
+            <div className="w-24 h-24 bg-white rounded-xl border border-gray-200 shadow-sm flex items-center justify-center shrink-0 overflow-hidden relative group">
+                {inst.image ? (
+                    <img src={inst.image} alt={inst.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+                        <Building2 size={36} className="text-gray-300" />
+                    </div>
+                )}
+            </div>
+            <div className="flex flex-col py-1">
+                <h4 className="text-[15px] font-black text-gray-900 leading-tight">{inst.name}</h4>
+                <div className="flex items-center gap-2 mt-1.5">
+                    <TypeBadge type={inst.type}/>
+                    {inst.accreditation && <span className="text-[10px] font-bold bg-blue-50 text-blue-600 px-2 py-0.5 rounded-md border border-blue-100"><Award size={10} className="inline mr-1"/>{inst.accreditation}</span>}
+                </div>
+                <p className="text-[12px] text-gray-500 font-medium mt-2.5 leading-relaxed line-clamp-3">
+                    {inst.description || 'No detailed description has been provided by this institute yet.'}
+                </p>
+            </div>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-5 py-2">
+            <div>
+                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2.5 flex items-center gap-1.5"><Shield size={10}/> Contact Information</p>
+                <div className="space-y-2">
+                    <p className="text-[12px] font-medium text-gray-700 flex items-center gap-2 bg-white px-2.5 py-1.5 rounded-lg border border-gray-100 shadow-sm"><Mail size={13} className="text-blue-500 shrink-0"/> <span className="truncate">{inst.email || '—'}</span></p>
+                    <p className="text-[12px] font-medium text-gray-700 flex items-center gap-2 bg-white px-2.5 py-1.5 rounded-lg border border-gray-100 shadow-sm"><Phone size={13} className="text-emerald-500 shrink-0"/> <span>{inst.phone || 'Not provided'}</span></p>
+                </div>
+            </div>
+            <div>
+                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2.5 flex items-center gap-1.5"><MapPin size={10}/> Location Details</p>
+                <div className="bg-white px-3 py-2.5 rounded-lg border border-gray-100 shadow-sm h-[72px] flex items-start gap-2">
+                    <MapPin size={14} className="text-red-500 shrink-0 mt-0.5"/>
+                    <div>
+                        <p className="text-[11px] font-bold text-gray-800">{inst.districtId?.name || 'Unknown District'}</p>
+                        <p className="text-[11px] font-medium text-gray-500 mt-0.5 leading-relaxed line-clamp-2">{inst.address || 'Specific address not provided'}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {inst.isApproved && (
+            <div className="md:col-span-2 flex items-center gap-8 pt-4 border-t border-gray-100/60">
+                <div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">Quality Score</p>
+                    <div className="flex items-center gap-2">
+                        <div className="flex items-center text-amber-400">
+                            {[...Array(5)].map((_, i) => (
+                                <Star key={i} size={14} fill={i < Math.round(inst.qualityScore || 0) ? "currentColor" : "transparent"} stroke={i < Math.round(inst.qualityScore || 0) ? "currentColor" : "#cbd5e1"} />
+                            ))}
+                        </div>
+                        <p className="text-[14px] font-black text-gray-900">{inst.qualityScore || '0'}<span className="text-[11px] text-gray-400 font-medium">/5</span></p>
+                    </div>
+                </div>
+                <div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">Total Ratings</p>
+                    <p className="text-[14px] font-black text-gray-900">{inst.totalRatings || 0} <span className="text-[11px] font-medium text-gray-400 text-normal">reviews</span></p>
+                </div>
+                <div className="ml-auto">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase mb-1 text-right">Registration Date</p>
+                    <p className="text-[12px] font-bold text-gray-700">{new Date(inst.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                </div>
+            </div>
+        )}
+    </div>
+);
+
 /* ═══════════════════════════════════════════════════════════
    MAIN COMPONENT
 ═══════════════════════════════════════════════════════════ */
@@ -177,6 +250,7 @@ const InstituteManagement = () => {
     const [currentPage, setCurrentPage]     = useState(1);
     const [activeTab, setActiveTab]         = useState('all');
     const [modal, setModal]                 = useState(null);
+    const [expandedId, setExpandedId]       = useState(null);
     const [actionLoading, setActionLoading] = useState(null);
     const [toast, setToast]                 = useState('');
     const { user }                          = useContext(AuthContext);
@@ -457,14 +531,15 @@ const InstituteManagement = () => {
                             </thead>
                             <tbody className="divide-y divide-amber-100/60">
                                 {pending.map((inst,idx)=>(
-                                    <tr key={inst._id} className="hover:bg-amber-50 transition-colors duration-150 au" style={{animationDelay:`${idx*50}ms`}}>
+                                    <Fragment key={inst._id}>
+                                    <tr onClick={() => setExpandedId(expandedId === inst._id ? null : inst._id)} className="hover:bg-amber-50 transition-colors duration-150 au cursor-pointer" style={{animationDelay:`${idx*50}ms`}}>
                                         <td className="px-5 sm:px-7 py-3.5">
                                             <div className="flex items-center gap-2.5">
                                                 <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center font-black text-white text-[13px] shadow-sm shrink-0">
                                                     {(inst.name||'I')[0].toUpperCase()}
                                                 </div>
                                                 <div>
-                                                    <p className="font-bold text-gray-900 text-[13px] leading-tight">{inst.name||'—'}</p>
+                                                    <p className="font-bold text-gray-900 text-[13px] leading-tight group-hover:text-amber-700">{inst.name||'—'}</p>
                                                     <p className="text-[11px] text-gray-400 flex items-center gap-1 mt-0.5"><Mail size={9}/>{inst.email||'—'}</p>
                                                 </div>
                                             </div>
@@ -478,7 +553,7 @@ const InstituteManagement = () => {
                                                 ? <span className="text-[12px] font-bold text-blue-600 flex items-center gap-1"><Award size={12} className="text-amber-400"/>{inst.accreditation}</span>
                                                 : <span className="text-gray-300">—</span>}
                                         </td>
-                                        <td className="px-4 py-3.5">
+                                        <td className="px-4 py-3.5" onClick={e => e.stopPropagation()}>
                                             <div className="flex items-center justify-end gap-2">
                                                 <button
                                                     onClick={()=>setModal({type:'approve',id:inst._id,name:inst.name})}
@@ -495,6 +570,14 @@ const InstituteManagement = () => {
                                             </div>
                                         </td>
                                     </tr>
+                                    {expandedId === inst._id && (
+                                        <tr className="bg-amber-50/50">
+                                            <td colSpan="5" className="p-0 border-b border-amber-100">
+                                                <ExpandedDetails inst={inst} />
+                                            </td>
+                                        </tr>
+                                    )}
+                                    </Fragment>
                                 ))}
                             </tbody>
                         </table>
@@ -591,7 +674,8 @@ const InstituteManagement = () => {
                                     </div>
                                 </td></tr>
                             ) : paginated.map((inst,idx)=>(
-                                <tr key={inst._id} className="inst-row group transition-all duration-150 au" style={{animationDelay:`${idx*35}ms`}}>
+                                <Fragment key={inst._id}>
+                                <tr onClick={() => setExpandedId(expandedId === inst._id ? null : inst._id)} className="inst-row group cursor-pointer transition-all duration-150 au" style={{animationDelay:`${idx*35}ms`}}>
                                     <td className="px-4 sm:px-6 py-4">
                                         <div className="flex items-center gap-2.5 sm:gap-3">
                                             <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-700 flex items-center justify-center font-black text-white text-[13px] shadow-sm shrink-0 group-hover:scale-110 transition-transform duration-300">
@@ -614,9 +698,9 @@ const InstituteManagement = () => {
                                     </td>
                                     <td className="px-4 py-4 text-[12px] text-gray-500">{inst.email||'—'}</td>
                                     <td className="px-4 py-4"><StatusBadge approved={inst.isApproved}/></td>
-                                    <td className="px-4 sm:px-6 py-4">
+                                    <td className="px-4 sm:px-6 py-4" onClick={e => e.stopPropagation()}>
                                         <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                                            <button className="p-1.5 rounded-lg hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors" title="View"><Eye size={14}/></button>
+                                            <button onClick={() => setExpandedId(expandedId === inst._id ? null : inst._id)} className="p-1.5 rounded-lg hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors" title={expandedId === inst._id ? "Close Details" : "View Details"}><Eye size={14}/></button>
                                             {!inst.isApproved && (
                                                 <button onClick={()=>setModal({type:'approve',id:inst._id,name:inst.name})}
                                                     className="p-1.5 rounded-lg hover:bg-emerald-50 text-gray-400 hover:text-emerald-600 transition-colors" title="Approve"><Check size={14}/></button>

@@ -189,6 +189,16 @@ const Navbar = () => {
                                         <div className="text-[10px] text-gray-500 font-medium leading-tight mt-0.5">Create ATS-friendly resumes with AI</div>
                                     </div>
                                 </Link>
+
+                                <Link to="/smart-match" className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-violet-50 transition-colors group/item">
+                                    <div className="bg-violet-100 text-violet-600 p-1.5 rounded-md mt-0.5 group-hover/item:scale-110 transition-transform">
+                                        <Lightbulb size={16} />
+                                    </div>
+                                    <div>
+                                        <div className="text-sm font-bold text-gray-800 group-hover/item:text-violet-700">SmartMatch AI</div>
+                                        <div className="text-[10px] text-gray-500 font-medium leading-tight mt-0.5">Find perfect job fits using AI</div>
+                                    </div>
+                                </Link>
                                 
                                 {/* Placeholder for future tools */}
                             </div>

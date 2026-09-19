@@ -5,7 +5,8 @@ import {
     TrendingDown, TrendingUp, Users, BarChart3, AlertTriangle, 
     Calendar, MapPin, Download, ChevronRight, CheckCircle2, 
     Lightbulb, RefreshCcw, MoreHorizontal, ChevronDown, Check,
-    X, BookOpen
+    X, BookOpen, MessageSquare, Search, Building2, BarChart2,
+    ListFilter, Grid, CalendarDays
 } from 'lucide-react';
 import { AreaChart, Area, ResponsiveContainer } from 'recharts';
 
@@ -19,15 +20,52 @@ const PlacementInsights = () => {
     const { user } = useContext(AuthContext);
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [districts, setDistricts] = useState([]);
+    const [selectedDistrict, setSelectedDistrict] = useState('');
+    const [expandedGroups, setExpandedGroups] = useState({});
+    const [expandedSubGroups, setExpandedSubGroups] = useState({});
+    
+    // Feedback Search & Filter State
+    const [feedbackSearch, setFeedbackSearch] = useState('');
+    const [feedbackFilter, setFeedbackFilter] = useState('All Feedback');
+    
+    // Tooltip State
+    const [tooltipState, setTooltipState] = useState({
+        visible: false,
+        pinned: false,
+        x: 0,
+        y: 0
+    });
 
     useEffect(() => {
-        if (user) fetchInsights();
+        if (user) {
+            fetchDistricts();
+        }
     }, [user]);
+
+    useEffect(() => {
+        if (user) {
+            fetchInsights();
+        }
+    }, [user, selectedDistrict]);
+
+    const fetchDistricts = async () => {
+        try {
+            const token = user?.token || localStorage.getItem('stateAdminToken');
+            const { data: res } = await axios.get('/api/state-admin/intelligence/active-districts', {
+                headers: { token }
+            });
+            if (res.success) setDistricts(res.districts);
+        } catch (err) {
+            console.error('Failed to fetch active districts:', err);
+        }
+    };
 
     const fetchInsights = async () => {
         try {
+            setLoading(true);
             const token = user?.token || localStorage.getItem('stateAdminToken');
-            const { data: res } = await axios.get('/api/state-admin/intelligence/placement-insights', {
+            const { data: res } = await axios.get(`/api/state-admin/intelligence/placement-insights${selectedDistrict ? `?districtId=${selectedDistrict}` : ''}`, {
                 headers: { token }
             });
             if (res.success) setData(res);
@@ -37,6 +75,22 @@ const PlacementInsights = () => {
             setLoading(false);
         }
     };
+
+    const toggleGroup = (companyName) => {
+        setExpandedGroups(prev => ({
+            ...prev,
+            [companyName]: !prev[companyName]
+        }));
+    };
+
+    const toggleSubGroup = (key) => {
+        setExpandedSubGroups(prev => ({
+            ...prev,
+            [key]: prev[key] === undefined ? false : !prev[key]
+        }));
+    };
+
+    const isSubGroupExpanded = (key) => expandedSubGroups[key] !== false;
 
     if (loading) return (
         <div className="flex flex-col items-center justify-center h-[70vh]">
@@ -63,6 +117,100 @@ const PlacementInsights = () => {
         if (rating === 'Weak' || rating === 'Poor') return 'bg-red-100 text-red-600';
         return 'bg-amber-100 text-amber-700';
     };
+
+    const getGroupedInstituteRates = () => {
+        if (!data?.institutePlacementRates) return [];
+        
+        const groups = {};
+        data.institutePlacementRates.forEach(inst => {
+            const dName = districts.find(d => d._id === inst.districtId)?.name || 'Other District';
+            if (!groups[dName]) {
+                groups[dName] = {
+                    districtName: dName,
+                    institutes: [],
+                    totalHired: 0,
+                    totalCount: 0
+                };
+            }
+            groups[dName].institutes.push(inst);
+            groups[dName].totalHired += inst.hired;
+            groups[dName].totalCount += inst.total;
+        });
+
+        return Object.values(groups).map(g => ({
+            ...g,
+            districtRate: Math.round((g.totalHired / g.totalCount) * 100) || 0
+        })).sort((a, b) => b.districtRate - a.districtRate);
+    };
+
+    const groupedRates = getGroupedInstituteRates();
+    
+    const bannerTitle = selectedDistrict 
+        ? `${districts.find(d => d._id === selectedDistrict)?.name || 'District'} Placement Rate`
+        : 'State-wide Placement Rate';
+        
+    const bannerDesc = selectedDistrict
+        ? `Hover to view placement breakdown across institutes in this district.`
+        : `Hover to view state-wide placement breakdown grouped by districts.`;
+        
+    const handleMouseMove = (e) => {
+        if (!tooltipState.pinned) {
+            setTooltipState(prev => ({
+                ...prev,
+                visible: true,
+                x: e.clientX,
+                y: e.clientY
+            }));
+        }
+    };
+
+    const handleMouseLeave = () => {
+        if (!tooltipState.pinned) {
+            setTooltipState(prev => ({ ...prev, visible: false }));
+        }
+    };
+
+    const handleBannerClick = () => {
+        if (!tooltipState.pinned) {
+            setTooltipState(prev => ({ ...prev, pinned: true }));
+        }
+    };
+
+    const handleCloseTooltip = (e) => {
+        e.stopPropagation();
+        setTooltipState({ visible: false, pinned: false, x: 0, y: 0 });
+    };
+
+    // Calculate Feedback KPIs
+    let totalFeedbackHired = 0;
+    let totalFeedbackRejected = 0;
+    let totalFeedbackCount = 0;
+    const totalCompaniesCount = data?.groupedRecentFeedbacks?.length || 0;
+
+    data?.groupedRecentFeedbacks?.forEach(group => {
+        group.feedbacks?.forEach(fb => {
+            totalFeedbackCount++;
+            if (fb.finalStatus === 'Hired') totalFeedbackHired++;
+            if (fb.finalStatus === 'Rejected') totalFeedbackRejected++;
+        });
+    });
+
+    // Filter Feedbacks
+    const filteredFeedbackGroups = data?.groupedRecentFeedbacks?.map(group => {
+        const filteredFbs = (group.feedbacks || []).filter(fb => {
+            const matchesStatus = feedbackFilter === 'All Feedback' || fb.finalStatus === feedbackFilter;
+            const searchLower = feedbackSearch.toLowerCase();
+            const matchesSearch = !feedbackSearch || 
+                fb.studentName?.toLowerCase().includes(searchLower) ||
+                fb.jobTitle?.toLowerCase().includes(searchLower) ||
+                fb.instituteName?.toLowerCase().includes(searchLower) ||
+                fb.overallComment?.toLowerCase().includes(searchLower) ||
+                group.companyName?.toLowerCase().includes(searchLower) ||
+                fb.skillRatings?.some(sr => sr.skillName?.toLowerCase().includes(searchLower));
+            return matchesStatus && matchesSearch;
+        });
+        return { ...group, feedbacks: filteredFbs };
+    }).filter(group => group.feedbacks && group.feedbacks.length > 0) || [];
 
     return (
         <div className="w-full px-6 py-6 pb-24 space-y-6">
@@ -103,11 +251,16 @@ const PlacementInsights = () => {
                     </button>
                     
                     <div className="flex items-center gap-2">
-                        <button className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-700 shadow-sm hover:bg-slate-50 transition-colors">
-                            <MapPin size={16} className="text-slate-400" />
-                            Maharashtra
-                            <ChevronDown size={14} className="text-slate-400 ml-1" />
-                        </button>
+                        <select 
+                            className="px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-700 shadow-sm hover:bg-slate-50 outline-none cursor-pointer"
+                            value={selectedDistrict}
+                            onChange={(e) => setSelectedDistrict(e.target.value)}
+                        >
+                            <option value="">All Districts</option>
+                            {districts.map(d => (
+                                <option key={d._id} value={d._id}>{d.name}</option>
+                            ))}
+                        </select>
                         <button className="p-2.5 bg-white border border-slate-200 rounded-lg text-slate-500 shadow-sm hover:bg-slate-50 transition-colors" title="Refresh">
                             <RefreshCcw size={16} />
                         </button>
@@ -226,14 +379,19 @@ const PlacementInsights = () => {
             </div>
 
             {/* State-wide Placement Rate Banner */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)] p-6 md:p-8 relative overflow-hidden">
-                <div className="flex flex-col md:flex-row justify-between md:items-end gap-6 relative z-10">
+            <div 
+                className={`bg-white rounded-2xl border ${tooltipState.pinned ? 'border-blue-400 ring-2 ring-blue-100' : 'border-slate-200'} shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)] p-6 md:p-8 relative overflow-visible z-20 cursor-pointer transition-all`}
+                onMouseMove={handleMouseMove}
+                onMouseLeave={handleMouseLeave}
+                onClick={handleBannerClick}
+            >
+                <div className="flex flex-col md:flex-row justify-between md:items-end gap-6">
                     <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
                             <BarChart3 className="text-blue-600" size={24} />
-                            <h2 className="text-xl font-black text-slate-800">State-wide Placement Rate</h2>
+                            <h2 className="text-xl font-black text-slate-800">{bannerTitle}</h2>
                         </div>
-                        <p className="text-sm font-medium text-slate-500 mb-8">Overall placement percentage across all institutes</p>
+                        <p className="text-sm font-medium text-slate-500 mb-8">{bannerDesc}</p>
                         
                         <div className="w-full bg-slate-100 rounded-full h-3.5 mb-3 overflow-hidden">
                             <div
@@ -248,7 +406,65 @@ const PlacementInsights = () => {
                     </div>
                     
                     <div className="text-right shrink-0">
-                        <h1 className="text-6xl md:text-7xl font-black text-blue-600 tracking-tighter leading-none">{hireRate}%</h1>
+                        <h1 className="text-6xl md:text-7xl font-black text-blue-600 tracking-tighter leading-none hover:text-blue-700 transition-colors">{hireRate}%</h1>
+                    </div>
+                </div>
+            </div>
+
+            {/* Flexible React-State Tooltip that follows cursor */}
+            <div 
+                className={`fixed z-[9999] transition-opacity duration-150 ${tooltipState.visible ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+                style={{
+                    left: tooltipState.x > window.innerWidth - 420 ? tooltipState.x - 420 : tooltipState.x + 20,
+                    top: tooltipState.y > window.innerHeight - 300 ? tooltipState.y - 300 : tooltipState.y + 20,
+                    width: tooltipState.pinned ? '420px' : '360px',
+                }}
+            >
+                <div className="bg-white border border-slate-200 rounded-2xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] p-5 relative">
+                    <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+                        <div className="flex items-center gap-2">
+                            <BarChart3 className="text-blue-600" size={18} />
+                            <h4 className="text-slate-800 font-black text-sm uppercase tracking-wide">Placement Breakdown</h4>
+                        </div>
+                        {tooltipState.pinned && (
+                            <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-bold bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">PINNED</span>
+                                <button 
+                                    onClick={handleCloseTooltip} 
+                                    className="p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-800 transition-colors"
+                                    title="Close"
+                                >
+                                    <X size={16} />
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                    <div className="space-y-4 max-h-80 overflow-y-auto pr-2 custom-scrollbar text-left">
+                        {groupedRates.length === 0 ? (
+                            <p className="text-slate-500 text-sm font-medium text-center py-4">No placement data available.</p>
+                        ) : groupedRates.map((group, idx) => (
+                            <div key={idx} className="flex flex-col gap-2">
+                                <div className="flex justify-between items-center bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
+                                    <span className="text-slate-800 text-xs font-black uppercase tracking-wider">{group.districtName}</span>
+                                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${group.districtRate >= 70 ? 'bg-emerald-100 text-emerald-700' : group.districtRate >= 40 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>
+                                        {group.districtRate}% Rate
+                                    </span>
+                                </div>
+                                <div className="space-y-1 pl-2 border-l-2 border-slate-100 ml-1">
+                                    {group.institutes.map((inst, iIdx) => (
+                                        <div key={iIdx} className="flex justify-between items-center hover:bg-slate-50/80 p-1.5 -mx-1.5 rounded-lg transition-colors">
+                                            <div className="flex flex-col overflow-hidden mr-2">
+                                                <span className="text-slate-700 text-xs font-bold truncate" title={inst.instituteName}>{inst.instituteName}</span>
+                                                <span className="text-slate-400 text-[10px] font-medium mt-0.5">{inst.hired} hired out of {inst.total}</span>
+                                            </div>
+                                            <span className={`shrink-0 text-[10px] font-bold ${inst.placementRate >= 70 ? 'text-emerald-600' : inst.placementRate >= 40 ? 'text-amber-600' : 'text-red-600'}`}>
+                                                {inst.placementRate}%
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </div>
             </div>
@@ -335,98 +551,283 @@ const PlacementInsights = () => {
                 
             </div>
 
-            {/* Recent Feedbacks Table */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                    <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
-                            <BookOpen size={18} strokeWidth={2.5} />
+            {/* Enhanced Recent Employer Feedback Section */}
+            <div className="flex flex-col gap-6 w-full">
+                {/* Header & KPIs Container */}
+                <div className="bg-white rounded-[20px] shadow-sm border border-slate-100 p-6 flex flex-col gap-6">
+                    {/* Top Header Row */}
+                    <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6">
+                        <div className="flex items-center gap-4">
+                            <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-600 shadow-sm shrink-0">
+                                <MessageSquare size={26} strokeWidth={2.5} />
+                            </div>
+                            <div>
+                                <h2 className="text-2xl font-black text-slate-800 tracking-tight">Recent Employer Feedback</h2>
+                                <div className="flex items-center gap-2 mt-1">
+                                    <span className="text-xs font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">Grouped by hiring company</span>
+                                    <span className="text-[11px] font-medium text-slate-500">Insights from employers to help you grow and perform better.</span>
+                                </div>
+                            </div>
                         </div>
-                        <div>
-                            <h2 className="font-bold text-slate-800">Recent Employer Feedback</h2>
-                            <p className="text-[11px] font-semibold text-slate-500">Last 10 interviews across all institutes</p>
+
+                        <div className="flex items-center gap-3 w-full xl:w-auto">
+                            <div className="relative flex-1 xl:w-80">
+                                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <input 
+                                    type="text" 
+                                    placeholder="Search by role, company, skill or feedback..." 
+                                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50/80 hover:bg-slate-100 border border-slate-200 hover:border-slate-300 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-colors placeholder:text-slate-400"
+                                    value={feedbackSearch}
+                                    onChange={(e) => setFeedbackSearch(e.target.value)}
+                                />
+                            </div>
+                            <div className="relative">
+                                <select 
+                                    className="appearance-none pl-4 pr-10 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 shadow-sm outline-none cursor-pointer hover:bg-slate-50 transition-colors"
+                                    value={feedbackFilter}
+                                    onChange={(e) => setFeedbackFilter(e.target.value)}
+                                >
+                                    <option value="All Feedback">All Feedback</option>
+                                    <option value="Hired">Hired</option>
+                                    <option value="Rejected">Rejected</option>
+                                </select>
+                                <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+                            </div>
                         </div>
                     </div>
-                    <button className="text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center">
-                        View All <ChevronRight size={14} />
-                    </button>
+
+                    {/* KPI Cards Row */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {/* Hired Card */}
+                        <div className="bg-white border border-emerald-100/50 shadow-[0_2px_10px_-3px_rgba(16,185,129,0.1)] rounded-2xl p-4 flex items-center gap-4 hover:-translate-y-0.5 transition-transform">
+                            <div className="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                                <CheckCircle2 size={24} strokeWidth={2.5} />
+                            </div>
+                            <div className="flex flex-col justify-center">
+                                <h3 className="font-black text-xl text-slate-800 leading-tight flex items-baseline gap-1.5">
+                                    {totalFeedbackHired} <span className="text-sm font-bold text-emerald-600">Hired</span>
+                                </h3>
+                                <p className="text-[11px] font-bold text-slate-500 mt-0.5">Great job! Keep it up.</p>
+                            </div>
+                        </div>
+
+                        {/* Rejected Card */}
+                        <div className="bg-white border border-red-100/50 shadow-[0_2px_10px_-3px_rgba(239,68,68,0.1)] rounded-2xl p-4 flex items-center gap-4 hover:-translate-y-0.5 transition-transform">
+                            <div className="w-12 h-12 rounded-xl bg-red-100 text-red-500 flex items-center justify-center shrink-0">
+                                <X size={24} strokeWidth={3} />
+                            </div>
+                            <div className="flex flex-col justify-center">
+                                <h3 className="font-black text-xl text-slate-800 leading-tight flex items-baseline gap-1.5">
+                                    {totalFeedbackRejected} <span className="text-sm font-bold text-red-500">Rejected</span>
+                                </h3>
+                                <p className="text-[11px] font-bold text-slate-500 mt-0.5">Keep learning and try again.</p>
+                            </div>
+                        </div>
+
+                        {/* Companies Card */}
+                        <div className="bg-white border border-blue-100/50 shadow-[0_2px_10px_-3px_rgba(59,130,246,0.1)] rounded-2xl p-4 flex items-center gap-4 hover:-translate-y-0.5 transition-transform">
+                            <div className="w-12 h-12 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                                <Building2 size={24} strokeWidth={2.5} />
+                            </div>
+                            <div className="flex flex-col justify-center">
+                                <h3 className="font-black text-xl text-slate-800 leading-tight flex items-baseline gap-1.5">
+                                    {totalCompaniesCount} <span className="text-sm font-bold text-slate-700">Companies</span>
+                                </h3>
+                                <p className="text-[11px] font-bold text-slate-500 mt-0.5">Provided feedback</p>
+                            </div>
+                        </div>
+
+                        {/* Total Feedbacks Card */}
+                        <div className="bg-white border border-indigo-100/50 shadow-[0_2px_10px_-3px_rgba(99,102,241,0.1)] rounded-2xl p-4 flex items-center gap-4 hover:-translate-y-0.5 transition-transform">
+                            <div className="w-12 h-12 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
+                                <BarChart2 size={24} strokeWidth={2.5} />
+                            </div>
+                            <div className="flex flex-col justify-center">
+                                <h3 className="font-black text-xl text-slate-800 leading-tight flex items-baseline gap-1.5">
+                                    {totalFeedbackCount} <span className="text-sm font-bold text-slate-700">Total Feedbacks</span>
+                                </h3>
+                                <p className="text-[11px] font-bold text-slate-500 mt-0.5">Your growth journey</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="bg-white border-b border-slate-100 text-[11px] uppercase tracking-wider text-slate-400 font-black">
-                                <th className="px-6 py-4 font-black">Company / Employer</th>
-                                <th className="px-6 py-4 font-black">Status</th>
-                                <th className="px-6 py-4 font-black">Skills Mentioned</th>
-                                <th className="px-6 py-4 font-black">Feedback</th>
-                                <th className="px-6 py-4 font-black">Date</th>
-                                <th className="px-4 py-4"></th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {recentFeedbacks.length === 0 ? (
-                                <tr>
-                                    <td colSpan="6" className="px-6 py-8 text-center text-sm font-medium text-slate-400">
-                                        No recent feedback submitted.
-                                    </td>
-                                </tr>
-                            ) : recentFeedbacks.map((fb, i) => (
-                                <tr key={i} className="hover:bg-slate-50/50 transition-colors">
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-3">
-                                            {fb.companyId?.image ? (
-                                                <img src={fb.companyId.image} alt={fb.companyId.name} className="w-8 h-8 rounded-full object-cover shadow-sm border border-slate-200" />
-                                            ) : (
-                                                <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs font-bold shadow-sm">
-                                                    {(fb.companyId?.name || 'C').charAt(0).toUpperCase()}
-                                                </div>
-                                            )}
-                                            <span className="font-bold text-sm text-slate-800">{fb.companyId?.name || 'Company'}</span>
+
+                {/* Data Tables by Company */}
+                {filteredFeedbackGroups.length === 0 ? (
+                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-12 text-center flex flex-col items-center">
+                        <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4 text-slate-400">
+                            <Search size={24} />
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-700">No feedback found</h3>
+                        <p className="text-sm font-medium text-slate-500 mt-1">Try adjusting your search or filters.</p>
+                    </div>
+                ) : (
+                    filteredFeedbackGroups.map((group, idx) => (
+                        <div key={idx} className="bg-white rounded-[20px] shadow-sm border border-slate-100 overflow-hidden flex flex-col">
+                            {/* Company Table Header */}
+                            <div 
+                                className="px-6 py-5 border-b border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white cursor-pointer hover:bg-slate-50 transition-colors select-none"
+                                onClick={() => toggleGroup(group.companyName)}
+                            >
+                                <div className="flex items-center gap-4">
+                                    <div className="w-6 flex justify-center">
+                                        <ChevronDown size={20} className={`text-slate-400 transition-transform duration-200 ${expandedGroups[group.companyName] ? '-rotate-90' : 'rotate-0'}`} />
+                                    </div>
+                                    {group.companyImage ? (
+                                        <img src={group.companyImage} alt={group.companyName} className="w-12 h-12 rounded-full object-cover shadow-sm border border-slate-200" />
+                                    ) : (
+                                        <div className="w-12 h-12 rounded-full bg-slate-900 text-white flex items-center justify-center text-lg font-black shadow-sm shrink-0">
+                                            {(group.companyName || 'C').charAt(0).toUpperCase()}
                                         </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold ${
-                                            fb.finalStatus === 'Hired' 
-                                            ? 'bg-emerald-100 text-emerald-700' 
-                                            : 'bg-red-100 text-red-600'
-                                        }`}>
-                                            {fb.finalStatus === 'Hired' ? <Check size={12} strokeWidth={3}/> : <X size={12} strokeWidth={3}/>}
-                                            {fb.finalStatus === 'Hired' ? 'Hired' : 'Rejected'}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex flex-wrap gap-1.5">
-                                            {fb.skillRatings?.length > 0 ? fb.skillRatings.slice(0, 4).map((sr, j) => (
-                                                <span key={j} className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${getSkillBadgeColor(sr.rating)}`}>
-                                                    {sr.skillName}
-                                                </span>
-                                            )) : (
-                                                <span className="text-[10px] font-medium text-slate-400 italic">No specific skills</span>
-                                            )}
+                                    )}
+                                    <div className="flex flex-col">
+                                        <h3 className="font-black text-slate-900 text-lg leading-none">{group.companyName}</h3>
+                                        <div className="flex items-center gap-2 mt-1.5">
+                                            <span className="text-[11px] font-bold text-slate-500">{group.feedbacks.length} feedbacks</span>
+                                            <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+                                            <span className="text-[11px] font-medium text-slate-400 truncate max-w-[200px]" title={group.feedbacks[0]?.instituteName}>
+                                                {group.feedbacks[0]?.instituteName || 'Multiple Institutes'}
+                                            </span>
                                         </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <p className="text-xs font-bold text-slate-700 line-clamp-1 max-w-xs" title={fb.notes || "No detailed feedback provided."}>
-                                            {fb.notes || "No detailed feedback provided."}
-                                        </p>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className="text-xs font-bold text-slate-500">
-                                            {fb.submittedAt && !isNaN(new Date(fb.submittedAt)) 
-                                                ? new Date(fb.submittedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-                                                : 'N/A'
-                                            }
-                                        </span>
-                                    </td>
-                                    <td className="px-4 py-4 text-slate-400 hover:text-slate-700 cursor-pointer text-center">
-                                        <MoreHorizontal size={16} className="mx-auto" />
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                    <button className="flex items-center gap-2 px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors shadow-sm">
+                                        <ListFilter size={14} className="text-slate-400" /> Latest First <ChevronDown size={14} className="text-slate-400 ml-1" />
+                                    </button>
+                                    <button className="p-2 border border-blue-200 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-colors shadow-sm" title="Grid View">
+                                        <Grid size={16} />
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            {/* Table Data */}
+                            {!expandedGroups[group.companyName] && (
+                                <div className="overflow-x-auto animate-in fade-in slide-in-from-top-2 duration-200">
+                                <table className="w-full text-left border-collapse min-w-[900px]">
+                                    <thead>
+                                        <tr className="bg-slate-50/50 border-b border-slate-100">
+                                            <th className="px-6 py-4 text-xs font-black text-slate-600 w-[25%]">Candidate</th>
+                                            <th className="px-6 py-4 text-xs font-black text-slate-600 w-[12%]">Status</th>
+                                            <th className="px-6 py-4 text-xs font-black text-slate-600 w-[20%]">Skills / Tags</th>
+                                            <th className="px-6 py-4 text-xs font-black text-slate-600 w-[23%]">Feedback</th>
+                                            <th className="px-6 py-4 text-xs font-black text-slate-600 w-[10%]">Date</th>
+                                            <th className="px-6 py-4 text-xs font-black text-slate-600 w-[10%] text-right">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-50">
+                                        {(() => {
+                                            const hired = group.feedbacks.filter(fb => fb.finalStatus === 'Hired');
+                                            const rejected = group.feedbacks.filter(fb => fb.finalStatus === 'Rejected');
+                                            
+                                            const renderRow = (fb, rowKey) => (
+                                                <tr key={rowKey} className="hover:bg-slate-50/60 transition-colors group/row">
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex items-start gap-3">
+                                                            <div className={`w-9 h-9 rounded-full flex items-center justify-center font-black text-base shrink-0 border ${fb.finalStatus === 'Hired' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-red-50 text-red-500 border-red-100'}`}>
+                                                                {(fb.studentName || 'S').charAt(0).toUpperCase()}
+                                                            </div>
+                                                            <div className="flex flex-col justify-center">
+                                                                <span className="font-bold text-sm text-slate-800 leading-tight">{fb.studentName || 'Unknown Student'}</span>
+                                                                <span className="text-[11px] font-bold text-blue-600 mt-1">{fb.jobTitle}</span>
+                                                                <span className="text-[10px] font-medium text-slate-400 mt-0.5">{fb.instituteName}</span>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 align-top pt-5">
+                                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold shadow-sm ${
+                                                            fb.finalStatus === 'Hired' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100/50' : 'bg-red-50 text-red-500 border border-red-100/50'
+                                                        }`}>
+                                                            {fb.finalStatus === 'Hired' ? <Check size={12} strokeWidth={3}/> : <X size={12} strokeWidth={3}/>}
+                                                            {fb.finalStatus === 'Hired' ? 'Hired' : 'Rejected'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4 align-top pt-5">
+                                                        <div className="flex flex-wrap gap-1.5">
+                                                            {fb.skillRatings?.length > 0 ? fb.skillRatings.map((sr, k) => (
+                                                                <span key={k} className={`text-[10px] font-bold px-2.5 py-1 rounded-full capitalize ${getSkillBadgeColor(sr.rating)}`}>
+                                                                    {sr.skillName}
+                                                                </span>
+                                                            )) : (
+                                                                <span className="text-[10px] font-medium text-slate-400 italic">No specific skills</span>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 align-top pt-5">
+                                                        <div className="flex items-start gap-1">
+                                                            <span className="text-slate-400 font-serif font-black text-lg leading-none">"</span>
+                                                            <p className="text-xs font-semibold text-slate-600 italic leading-relaxed line-clamp-2 mt-0.5" title={fb.overallComment || "No comments"}>
+                                                                {fb.overallComment || "No detailed feedback provided."}
+                                                            </p>
+                                                            <span className="text-slate-400 font-serif font-black text-lg leading-none self-end ml-0.5">"</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 align-top pt-5">
+                                                        <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500">
+                                                            <CalendarDays size={12} className="text-slate-400" />
+                                                            {fb.submittedAt ? new Date(fb.submittedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 align-top pt-5 text-right">
+                                                        <div className="flex items-center justify-end gap-2">
+                                                            <button className="flex items-center gap-1 px-3 py-1.5 bg-white border border-blue-200 text-blue-600 rounded-lg text-[10px] font-black hover:bg-blue-50 transition-colors shadow-sm">
+                                                                View Details <ChevronRight size={12} strokeWidth={3} />
+                                                            </button>
+                                                            <button className="p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 rounded-lg transition-colors">
+                                                                <MoreHorizontal size={14} />
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                            
+                                            const hiredKey = `${group.companyName}-hired`;
+                                            const rejectedKey = `${group.companyName}-rejected`;
+                                            
+                                            return (
+                                                <>
+                                                    {hired.length > 0 && (
+                                                        <>
+                                                            <tr 
+                                                                className="bg-emerald-50/50 border-y border-emerald-100/50 cursor-pointer hover:bg-emerald-100/40 transition-colors select-none"
+                                                                onClick={() => toggleSubGroup(hiredKey)}
+                                                            >
+                                                                <td colSpan="6" className="px-6 py-2.5 text-xs font-black text-emerald-700 tracking-wide uppercase">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <ChevronDown size={14} className={`transition-transform duration-200 ${isSubGroupExpanded(hiredKey) ? 'rotate-0' : '-rotate-90'}`} />
+                                                                        Selected Candidates ({hired.length})
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                            {isSubGroupExpanded(hiredKey) && hired.map((fb, j) => renderRow(fb, `hired-${j}`))}
+                                                        </>
+                                                    )}
+                                                    {rejected.length > 0 && (
+                                                        <>
+                                                            <tr 
+                                                                className="bg-red-50/50 border-y border-red-100/50 cursor-pointer hover:bg-red-100/40 transition-colors select-none"
+                                                                onClick={() => toggleSubGroup(rejectedKey)}
+                                                            >
+                                                                <td colSpan="6" className="px-6 py-2.5 text-xs font-black text-red-600 tracking-wide uppercase">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <ChevronDown size={14} className={`transition-transform duration-200 ${isSubGroupExpanded(rejectedKey) ? 'rotate-0' : '-rotate-90'}`} />
+                                                                        Rejected Candidates ({rejected.length})
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                            {isSubGroupExpanded(rejectedKey) && rejected.map((fb, j) => renderRow(fb, `rejected-${j}`))}
+                                                        </>
+                                                    )}
+                                                </>
+                                            );
+                                        })()}
+                                    </tbody>
+                                </table>
+                            </div>
+                            )}
+                        </div>
+                    ))
+                )}
             </div>
 
         </div>

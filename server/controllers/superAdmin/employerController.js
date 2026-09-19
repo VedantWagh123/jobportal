@@ -2,6 +2,7 @@ import Company from '../../models/Company.js';
 import Job from '../../models/Job.js';
 import User from '../../models/User.js';
 import UserNotification from '../../models/UserNotification.js';
+import { getIO } from '../../config/socket.js';
 
 // @desc    Get all employers
 // @route   GET /api/super-admin/employers
@@ -47,13 +48,26 @@ export const updateEmployerStatus = async (req, res) => {
         if (status === 'Approved' && previousStatus !== 'Approved') {
             const user = await User.findOne({ email: employer.email });
             if (user) {
+                const message = `Your employer account for "${employer.name}" has been approved! You can now access your dashboard to post and manage jobs.`;
                 await UserNotification.create({
                     userId: user._id,
                     type: 'System',
                     title: 'Employer Account Approved 🎉',
-                    message: `Your employer account for "${employer.name}" has been approved! You can now access your dashboard to post and manage jobs.`,
+                    message,
                     link: '/dashboard'
                 });
+
+                // Emit real-time WebSockets event to the candidate (Employer)
+                try {
+                    const io = getIO();
+                    io.emit('candidate_notification', { 
+                        userId: user._id.toString(), 
+                        message, 
+                        type: 'system' 
+                    });
+                } catch (err) {
+                    console.error("Socket error:", err.message);
+                }
             }
         }
 

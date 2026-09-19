@@ -46,6 +46,18 @@ const ApplyJob = () => {
         navigate('/applications')
         return toast.error('Upload resume to apply')
       }
+      
+      // OPTIMISTIC UI UPDATE
+      const optimisticApp = { 
+        jobId: { _id: JobData._id }, 
+        status: 'Pending', 
+        date: Date.now() 
+      };
+      const previousApps = [...userApplications];
+      
+      setUserApplications(prev => [...prev, optimisticApp]);
+      setIsAlreadyApplied(true);
+      
       const token = await getToken()
       const { data } = await axios.post(backendUrl + '/api/users/apply',
         { jobId: JobData._id },
@@ -53,11 +65,18 @@ const ApplyJob = () => {
       )
       if (data.success) {
         toast.success(data.message)
+        // Optionally fetch real data in background to sync IDs
         fetchUserApplications()
       } else {
+        // Revert Optimistic UI on failure
+        setUserApplications(previousApps);
+        setIsAlreadyApplied(false);
         toast.error(data.message)
       }
     } catch (error) {
+      // Revert Optimistic UI on error
+      setUserApplications(userApplications.filter(app => app.jobId?._id !== JobData._id));
+      setIsAlreadyApplied(false);
       toast.error(error.message)
     }
   }

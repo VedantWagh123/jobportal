@@ -257,3 +257,18 @@ export const getMigrationAnalysis = async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 };
+
+export const getActiveDistricts = async (req, res) => {
+    try {
+        const TrainingInstitute = (await import('../models/TrainingInstitute.js')).default;
+        const District = (await import('../models/District.js')).default;
+        
+        // Fetch all districts so that dropdown has options like Mumbai, Nagpur even if no institutes exist yet.
+        const districts = await District.find({}).select('name state').sort({ name: 1 }).lean();
+        
+        res.json({ success: true, districts });
+    } catch (error) {
+        console.error('Error fetching active districts:', error);
+        res.status(500).json({ success: false, message: 'Server error fetching districts' });
+    }
+};

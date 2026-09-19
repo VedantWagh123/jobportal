@@ -15,7 +15,7 @@ const UserSidebar = () => {
 
     const isActive = (path) => location.pathname === path;
 
-    const navItems = [
+        const navItems = [
         { path: '/', label: 'Home', icon: Home, badge: null },
         ...(user ? [
             { path: '/applications', label: 'Applied Jobs', icon: BriefcaseBusiness, badge: userApplications ? userApplications.filter(job => job.jobId && job.companyId).length : 0, badgeType: 'count' },

@@ -6,6 +6,7 @@ const router = express.Router();
 
 router.use(protectSuperAdmin);
 
+// Removed cache for strictly real-time stats
 router.get('/stats', getDashboardStats);
 
 export default router;

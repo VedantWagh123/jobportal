@@ -57,6 +57,41 @@ const callOllamaChat = async (contents) => {
     }
 };
 
+// Helper for managing multiple Gemini API keys and automatically switching if quota is exceeded
+let currentGeminiKeyIndex = 0;
+
+const executeGeminiWithFallback = async (executeWithKeyFn) => {
+    const keys = [
+        process.env.GEMINI_API_KEY,
+        process.env.GEMINI_API_KEY_2
+    ].filter(Boolean);
+
+    if (keys.length === 0) {
+        throw new Error("No GEMINI_API_KEY provided in .env");
+    }
+
+    let attempts = 0;
+    let lastError = null;
+
+    // Loop through keys array twice at most to check if the first key refilled
+    while (attempts < keys.length) {
+        const keyToUse = keys[currentGeminiKeyIndex];
+        console.log(`[Gemini API] Processing request using API Key ${currentGeminiKeyIndex + 1}...`);
+        try {
+            return await executeWithKeyFn(keyToUse);
+        } catch (error) {
+            lastError = error;
+            console.warn(`[Gemini] Key ${currentGeminiKeyIndex + 1} failed: ${error.message}`);
+            
+            console.log(`[Gemini] Auto-switching to next available key...`);
+            currentGeminiKeyIndex = (currentGeminiKeyIndex + 1) % keys.length;
+            attempts++;
+        }
+    }
+
+    throw new Error(`Gemini API Error: All ${keys.length} API keys exhausted their quotas. ` + (lastError?.message || ''));
+};
+
 export const runAIAnalysis = async () => {
     try {
         console.log("Starting AI Curriculum Gap Analysis...");
@@ -111,7 +146,7 @@ export const runAIAnalysis = async () => {
             if (!process.env.GEMINI_API_KEY) throw new Error("GEMINI_API_KEY missing");
             const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
             const response = await ai.models.generateContent({
-                model: 'gemini-2.5-flash',
+                model: 'gemini-3.6-flash',
                 contents: prompt,
             });
             responseText = response.text;
@@ -158,7 +193,7 @@ export const generateResponse = async (prompt, fallback = "") => {
         }
         const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3.6-flash',
             contents: prompt,
         });
         return response.text;
@@ -185,7 +220,7 @@ export const generateChatResponse = async (contents, fallback = "") => {
         }
         const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3.6-flash',
             contents: contents, // Array of { role: 'user'|'model', parts: [{text: '...'}] }
         });
         return response.text;
@@ -242,7 +277,7 @@ ${pdfText.substring(0, 15000)}
             } else {
                 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
                 const response = await ai.models.generateContent({
-                    model: 'gemini-2.5-flash',
+                    model: 'gemini-3.6-flash',
                     contents: prompt,
                 });
                 aiResponse = response.text;
@@ -266,5 +301,155 @@ ${pdfText.substring(0, 15000)}
     } catch (error) {
         console.error("EXTRACT RESUME SKILLS ERROR:", error.message);
         return [];
+    }
+};
+
+export const analyzeResumeForSmartMatch = async (pdfText) => {
+    const prompt = `You are an expert AI Resume Analyzer for a SmartMatch ATS system.
+Your task is to analyze the following resume text and extract the information into a strict JSON format.
+
+CRITICAL RULES:
+1. You MUST return ONLY valid JSON. Do not include markdown formatting like \`\`\`json or \`\`\`.
+2. Do not include any conversational text.
+3. If a section is missing from the resume, return an empty array or empty string for that field.
+
+JSON Structure Requirements:
+{
+  "summary": "A brief professional summary based on the resume (max 2 sentences).",
+  "technicalSkills": ["skill1", "skill2"],
+  "softSkills": ["skill1", "skill2"],
+  "experience": [
+    {
+      "jobTitle": "...",
+      "company": "...",
+      "years": 2, 
+      "description": "..."
+    }
+  ],
+  "education": [
+    {
+      "degree": "...",
+      "institution": "...",
+      "year": "..."
+    }
+  ],
+  "certifications": ["cert1"]
+}
+
+Resume Text:
+${pdfText.substring(0, 20000)}`;
+
+    try {
+        const aiResponseText = await executeGeminiWithFallback(async (apiKey) => {
+            const ai = new GoogleGenAI({ apiKey });
+            const response = await ai.models.generateContent({
+                model: 'gemini-3.6-flash',
+                contents: prompt,
+                config: {
+                    responseMimeType: "application/json",
+                }
+            });
+            return response.text;
+        });
+        
+        const jsonStr = aiResponseText.replace(/```json/gi, '').replace(/```/g, '').trim();
+        return JSON.parse(jsonStr);
+
+    } catch (error) {
+        console.error("SMARTMATCH RESUME ANALYSIS ERROR:", error.message);
+        
+        try {
+            console.log("Attempting Ollama fallback for resume analysis...");
+            const ollamaResponse = await callOllama(prompt);
+            const jsonStr = ollamaResponse.replace(/```json/gi, '').replace(/```/g, '').trim();
+            return JSON.parse(jsonStr);
+        } catch (fallbackError) {
+            console.error("Ollama fallback failed:", fallbackError.message);
+            throw new Error("AI Services are unavailable (API Quotas Exceeded). Please start your local Ollama server in a terminal (run: 'ollama run llava') to continue offline.");
+        }
+    }
+};
+
+export const generateEmbedding = async (text) => {
+    try {
+        return await executeGeminiWithFallback(async (apiKey) => {
+            const ai = new GoogleGenAI({ apiKey });
+            const response = await ai.models.embedContent({
+                model: 'text-embedding-004',
+                contents: text,
+            });
+            
+            if (response.embeddings && response.embeddings.length > 0) {
+                return response.embeddings[0].values;
+            } else {
+                throw new Error("No embedding returned");
+            }
+        });
+        
+    } catch (error) {
+        console.error("Gemini Content Generation Error:", error.message);
+        throw error;
+    }
+};
+
+export const generateSkillGapRoadmap = async (missingSkills, jobTitle, candidateData) => {
+    const fallbackRoadmap = {
+        roadmap: missingSkills.map((s, i) => ({
+            stepNumber: i + 1,
+            skillName: s,
+            estimatedDuration: "2-4 weeks",
+            whyItMatters: `Required for the ${jobTitle} role.`,
+            actionableAdvice: `Start by reading the official documentation and building a small project using ${s}.`
+        })),
+        encouragementMessage: "Keep pushing! Every new skill you learn opens up new opportunities."
+    };
+
+    try {
+        const prompt = `You are an expert Career Coach and Skill Development Mentor.
+A candidate is applying for the role of "${jobTitle}" but is missing the following required skills:
+${missingSkills.join(", ")}
+
+Their current profile summary:
+${candidateData?.summary || "No summary provided."}
+
+Please generate a realistic, actionable, step-by-step learning roadmap to help them acquire these missing skills.
+
+CRITICAL RULES:
+1. Return ONLY valid JSON. No markdown wrappers.
+2. Structure the JSON exactly as follows:
+{
+  "roadmap": [
+    {
+      "stepNumber": 1,
+      "skillName": "Name of the skill to focus on",
+      "estimatedDuration": "e.g., 2 weeks, 1 month",
+      "whyItMatters": "Brief 1-sentence reason why this is important for the role",
+      "actionableAdvice": "1-2 sentences on how to start learning it"
+    }
+  ],
+  "encouragementMessage": "A short, motivating message for the candidate."
+}
+3. The roadmap steps should be ordered logically (e.g. learn prerequisites first).`;
+        const responseText = await executeGeminiWithFallback(async (apiKey) => {
+            const ai = new GoogleGenAI({ apiKey });
+            const response = await ai.models.generateContent({
+                model: 'gemini-3.6-flash',
+                contents: prompt,
+                config: {
+                    responseMimeType: "application/json",
+                }
+            });
+            return response.text;
+        });
+        
+        // Clean JSON formatting
+        const cleanedResponseText = responseText.replace(/```json/gi, '').replace(/```/g, '').trim();
+        
+        return JSON.parse(cleanedResponseText);
+
+    } catch (error) {
+        console.error("SmartMatch Skill Gap Roadmap Error:", error.message);
+        console.log("Using fallback roadmap due to error.");
+        return fallbackRoadmap;
     }
 };

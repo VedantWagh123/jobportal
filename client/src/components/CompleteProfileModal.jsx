@@ -72,6 +72,10 @@ const CompleteProfileModal = ({ isOpen, onClose }) => {
         setFormData({ ...formData, skills: formData.skills.filter(s => s !== skillToRemove) });
     };
 
+    const handleClearAllSkills = () => {
+        setFormData({ ...formData, skills: [] });
+    };
+
     const handleExtractSkills = async () => {
         if (!resumeFile) return toast.warning("Please select a resume file first.");
         setIsExtractingSkills(true);
@@ -273,14 +277,27 @@ const CompleteProfileModal = ({ isOpen, onClose }) => {
                             
                             {/* Skills Section */}
                             <div className="bg-gray-50 border border-gray-200 p-4 rounded-xl">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Technical Skills (Tags)</label>
-                                <div className="flex flex-wrap gap-2 mb-3">
-                                    {Array.isArray(formData.skills) && formData.skills.map((skill, idx) => (
+                                <div className="flex items-center justify-between mb-2">
+                                    <label className="block text-sm font-medium text-gray-700">Technical Skills (Tags)</label>
+                                    {formData.skills?.length > 0 && (
+                                        <button 
+                                            type="button" 
+                                            onClick={handleClearAllSkills}
+                                            className="text-xs text-red-500 hover:text-red-700 font-semibold hover:underline"
+                                        >
+                                            Clear All
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="flex flex-wrap gap-2 mb-3 max-h-40 overflow-y-auto p-1 custom-scrollbar">
+                                    {Array.isArray(formData.skills) && formData.skills.length > 0 ? formData.skills.map((skill, idx) => (
                                         <span key={idx} className="flex items-center gap-1.5 px-3 py-1 bg-white border border-gray-300 text-gray-700 text-xs font-semibold rounded-lg shadow-sm">
                                             {skill}
                                             <button type="button" onClick={() => handleRemoveSkill(skill)} className="text-gray-400 hover:text-red-500 transition"><X size={12}/></button>
                                         </span>
-                                    ))}
+                                    )) : (
+                                        <p className="text-xs text-gray-400 italic w-full text-center py-2">No skills added yet.</p>
+                                    )}
                                 </div>
                                 <input 
                                     type="text"

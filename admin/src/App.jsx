@@ -11,6 +11,7 @@ const SkillsManagement = lazy(() => import('./pages/SkillsManagement'));
 const StateAdmins = lazy(() => import('./pages/StateAdmins'));
 const InstituteManagement = lazy(() => import('./pages/InstituteManagement'));
 const EmployersManagement = lazy(() => import('./pages/EmployersManagement'));
+const UsersManagement = lazy(() => import('./pages/UsersManagement'));
 const Settings = lazy(() => import('./pages/Settings'));
 const ReportsAnalytics = lazy(() => import('./pages/ReportsAnalytics'));
 
@@ -36,6 +37,7 @@ function AppRoutes() {
                     <Route path="admins" element={<StateAdmins />} />
                     <Route path="institutes" element={<InstituteManagement />} />
                     <Route path="employers" element={<EmployersManagement />} />
+                    <Route path="users" element={<UsersManagement />} />
                     <Route path="settings" element={<Settings />} />
                     <Route path="reports" element={<ReportsAnalytics />} />
                 </Route>

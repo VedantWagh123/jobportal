@@ -29,6 +29,13 @@ export const AuthProvider = ({ children }) => {
             setLoading(false);
         };
         checkAuth();
+
+        const handleTokenRefresh = (e) => {
+            const newToken = e.detail;
+            setUser(prev => prev ? { ...prev, token: newToken } : { token: newToken });
+        };
+        window.addEventListener('token_refreshed_state', handleTokenRefresh);
+        return () => window.removeEventListener('token_refreshed_state', handleTokenRefresh);
     }, []);
 
     const login = async (email, password) => {

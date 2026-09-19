@@ -338,7 +338,19 @@ const Upskilling = () => {
                                             <h3 className="font-extrabold text-slate-900 text-base leading-tight mb-1.5 line-clamp-2 group-hover:text-blue-600 transition-colors" title={course.courseName}>
                                                 {course.courseName}
                                             </h3>
-                                            <p className="text-slate-500 text-xs font-medium mb-2">{course.instituteName}</p>
+                                            <div className="flex flex-col mb-2 gap-1.5">
+                                                <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">{course.instituteName}</p>
+                                                {course.calculatedInstituteRating > 0 && (
+                                                    <div className="flex items-center gap-1.5 bg-amber-50/50 w-fit px-2 py-1 rounded-md border border-amber-100" title={`Institute Rating: ${course.calculatedInstituteRating}/5 (Based on ${course.placementRatePercentage}% placements)`}>
+                                                        <div className="flex items-center gap-0.5">
+                                                            {[...Array(5)].map((_, i) => (
+                                                                <Star key={i} size={10} className={i < Math.round(course.calculatedInstituteRating) ? "text-amber-400 fill-amber-400" : "text-slate-200 fill-slate-200"} />
+                                                            ))}
+                                                        </div>
+                                                        <span className="text-[10px] font-extrabold text-amber-700">{course.calculatedInstituteRating}</span>
+                                                    </div>
+                                                )}
+                                            </div>
                                             
                                             <p className="text-slate-600 text-sm line-clamp-2 leading-relaxed">
                                                 {course.courseDescription || "Learn the essential skills and tools required to excel in this field."}
@@ -442,6 +454,35 @@ const Upskilling = () => {
                             {/* Course Image */}
                             {selectedCourse.courseImage && (
                                 <img src={selectedCourse.courseImage} alt="Course Thumbnail" className="w-full h-48 sm:h-64 object-cover rounded-xl mb-6 shadow-sm border border-slate-200" />
+                            )}
+
+                            {/* Institute Rating Section */}
+                            {selectedCourse.calculatedInstituteRating > 0 && (
+                                <div className="mb-6 bg-gradient-to-r from-amber-50 to-orange-50 p-5 rounded-xl border border-amber-100 shadow-sm flex flex-col sm:flex-row sm:items-center gap-4">
+                                    <div className="w-16 h-16 bg-white rounded-2xl flex flex-col items-center justify-center border border-amber-200 shadow-sm shrink-0">
+                                        <span className="text-xl font-black text-amber-600 leading-none">{selectedCourse.calculatedInstituteRating}</span>
+                                        <span className="text-[9px] font-bold text-amber-500 uppercase tracking-widest mt-1">/ 5</span>
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center gap-2 mb-1.5">
+                                            <h3 className="font-black text-amber-900 text-lg">Institute Rating</h3>
+                                            <span className="px-2 py-0.5 bg-amber-200 text-amber-800 text-[10px] font-extrabold rounded-full uppercase tracking-wider">Verified Data</span>
+                                        </div>
+                                        <div className="flex items-center gap-1.5 mb-1.5">
+                                            <div className="flex items-center">
+                                                {[...Array(5)].map((_, i) => (
+                                                    <Star key={i} size={16} className={i < Math.round(selectedCourse.calculatedInstituteRating) ? "text-amber-500 fill-amber-500" : "text-amber-200 fill-amber-100/50"} />
+                                                ))}
+                                            </div>
+                                            <span className="text-[13px] text-amber-700 font-bold ml-1">
+                                                {selectedCourse.calculatedInstituteRating} out of 5
+                                            </span>
+                                        </div>
+                                        <p className="text-[11px] text-amber-700/80 font-medium">
+                                            Calculated dynamically based on the institute's quality score and a <strong className="font-extrabold">{selectedCourse.placementRatePercentage}%</strong> actual candidate placement rate through this portal.
+                                        </p>
+                                    </div>
+                                </div>
                             )}
 
                             {/* Description */}

@@ -16,9 +16,12 @@ import { clerkMiddleware } from '@clerk/express'
 import superAdminRoutes from './routes/superAdmin/index.js'
 import intelligenceRoutes from './routes/intelligenceRoutes.js'
 import resumeRoutes from './routes/resumeRoutes.js'
+import smartMatchRoutes from './routes/smartMatchRoutes.js'
 import { startJobProcessor } from './services/jobProcessor.js'
 import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
+import mongoSanitize from 'express-mongo-sanitize'
+import cookieParser from 'cookie-parser'
 import { notFound, errorHandler } from './middleware/errorHandler.js'
 
 import { createServer } from 'http';
@@ -77,6 +80,8 @@ const corsOptions = {
 
 app.use(cors(corsOptions))
 app.use(express.json())
+app.use(cookieParser())
+app.use(mongoSanitize()) // Protects against NoSQL injection
 app.use(clerkMiddleware({ clockSkewInMs: 48 * 60 * 60 * 1000 }))
 
 // Initialize Socket.io
@@ -94,6 +99,7 @@ app.use('/api/state-admin', stateAdminRoutes)
 app.use('/api/institute', instituteRoutes)
 app.use('/api/intelligence', intelligenceRoutes)
 app.use('/api/resumes', resumeRoutes)
+app.use('/api/smartmatch', smartMatchRoutes)
 
 // Super Admin
 app.use('/api/super-admin', superAdminRoutes)

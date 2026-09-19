@@ -312,6 +312,7 @@ export const completeUserProfile = async (req, res) => {
         }
 
         await userData.save();
+
         return res.json({ success: true, message: 'Profile updated successfully', user: userData });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -548,6 +549,23 @@ export const getAllPublicCourses = async (req, res) => {
                 populate: { path: 'districtId' }
             });
 
+        // Calculate placement rates for institutes based on actual data
+        const allEnrollments = await Enrollment.find().select('userId instituteId');
+        const hiredApplications = await JobApplication.find({ status: 'Hired' }).select('userId');
+        const hiredUserIds = new Set(hiredApplications.map(a => a.userId.toString()));
+
+        const instituteStats = {};
+        allEnrollments.forEach(e => {
+            if (e.instituteId) {
+                const instId = e.instituteId.toString();
+                if (!instituteStats[instId]) instituteStats[instId] = { total: new Set(), placed: new Set() };
+                instituteStats[instId].total.add(e.userId.toString());
+                if (hiredUserIds.has(e.userId.toString())) {
+                    instituteStats[instId].placed.add(e.userId.toString());
+                }
+            }
+        });
+
         const allCourseIds = courses.map(c => c._id);
         const courseSkillsMap = await CourseSkill.find({ courseId: { $in: allCourseIds } }).populate('skillId');
         
@@ -581,6 +599,31 @@ export const getAllPublicCourses = async (req, res) => {
                 category = 'Tech & Development';
             }
 
+            const instIdStr = course.instituteId?._id?.toString();
+            let instPlacementScore = 0;
+            let placementRate = 0;
+            let hasPlacementData = false;
+
+            if (instIdStr && instituteStats[instIdStr]) {
+                const stats = instituteStats[instIdStr];
+                if (stats.total.size > 0) {
+                    placementRate = stats.placed.size / stats.total.size;
+                    instPlacementScore = 1 + (placementRate * 4); // Scale 1-5
+                    hasPlacementData = true;
+                }
+            }
+
+            const rawQualityScore = course.instituteId?.qualityScore || 0;
+            let calculatedInstituteRating = rawQualityScore;
+            
+            if (hasPlacementData && rawQualityScore > 0) {
+                // 60% weight to quality score, 40% to actual placement rate
+                calculatedInstituteRating = (rawQualityScore * 0.6) + (instPlacementScore * 0.4);
+            } else if (hasPlacementData) {
+                calculatedInstituteRating = instPlacementScore;
+            }
+            calculatedInstituteRating = Number(calculatedInstituteRating.toFixed(1));
+
             return {
                 courseId: cid,
                 courseName: course.name,
@@ -592,8 +635,10 @@ export const getAllPublicCourses = async (req, res) => {
                 instituteId: course.instituteId?._id,
                 instituteName: course.instituteId?.name || 'Unknown Institute',
                 districtName: course.instituteId?.districtId?.name || 'Online',
-                instituteQualityScore: course.instituteId?.qualityScore || 0,
+                instituteQualityScore: rawQualityScore,
                 instituteTotalRatings: course.instituteId?.totalRatings || 0,
+                calculatedInstituteRating: calculatedInstituteRating,
+                placementRatePercentage: Number((placementRate * 100).toFixed(0)),
                 courseRating: course.courseRating || 0,
                 totalCourseRatings: course.totalCourseRatings || 0,
                 coveredSkills: skills,
@@ -611,8 +656,10 @@ export const getAllPublicCourses = async (req, res) => {
             filteredCourses = mappedCourses.filter(course => {
                 if (course.isEnrolled) return true;
                 const courseSkillsLower = course.coveredSkills.map(s => s.toLowerCase());
-                const hasOverlap = courseSkillsLower.some(s => userSkills.has(s));
-                return !hasOverlap;
+                if (courseSkillsLower.length === 0) return true;
+                const matchedCount = courseSkillsLower.filter(s => userSkills.has(s)).length;
+                const matchPercentage = matchedCount / courseSkillsLower.length;
+                return matchPercentage <= 0.3;
             });
         }
 

@@ -14,8 +14,9 @@ const companySchema = new mongoose.Schema({
     companySize: { type: String, default: '' },
     foundedYear: { type: Number, default: null },
     keyResponsibilities: { type: String, default: '' },
-    linkedinUrl: { type: String, default: '' }
-})
+    linkedinUrl: { type: String, default: '' },
+    refreshTokens: [{ type: String }]
+}, { timestamps: true })
 
 const Company = mongoose.model('Company', companySchema)
 

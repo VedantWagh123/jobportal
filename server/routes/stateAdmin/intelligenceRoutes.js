@@ -14,7 +14,8 @@ import {
     getForecastIntelligence,
     generateForecastInsights,
     getSectorMatrix,
-    getMigrationAnalysis
+    getMigrationAnalysis,
+    getActiveDistricts
 } from '../../controllers/adminIntelligenceController.js';
 import { getStatePlacementInsights } from '../../controllers/feedbackController.js';
 import { getInstituteById } from '../../controllers/adminInstituteController.js';
@@ -40,5 +41,6 @@ router.get('/forecast', cacheMiddleware(300), getForecastIntelligence);
 router.post('/forecast/insights', generateForecastInsights);
 router.get('/sector-matrix', cacheMiddleware(300), getSectorMatrix);
 router.get('/migration', cacheMiddleware(300), getMigrationAnalysis);
+router.get('/active-districts', cacheMiddleware(300), getActiveDistricts);
 
 export default router;

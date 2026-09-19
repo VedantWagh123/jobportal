@@ -5,6 +5,7 @@ const jobIntelligenceSchema = new mongoose.Schema({
     extractedRole: { type: String },
     inferredExperience: { type: String }, // e.g. "2-4 years"
     extractedSkills: [{ type: String }], // raw extracted skill strings
+    embedding: { type: [Number] }, // Vector embedding for SmartMatch AI
     processedAt: { type: Date, default: Date.now }
 });
 

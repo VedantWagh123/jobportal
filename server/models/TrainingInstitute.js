@@ -15,6 +15,7 @@ const instituteSchema = new mongoose.Schema({
     isApproved: { type: Boolean, default: false }, // Must be approved by Super Admin before login is allowed
     qualityScore: { type: Number, default: 0 }, // Out of 5
     totalRatings: { type: Number, default: 0 },
+    refreshTokens: [{ type: String }],
     createdAt: { type: Date, default: Date.now }
 });
 

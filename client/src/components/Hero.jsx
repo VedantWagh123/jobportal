@@ -1,4 +1,4 @@
-import { useContext, useRef } from 'react'
+import { useContext, useRef, useState, useEffect } from 'react'
 import { assets } from '../assets/assets'
 import { AppContext } from '../context/AppContext'
 import { Rocket, Search, MapPin } from 'lucide-react'
@@ -9,6 +9,69 @@ const Hero = () => {
 
     const titleRef = useRef(null)
     const locationRef = useRef(null)
+    
+    // Typing animation state
+    const [animatedPlaceholder, setAnimatedPlaceholder] = useState('');
+    const [isInteracting, setIsInteracting] = useState(false);
+    const [showCursor, setShowCursor] = useState(true);
+    const [hasText, setHasText] = useState(false);
+
+    const searchExamples = [
+        "Software Developer", 
+        "Full Stack Developer", 
+        "AI Engineer", 
+        "Data Analyst", 
+        "Frontend Developer", 
+        "Cloud Engineer", 
+        "Cybersecurity Engineer"
+    ];
+
+    useEffect(() => {
+        if (isInteracting) return;
+        
+        let i = 0; // example index
+        let j = 0; // character index
+        let isDeleting = false;
+        let timeoutId;
+        
+        const type = () => {
+            if (isInteracting) return;
+            
+            const currentExample = searchExamples[i];
+            
+            if (isDeleting) {
+                setAnimatedPlaceholder(currentExample.substring(0, j - 1));
+                j--;
+                if (j === 0) {
+                    isDeleting = false;
+                    i = (i + 1) % searchExamples.length;
+                    timeoutId = setTimeout(type, 500);
+                } else {
+                    timeoutId = setTimeout(type, 40);
+                }
+            } else {
+                setAnimatedPlaceholder(currentExample.substring(0, j + 1));
+                j++;
+                if (j === currentExample.length) {
+                    isDeleting = true;
+                    timeoutId = setTimeout(type, 1800);
+                } else {
+                    timeoutId = setTimeout(type, 80);
+                }
+            }
+        };
+        
+        timeoutId = setTimeout(type, 800);
+        
+        const cursorInterval = setInterval(() => {
+            setShowCursor(prev => !prev);
+        }, 530);
+        
+        return () => {
+            clearTimeout(timeoutId);
+            clearInterval(cursorInterval);
+        };
+    }, [isInteracting]);
 
     const onSearch = (e) => {
         e?.preventDefault();
@@ -57,11 +120,28 @@ const Hero = () => {
                     <form onSubmit={onSearch} className='flex flex-col sm:flex-row items-center bg-white p-2.5 rounded-2xl sm:rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 max-w-2xl gap-3 sm:gap-0 transition-all hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)]'>
                         <div className='flex items-center flex-1 px-4 w-full'>
                             <Search size={18} className='text-blue-500 shrink-0' />
-                            <input type="text"
-                                placeholder='Search for jobs, skills, or roles'
-                                className='bg-transparent text-gray-800 placeholder-gray-400 p-2 outline-none w-full ml-2 text-sm font-medium'
-                                ref={titleRef}
-                            />
+                            <div className="relative w-full ml-2 flex items-center">
+                                {/* Animated Visual Layer */}
+                                {!isInteracting && !hasText && (
+                                    <div className="absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none flex items-center text-gray-800 text-sm font-medium z-0">
+                                        {animatedPlaceholder}
+                                        <span className={`inline-block w-[1.5px] h-[18px] bg-blue-600 ml-[1px] transition-opacity duration-75 ${showCursor ? 'opacity-100' : 'opacity-0'}`}></span>
+                                    </div>
+                                )}
+                                <input type="text"
+                                    placeholder={isInteracting ? 'Search for jobs, skills, or roles' : ''}
+                                    className='bg-transparent text-gray-800 placeholder-gray-400 p-2 outline-none w-full text-sm font-medium relative z-10'
+                                    ref={titleRef}
+                                    onFocus={() => setIsInteracting(true)}
+                                    onBlur={(e) => {
+                                        if (!e.target.value) setIsInteracting(false);
+                                    }}
+                                    onChange={(e) => {
+                                        setHasText(!!e.target.value);
+                                        if (e.target.value) setIsInteracting(true);
+                                    }}
+                                />
+                            </div>
                         </div>
                         <div className='w-px h-8 bg-gray-200 hidden sm:block'></div>
                         <div className='flex items-center flex-1 px-4 w-full border-t border-gray-100 sm:border-0 pt-3 sm:pt-0'>

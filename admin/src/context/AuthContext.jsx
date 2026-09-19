@@ -13,6 +13,18 @@ export const AuthProvider = ({ children }) => {
             setUser(JSON.parse(userInfo));
         }
         setLoading(false);
+
+        const handleTokenRefresh = (e) => {
+            const newToken = e.detail;
+            setUser(prev => {
+                if (prev) {
+                    return { ...prev, token: newToken };
+                }
+                return prev;
+            });
+        };
+        window.addEventListener('token_refreshed', handleTokenRefresh);
+        return () => window.removeEventListener('token_refreshed', handleTokenRefresh);
     }, []);
 
     const login = async (email, password) => {

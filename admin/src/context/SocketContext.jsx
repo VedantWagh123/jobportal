@@ -18,9 +18,16 @@ export const SocketProvider = ({ children }) => {
 
         newSocket.on('connect', () => {
             console.log('Connected to real-time server');
+            newSocket.emit('join_room', 'super_admin_room');
         });
 
         // Global listeners for real-time notifications
+        newSocket.on('admin_notification', (data) => {
+            toast.info(data.message, {
+                position: "top-right",
+                autoClose: 5000,
+            });
+        });
         newSocket.on('notification', (data) => {
             toast.info(data.message, {
                 position: "top-right",

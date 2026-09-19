@@ -92,6 +92,7 @@ const Layout = () => {
         { path: '/', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
         { path: '/institutes', label: 'Institute Management', icon: <Building size={18} /> },
         { path: '/employers', label: 'Employer Management', icon: <Building size={18} /> },
+        { path: '/users', label: 'Candidates / Users', icon: <Users size={18} /> },
         { path: '/skills', label: 'AI Skills Queue', icon: <BookOpen size={18} /> },
         { path: '/admins', label: 'Government Admins', icon: <Users size={18} /> },
         { path: '/reports', label: 'Reports & Analytics', icon: <BarChart2 size={18} /> },

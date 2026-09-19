@@ -2,11 +2,12 @@ import Company from "../models/Company.js";
 import bcrypt from 'bcrypt'
 import { v2 as cloudinary } from 'cloudinary'
 import generateToken from "../utils/generateToken.js";
+import jwt from "jsonwebtoken";
 import fs from 'fs';
 import Job from "../models/Job.js";
 import District from "../models/District.js";
 import JobApplication from "../models/JobApplication.js";
-import UserNotification from "../models/UserNotification.js";
+import UserNotification from '../models/UserNotification.js';
 import User from "../models/User.js";
 import { generateResponse } from "../services/geminiAiService.js";
 import { runAIAnalysis } from "../services/geminiAiService.js";
@@ -78,6 +79,17 @@ export const registerCompany = async (req, res) => {
             link: '/admin/employers'
         });
 
+        // Emit real-time WebSockets event to Super Admin
+        try {
+            const io = getIO();
+            io.to('super_admin_room').emit('admin_notification', { 
+                message: `New employer registered: ${name}`, 
+                type: 'employer' 
+            });
+        } catch (err) {
+            console.error("Socket error:", err.message);
+        }
+
         res.json({
             success: true,
             message: 'Registration submitted successfully! Your account is pending admin approval.'
@@ -111,6 +123,19 @@ export const loginCompany = async (req, res) => {
 
         if (await bcrypt.compare(password, company.password)) {
 
+            const { accessToken, refreshToken } = generateToken(company._id);
+            
+            company.refreshTokens = company.refreshTokens || [];
+            company.refreshTokens.push(refreshToken);
+            await company.save();
+
+            res.cookie('jwt', refreshToken, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'strict',
+                maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+            });
+
             res.json({
                 success: true,
                 company: {
@@ -119,7 +144,7 @@ export const loginCompany = async (req, res) => {
                     email: company.email,
                     image: company.image
                 },
-                token: generateToken(company._id)
+                token: accessToken
             })
 
         }
@@ -604,5 +629,24 @@ export const updateCompanyProfile = async (req, res) => {
         });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+export const refreshCompanyToken = async (req, res) => {
+    try {
+        const refreshToken = req.cookies.jwt;
+        if (!refreshToken) return res.status(401).json({ success: false, message: 'Unauthorized - No Refresh Token' });
+
+        const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
+        const company = await Company.findById(decoded.id);
+
+        if (!company || !company.refreshTokens.includes(refreshToken)) {
+            return res.status(401).json({ success: false, message: 'Unauthorized - Invalid Refresh Token' });
+        }
+
+        const accessToken = jwt.sign({ id: company._id }, process.env.JWT_SECRET, { expiresIn: '15m' });
+        res.json({ success: true, token: accessToken });
+    } catch (error) {
+        res.status(401).json({ success: false, message: 'Unauthorized - Token Expired or Invalid' });
     }
 };

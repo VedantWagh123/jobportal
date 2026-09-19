@@ -129,9 +129,33 @@ export const submitFeedback = async (req, res) => {
             });
 
             // -------------------------------------------------------------
-            // Ask for Course Review if Rejected
+            // Micro-Gap Identification & Course Review Request
             // -------------------------------------------------------------
             if (finalStatus === 'Rejected') {
+                
+                // 1. Identify Micro-Gaps (e.g., Soft Skills / Communication)
+                const hasSoftSkillIssue = skillRatings.some(sr => 
+                    (sr.skillName.toLowerCase().includes('communication') || sr.skillName.toLowerCase().includes('soft skill') || sr.skillName.toLowerCase().includes('interview')) && 
+                    (sr.rating === 'Weak' || sr.rating === 'Missing')
+                );
+
+                if (hasSoftSkillIssue) {
+                    await UserNotification.create({
+                        userId: userIdStr,
+                        type: 'Course_Recommendation',
+                        title: 'Micro-Module Recommended: Interview Prep',
+                        message: 'Employers noted a gap in communication skills. We recommend enrolling in a fast-track 15-day Interview Prep & Communication module.',
+                        link: '/upskill?recommendation=interview-prep'
+                    });
+                    
+                    io.emit('candidate_notification', {
+                        userId: userIdStr,
+                        message: 'New Micro-Module Recommended: Interview Prep & Communication.',
+                        type: 'recommendation'
+                    });
+                }
+
+                // 2. Ask for Course Review
                 const latestEnrollment = await Enrollment.findOne({ userId: application.userId })
                     .sort({ createdAt: -1 })
                     .populate('batchId');
@@ -298,49 +322,148 @@ export const getInstitutePlacementResults = async (req, res) => {
 // ============================================================
 export const getStatePlacementInsights = async (req, res) => {
     try {
+        const { districtId } = req.query;
+
+        // Fetch all feedbacks with populated fields
+        const allFeedbacks = await EmployerFeedback.find()
+            .populate({ path: 'jobId', select: 'title location' })
+            .populate({ path: 'companyId', select: 'name image' })
+            .populate({ path: 'candidateId', select: 'name email' })
+            .lean();
+
+        const candidateIds = allFeedbacks.map(f => f.candidateId);
+        
+        // Find latest enrollment for each candidate
+        const enrollments = await Enrollment.find({ userId: { $in: candidateIds } })
+            .sort({ createdAt: -1 })
+            .populate({ 
+                path: 'batchId', 
+                populate: { path: 'instituteId', select: 'name districtId' } 
+            })
+            .populate({ path: 'userId', select: 'name' })
+            .lean();
+
+        // Create a map of candidateId -> { instituteName, districtId, studentName }
+        const candidateMap = {};
+        for (const enr of enrollments) {
+            if (!candidateMap[enr.userId._id.toString()]) {
+                candidateMap[enr.userId._id.toString()] = {
+                    instituteName: enr.batchId?.instituteId?.name || 'Direct Applicants (No Institute)',
+                    districtId: enr.batchId?.instituteId?.districtId?.toString() || null
+                };
+            }
+        }
+
+        // Filter feedbacks by district and attach candidate info
+        let filteredFeedbacks = [];
+        const instituteStatsMap = {}; // { instituteName: { hired, rejected, total } }
+
+        for (const fb of allFeedbacks) {
+            const candidateInfo = candidateMap[fb.candidateId._id.toString()] || { 
+                instituteName: 'Direct Applicants (No Institute)', 
+                districtId: null 
+            };
+            
+            if (districtId && candidateInfo.districtId !== districtId) {
+                continue; // Skip if district filter is applied and doesn't match
+            }
+
+            // Attach extra info
+            fb.studentName = fb.candidateId?.name || 'Unknown Candidate';
+            fb.instituteName = candidateInfo.instituteName;
+            filteredFeedbacks.push(fb);
+
+            // Aggregate Institute Placement Rates
+            if (!instituteStatsMap[candidateInfo.instituteName]) {
+                instituteStatsMap[candidateInfo.instituteName] = { hired: 0, rejected: 0, total: 0, districtId: candidateInfo.districtId };
+            }
+            instituteStatsMap[candidateInfo.instituteName].total += 1;
+            if (fb.finalStatus === 'Hired') instituteStatsMap[candidateInfo.instituteName].hired += 1;
+            if (fb.finalStatus === 'Rejected') instituteStatsMap[candidateInfo.instituteName].rejected += 1;
+        }
+
         // 1. Overall hire rate
-        const hireStats = await EmployerFeedback.aggregate([
-            {
-                $group: {
-                    _id: null,
-                    hired: { $sum: { $cond: [{ $eq: ["$finalStatus", "Hired"] }, 1, 0] } },
-                    rejected: { $sum: { $cond: [{ $eq: ["$finalStatus", "Rejected"] }, 1, 0] } },
-                    total: { $sum: 1 }
+        let hiredCount = 0;
+        let rejectedCount = 0;
+        let totalCount = filteredFeedbacks.length;
+
+        // 2 & 3. Weak & Strong Skills aggregation
+        const weakSkillCount = {};
+        const strongSkillCount = {};
+
+        for (const fb of filteredFeedbacks) {
+            if (fb.finalStatus === 'Hired') hiredCount++;
+            if (fb.finalStatus === 'Rejected') rejectedCount++;
+
+            if (fb.skillRatings && fb.skillRatings.length > 0) {
+                for (const sr of fb.skillRatings) {
+                    if (sr.rating === 'Weak' || sr.rating === 'Missing') {
+                        weakSkillCount[sr.skillName] = (weakSkillCount[sr.skillName] || 0) + 1;
+                    }
+                    if (sr.rating === 'Strong') {
+                        strongSkillCount[sr.skillName] = (strongSkillCount[sr.skillName] || 0) + 1;
+                    }
                 }
             }
-        ]);
+        }
 
-        // 2. Top weak skills (most frequently rated Weak or Missing across all feedbacks)
-        const weakSkills = await EmployerFeedback.aggregate([
-            { $unwind: "$skillRatings" },
-            { $match: { "skillRatings.rating": { $in: ["Weak", "Missing"] } } },
-            { $group: { _id: "$skillRatings.skillName", count: { $sum: 1 } } },
-            { $sort: { count: -1 } },
-            { $limit: 8 }
-        ]);
+        const weakSkills = Object.entries(weakSkillCount)
+            .map(([name, count]) => ({ _id: name, count }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 8);
 
-        // 3. Top strong skills
-        const strongSkills = await EmployerFeedback.aggregate([
-            { $unwind: "$skillRatings" },
-            { $match: { "skillRatings.rating": "Strong" } },
-            { $group: { _id: "$skillRatings.skillName", count: { $sum: 1 } } },
-            { $sort: { count: -1 } },
-            { $limit: 5 }
-        ]);
+        const strongSkills = Object.entries(strongSkillCount)
+            .map(([name, count]) => ({ _id: name, count }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 5);
 
-        // 4. Recent feedbacks (last 10)
-        const recentFeedbacks = await EmployerFeedback.find()
-            .sort({ submittedAt: -1 })
-            .limit(10)
-            .populate({ path: 'jobId', select: 'title location' })
-            .populate({ path: 'companyId', select: 'name image' });
+        // 4. Institute Placement Rates array for hover UI
+        const institutePlacementRates = Object.entries(instituteStatsMap).map(([name, stats]) => ({
+            instituteName: name,
+            districtId: stats.districtId,
+            hired: stats.hired,
+            rejected: stats.rejected,
+            total: stats.total,
+            placementRate: Math.round((stats.hired / stats.total) * 100)
+        })).sort((a, b) => b.placementRate - a.placementRate);
+
+        // 5. Recent feedbacks (sorted and grouped)
+        filteredFeedbacks.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+        
+        // Group by company name for the frontend accordion
+        const groupedRecentFeedbacks = [];
+        const recentTop50 = filteredFeedbacks.slice(0, 50); // Get latest 50 to group
+
+        recentTop50.forEach(fb => {
+            const companyName = fb.companyId?.name || 'Unknown Company';
+            let group = groupedRecentFeedbacks.find(g => g.companyName === companyName);
+            if (!group) {
+                group = {
+                    companyName,
+                    companyImage: fb.companyId?.image || null,
+                    feedbacks: []
+                };
+                groupedRecentFeedbacks.push(group);
+            }
+            group.feedbacks.push({
+                _id: fb._id,
+                studentName: fb.studentName,
+                instituteName: fb.instituteName,
+                jobTitle: fb.jobId?.title || 'Unknown Job',
+                finalStatus: fb.finalStatus,
+                skillRatings: fb.skillRatings,
+                overallComment: fb.overallComment,
+                submittedAt: fb.submittedAt
+            });
+        });
 
         res.json({
             success: true,
-            hireStats: hireStats[0] || { hired: 0, rejected: 0, total: 0 },
+            hireStats: { hired: hiredCount, rejected: rejectedCount, total: totalCount },
             weakSkills,
             strongSkills,
-            recentFeedbacks
+            institutePlacementRates,
+            groupedRecentFeedbacks
         });
     } catch (error) {
         console.error("getStatePlacementInsights Error:", error);

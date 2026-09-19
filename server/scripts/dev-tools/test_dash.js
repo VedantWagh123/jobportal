@@ -4,7 +4,11 @@ import Batch from './models/Batch.js';
 import Enrollment from './models/Enrollment.js';
 import JobApplication from './models/JobApplication.js';
 
-mongoose.connect('mongodb+srv://Vedant:Vedant1234@cluster0.unc2i2c.mongodb.net/job-portal').then(async () => {
+// Load environment variables for the standalone script
+import dotenv from 'dotenv';
+dotenv.config({ path: '../../.env' });
+
+mongoose.connect(process.env.MONGODB_URI).then(async () => {
     const instituteId = '6a9c1735a0864030c45b3524'; // Khamza institute ID
     
     const liveBatches = await Batch.find({ instituteId })

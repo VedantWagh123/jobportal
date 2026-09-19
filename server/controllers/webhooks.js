@@ -30,6 +30,7 @@ export const clerkWebhooks = async (req, res) => {
                     resume: ''
                 }
                 await User.create(userData)
+
                 res.json({})
                 break;
             }

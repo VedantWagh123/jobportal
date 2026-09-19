@@ -7,6 +7,7 @@ import instituteRoutes from './instituteRoutes.js';
 import employerRoutes from './employerRoutes.js';
 import notificationRoutes from './notificationRoutes.js';
 import settingsRoutes from './settingsRoutes.js';
+import userRoutes from './userRoutes.js';
 
 const router = express.Router();
 
@@ -18,5 +19,6 @@ router.use('/institutes', instituteRoutes);
 router.use('/employers', employerRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/settings', settingsRoutes);
+router.use('/users', userRoutes);
 
 export default router;

@@ -17,6 +17,7 @@ const governmentAdminSchema = new mongoose.Schema({
     stateName: { type: String, default: 'Maharashtra' },
     image: { type: String, default: '' },
     isActive: { type: Boolean, default: true },
+    refreshTokens: [{ type: String }],
     createdAt: { type: Date, default: Date.now }
 });
 

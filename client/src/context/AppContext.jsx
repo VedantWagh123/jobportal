@@ -219,6 +219,13 @@ export const AppContextProvider = (props) => {
             setInstituteToken(storedInstituteToken)
         }
 
+        const handleCompanyTokenRefresh = (e) => {
+            const newToken = e.detail;
+            setCompanyToken(newToken);
+        };
+        window.addEventListener('token_refreshed_company', handleCompanyTokenRefresh);
+        return () => window.removeEventListener('token_refreshed_company', handleCompanyTokenRefresh);
+
     }, [])
 
     // Fetch Company Data if Company Token is Available
