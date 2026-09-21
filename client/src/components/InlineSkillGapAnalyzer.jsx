@@ -16,8 +16,8 @@ const TABS = [
     { id: 'insights',       label: 'Insights',            icon: <Eye size={13} /> },
 ];
 
-// Cache to avoid re-fetching the same analysisId+jobId within 5 minutes
-const gapCache = {};
+// Removing the in-memory cache object since we'll use localStorage
+const CACHE_KEY_PREFIX = 'skillGapCache_';
 
 const InlineSkillGapAnalyzer = ({ matchScore, job, missingSkills = [], matchedSkills = [], analysisId, onClose }) => {
     const { backendUrl } = useContext(AppContext);
@@ -27,16 +27,28 @@ const InlineSkillGapAnalyzer = ({ matchScore, job, missingSkills = [], matchedSk
     const [gapData, setGapData]       = useState(null);
     const [activeTab, setActiveTab]   = useState('missing_skills');
 
-    const cacheKey = `${analysisId}_${job?._id}`;
+    const cacheKey = `${CACHE_KEY_PREFIX}${analysisId}_${job?._id}`;
 
     useEffect(() => {
         if (analysisId && job) {
-            if (gapCache[cacheKey] && Date.now() - gapCache[cacheKey].ts < 5 * 60 * 1000) {
-                setGapData(gapCache[cacheKey].data);
-                setLoading(false);
-            } else {
-                fetchGapAnalysis();
+            const cachedString = localStorage.getItem(cacheKey);
+            if (cachedString) {
+                try {
+                    const parsedCache = JSON.parse(cachedString);
+                    // Check if cache is still valid (5 minutes = 300,000 ms)
+                    if (Date.now() - parsedCache.ts < 5 * 60 * 1000) {
+                        setGapData(parsedCache.data);
+                        setLoading(false);
+                        return; // Exit early, use cache
+                    } else {
+                        // Cache expired, remove it
+                        localStorage.removeItem(cacheKey);
+                    }
+                } catch (e) {
+                    console.error("Cache parsing error", e);
+                }
             }
+            fetchGapAnalysis();
         }
     }, [analysisId, job?._id]);
 
@@ -48,7 +60,8 @@ const InlineSkillGapAnalyzer = ({ matchScore, job, missingSkills = [], matchedSk
                 jobId: job._id,
             });
             if (data.success) {
-                gapCache[cacheKey] = { data, ts: Date.now() };
+                // Save to localStorage with timestamp
+                localStorage.setItem(cacheKey, JSON.stringify({ data, ts: Date.now() }));
                 setGapData(data);
             } else {
                 toast.error(data.message);

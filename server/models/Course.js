@@ -20,6 +20,8 @@ const courseSchema = new mongoose.Schema({
 });
 
 courseSchema.index({ instituteId: 1 });
+courseSchema.index({ isActive: 1 });
+courseSchema.index({ name: 'text', description: 'text' });
 
 const Course = mongoose.model('Course', courseSchema);
 

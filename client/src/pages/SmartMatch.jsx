@@ -33,6 +33,8 @@ const SmartMatch = () => {
     const [status, setStatus] = useState(() => sessionStorage.getItem('smartMatch_status') || 'idle');
     const [progress, setProgress] = useState(0);
     const [statusMessage, setStatusMessage] = useState('');
+    const [isGoogleApiLoaded, setIsGoogleApiLoaded] = useState(false);
+    const [tokenClient, setTokenClient] = useState(null);
     
     // Data states
     const [analysisData, setAnalysisData] = useState(() => {
@@ -115,6 +117,94 @@ const SmartMatch = () => {
             return;
         }
         setFile(selectedFile);
+    };
+
+    // Google Drive Picker Logic
+    useEffect(() => {
+        const checkGoogleApi = setInterval(() => {
+            if (window.gapi && window.google) {
+                clearInterval(checkGoogleApi);
+                setIsGoogleApiLoaded(true);
+                
+                // Initialize Token Client
+                try {
+                    const client = window.google.accounts.oauth2.initTokenClient({
+                        client_id: import.meta.env.VITE_GOOGLE_DRIVE_CLIENT_ID,
+                        scope: 'https://www.googleapis.com/auth/drive.readonly',
+                        callback: (tokenResponse) => {
+                            if (tokenResponse && tokenResponse.access_token) {
+                                openGooglePicker(tokenResponse.access_token);
+                            }
+                        },
+                    });
+                    setTokenClient(client);
+                } catch (err) {
+                    console.error("Error initializing Google Token Client:", err);
+                }
+
+                // Load Picker API
+                window.gapi.load('client:picker', () => {
+                    window.gapi.client.load('drive', 'v3');
+                });
+            }
+        }, 500);
+
+        return () => clearInterval(checkGoogleApi);
+    }, []);
+
+    const handleGoogleDriveClick = () => {
+        if (!import.meta.env.VITE_GOOGLE_DRIVE_CLIENT_ID || !import.meta.env.VITE_GOOGLE_API_KEY) {
+            toast.error("Google Drive Integration is not configured yet. Missing API Keys.");
+            return;
+        }
+        if (!isGoogleApiLoaded || !tokenClient) {
+            toast.info("Google API is loading, please try again in a moment...");
+            return;
+        }
+        // Request token (triggers popup)
+        tokenClient.requestAccessToken({ prompt: 'consent' });
+    };
+
+    const openGooglePicker = (token) => {
+        const view = new window.google.picker.View(window.google.picker.ViewId.DOCS);
+        view.setMimeTypes('application/pdf');
+
+        const picker = new window.google.picker.PickerBuilder()
+            .addView(view)
+            .setOAuthToken(token)
+            .setDeveloperKey(import.meta.env.VITE_GOOGLE_API_KEY)
+            .setCallback((data) => pickerCallback(data, token))
+            .build();
+        
+        picker.setVisible(true);
+    };
+
+    const pickerCallback = async (data, token) => {
+        if (data.action === window.google.picker.Action.PICKED) {
+            const doc = data.docs[0];
+            const fileId = doc.id;
+            const fileName = doc.name;
+            const mimeType = doc.mimeType;
+
+            try {
+                toast.info("Downloading file from Google Drive...", { autoClose: 2000 });
+                const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    }
+                });
+                
+                if (!response.ok) throw new Error("Failed to download file from Drive");
+                
+                const blob = await response.blob();
+                const downloadedFile = new File([blob], fileName, { type: mimeType });
+                validateAndSetFile(downloadedFile);
+                toast.success("File imported successfully!");
+            } catch (err) {
+                console.error("Error downloading from Drive:", err);
+                toast.error("Error downloading file from Google Drive");
+            }
+        }
     };
 
     const startAnalysis = async () => {
@@ -385,7 +475,7 @@ const SmartMatch = () => {
                                             
                                             <div className="flex flex-col sm:flex-row gap-4 w-full max-w-md mx-auto">
                                                 <button 
-                                                    onClick={() => toast.info('Google Drive integration coming soon!')} 
+                                                    onClick={handleGoogleDriveClick} 
                                                     className="flex-1 bg-white border border-gray-200 hover:bg-gray-50 hover:border-gray-300 text-gray-700 px-4 py-3.5 rounded-xl font-bold transition-all flex items-center justify-center gap-2.5 shadow-sm text-[13px]"
                                                 >
                                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 144 144" width="18" height="18"><path fill="#34A853" d="M96 14L41 110l24 42 55-96z"/><path fill="#4285F4" d="M141 93H32l-23 41h108z"/><path fill="#FBBC05" d="M49 13L0 98l23 41 50-86z"/></svg>

@@ -9,8 +9,9 @@ import {
     Bell, ChevronDown, User as UserIcon, Settings,
     HelpCircle, LogOut, Search, Bookmark, Sun, Briefcase,
     Building2, GraduationCap, TrendingUp, LayoutGrid, Lightbulb,
-    Command, CheckCircle2, FileText
+    Command, CheckCircle2, FileText, Menu, X, LayoutDashboard, Gauge
 } from 'lucide-react'
+import { toast } from 'react-toastify'
 
 
 
@@ -19,13 +20,25 @@ const Navbar = () => {
     const { user, isLoaded } = useUser()
     const navigate = useNavigate()
     const location = useLocation()
-    const { userData, setIsProfileModalOpen, setIsViewProfileModalOpen, searchFilter, setSearchFilter, setIsSearched, savedJobs } = useContext(AppContext)
+    const { userData, setIsProfileModalOpen, setIsViewProfileModalOpen, searchFilter, setSearchFilter, setIsSearched, savedJobs, setShowPremiumPopup, isPremium } = useContext(AppContext)
 
     const [isDropdownOpen, setIsDropdownOpen] = useState(false)
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+    const [shakeLogin, setShakeLogin] = useState(false)
     const [notifications, setNotifications] = useState([])
     const [isSearchFocused, setIsSearchFocused] = useState(false)
     const [localSearch, setLocalSearch] = useState('')
+    
+    // Prevent background scrolling when mobile menu is open
+    useEffect(() => {
+        if (isMobileMenuOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        return () => { document.body.style.overflow = 'unset'; }
+    }, [isMobileMenuOpen])
     const dropdownRef = useRef(null)
     const notifRef = useRef(null)
     const searchRef = useRef(null)
@@ -114,11 +127,37 @@ const Navbar = () => {
         return () => window.removeEventListener('keydown', handler)
     }, [])
 
+    const triggerLoginRequired = () => {
+        toast.info("Please Login to access this feature!", {
+            position: "bottom-right"
+        });
+        setShakeLogin(true);
+        setTimeout(() => setShakeLogin(false), 650); // Remove shake class after animation
+    };
+
+    const handleFeatureClick = (e, path) => {
+        e.preventDefault();
+        if (!user) {
+            triggerLoginRequired();
+            return;
+        }
+        if (!isPremium) {
+            setShowPremiumPopup(true);
+            return;
+        }
+        navigate(path);
+    };
+
     const isCareerToolsActive = location.pathname.includes('/resumes');
 
     return (
         <div className='bg-white border-b border-gray-100 py-3 sticky top-0 z-40 shadow-[0_1px_10px_rgba(0,0,0,0.05)]'>
-            <div className='px-4 lg:px-6 flex items-center gap-3'>
+            <div className='px-4 lg:px-6 flex items-center justify-between gap-3'>
+
+                {/* Mobile Logo */}
+                <Link to="/" className="md:hidden flex items-center shrink-0 mr-2">
+                    <img src={assets.logo} alt="InsiderJobs" className="h-6 sm:h-7 object-contain" />
+                </Link>
 
                 {/* ── Search Bar ── */}
                 <div className="hidden lg:flex items-center flex-1">
@@ -175,30 +214,97 @@ const Navbar = () => {
                         </div>
 
                         {/* Dropdown Menu */}
-                        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-56 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform origin-top translate-y-2 group-hover:translate-y-0 z-50">
-                            <div className="bg-white rounded-xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] border border-gray-100 p-2 relative">
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-[280px] lg:w-[300px] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform origin-top translate-y-2 group-hover:translate-y-0 z-50">
+                            <div className="bg-white rounded-[20px] shadow-[0_15px_50px_-12px_rgba(0,0,0,0.18)] border border-gray-100 p-2 relative flex flex-col">
                                 {/* Arrow pointer */}
-                                <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-t border-l border-gray-100 transform rotate-45"></div>
+                                <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3.5 h-3.5 bg-white border-t border-l border-gray-100 transform rotate-45 rounded-tl-sm"></div>
                                 
-                                <Link to="/resumes" className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-violet-50 transition-colors group/item">
-                                    <div className="bg-violet-100 text-violet-600 p-1.5 rounded-md mt-0.5 group-hover/item:scale-110 transition-transform">
-                                        <FileText size={16} />
+                                <a href="/resumes" onClick={(e) => handleFeatureClick(e, '/resumes')} className="flex items-center justify-between p-3 lg:p-4 hover:bg-violet-50/50 transition-colors group/item relative border-b border-gray-100/80 rounded-t-2xl">
+                                    <div className="flex items-center gap-3 lg:gap-4">
+                                        <div className="bg-[#F3E8FF] text-violet-600 p-3 lg:p-3.5 rounded-2xl group-hover/item:scale-110 transition-transform">
+                                            <FileText size={22} strokeWidth={2.2} />
+                                        </div>
+                                        <div className="flex flex-col pr-1">
+                                            <div className="text-[15px] lg:text-[16px] font-extrabold text-gray-800 group-hover/item:text-violet-700 leading-tight">Resume Builder</div>
+                                            <div className="text-[11px] lg:text-[12px] text-gray-500 font-medium leading-[1.3] mt-1 max-w-[130px]">Create ATS-friendly resumes with AI</div>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <div className="text-sm font-bold text-gray-800 group-hover/item:text-violet-700">Resume Builder</div>
-                                        <div className="text-[10px] text-gray-500 font-medium leading-tight mt-0.5">Create ATS-friendly resumes with AI</div>
+                                    <div className="bg-[#FFF3E0] text-[#F97316] px-2.5 py-1 rounded-[6px] text-[10px] font-extrabold flex items-center gap-1 shrink-0 ml-1 border border-orange-200/50 shadow-sm uppercase tracking-wider">
+                                        🔥 HOT
                                     </div>
-                                </Link>
+                                </a>
 
-                                <Link to="/smart-match" className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-violet-50 transition-colors group/item">
-                                    <div className="bg-violet-100 text-violet-600 p-1.5 rounded-md mt-0.5 group-hover/item:scale-110 transition-transform">
-                                        <Lightbulb size={16} />
+                                <a href="/smart-match" onClick={(e) => handleFeatureClick(e, '/smart-match')} className="flex items-center justify-between p-3 lg:p-4 hover:bg-violet-50/50 transition-colors group/item relative border-b border-gray-100/80">
+                                    <div className="flex items-center gap-3 lg:gap-4">
+                                        <div className="bg-[#F3E8FF] text-violet-600 p-3 lg:p-3.5 rounded-2xl group-hover/item:scale-110 transition-transform">
+                                            <Lightbulb size={22} strokeWidth={2.2} />
+                                        </div>
+                                        <div className="flex flex-col pr-1">
+                                            <div className="text-[15px] lg:text-[16px] font-extrabold text-gray-800 group-hover/item:text-violet-700 leading-tight">SmartMatch AI</div>
+                                            <div className="text-[11px] lg:text-[12px] text-gray-500 font-medium leading-[1.3] mt-1 max-w-[130px]">Find perfect job fits using AI</div>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <div className="text-sm font-bold text-gray-800 group-hover/item:text-violet-700">SmartMatch AI</div>
-                                        <div className="text-[10px] text-gray-500 font-medium leading-tight mt-0.5">Find perfect job fits using AI</div>
+                                    <div className="bg-[#FFF3E0] text-[#F97316] px-2.5 py-1 rounded-[6px] text-[10px] font-extrabold flex items-center gap-1 shrink-0 ml-1 border border-orange-200/50 shadow-sm uppercase tracking-wider">
+                                        🔥 HOT
                                     </div>
-                                </Link>
+                                </a>
+
+                                <button 
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        if (!user) {
+                                            triggerLoginRequired();
+                                            return;
+                                        }
+                                        // ATS Score is FREE — no premium check
+                                        const customSmoothScroll = (elementId) => {
+                                            const targetElement = document.getElementById(elementId);
+                                            if (!targetElement) return;
+                                            
+                                            const targetPosition = targetElement.getBoundingClientRect().top + window.pageYOffset - 80;
+                                            const startPosition = window.pageYOffset;
+                                            const distance = targetPosition - startPosition;
+                                            const duration = 1200;
+                                            let start = null;
+                                            
+                                            window.requestAnimationFrame(function step(timestamp) {
+                                                if (!start) start = timestamp;
+                                                const progress = timestamp - start;
+                                                const easeInOutCubic = progress < duration / 2
+                                                    ? 4 * Math.pow(progress / duration, 3)
+                                                    : 1 - Math.pow(-2 * (progress / duration) + 2, 3) / 2;
+                                                
+                                                window.scrollTo(0, startPosition + distance * easeInOutCubic);
+                                                if (progress < duration) {
+                                                    window.requestAnimationFrame(step);
+                                                }
+                                            });
+                                        };
+
+                                        if (location.pathname !== '/') {
+                                            navigate('/');
+                                            setTimeout(() => {
+                                                customSmoothScroll('ats-section');
+                                            }, 800);
+                                        } else {
+                                            customSmoothScroll('ats-section');
+                                        }
+                                    }}
+                                    className="flex w-full items-center justify-between p-3 lg:p-4 hover:bg-violet-50/50 transition-colors group/item relative rounded-b-2xl text-left"
+                                >
+                                    <div className="flex items-center gap-3 lg:gap-4">
+                                        <div className="bg-[#F3E8FF] text-violet-600 p-3 lg:p-3.5 rounded-2xl group-hover/item:scale-110 transition-transform">
+                                            <Gauge size={22} strokeWidth={2.2} />
+                                        </div>
+                                        <div className="flex flex-col pr-1">
+                                            <div className="text-[15px] lg:text-[16px] font-extrabold text-gray-800 group-hover/item:text-violet-700 leading-tight">ATS Score</div>
+                                            <div className="text-[11px] lg:text-[12px] text-gray-500 font-medium leading-[1.3] mt-1 max-w-[130px]">Check resume score instantly</div>
+                                        </div>
+                                    </div>
+                                    <div className="bg-[#DCFCE7] text-[#16A34A] px-2.5 py-1 rounded-[6px] text-[10px] font-extrabold flex items-center gap-1 shrink-0 ml-1 border border-green-200/60 shadow-sm uppercase tracking-wider">
+                                        ✓ FREE
+                                    </div>
+                                </button>
                                 
                                 {/* Placeholder for future tools */}
                             </div>
@@ -342,8 +448,8 @@ const Navbar = () => {
                             )}
                         </div>
                     ) : isLoaded ? (
-                        <button onClick={() => openSignIn()} className='bg-blue-600 text-white px-5 py-2 text-sm font-semibold rounded-xl hover:bg-blue-700 transition shadow-sm hover:shadow-md'>
-                            Candidate Login
+                        <button onClick={() => openSignIn()} className={`text-white px-5 py-2 text-sm font-semibold rounded-xl transition shadow-sm hover:shadow-md ${shakeLogin ? 'animate-shake bg-red-500 hover:bg-red-600 ring-4 ring-red-200' : 'bg-blue-600 hover:bg-blue-700'}`}>
+                            Try Free / Login
                         </button>
                     ) : (
                         <div className='flex items-center gap-3 animate-pulse'>
@@ -354,6 +460,107 @@ const Navbar = () => {
                             </div>
                         </div>
                     )}
+                    
+                    {/* Mobile Menu Toggle (Moved to Right) */}
+                    <button 
+                        className='md:hidden p-1.5 text-gray-600 hover:bg-gray-100 rounded-xl transition-colors ml-1 shrink-0'
+                        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                    >
+                        {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+                    </button>
+                </div>
+            </div>
+
+            {/* Mobile Drawer Overlay */}
+            {isMobileMenuOpen && (
+                <div 
+                    className="md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[90] transition-opacity"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                ></div>
+            )}
+
+            {/* Mobile Sidebar Menu */}
+            <div className={`md:hidden fixed top-0 left-0 w-[80%] max-w-[320px] h-full bg-white z-[100] shadow-2xl transition-transform duration-300 ease-in-out flex flex-col ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+                
+                {/* Drawer Header */}
+                <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-gray-50">
+                    <div className="flex items-center gap-2">
+                        {userData?.image || user?.imageUrl ? (
+                            <img src={userData?.image || user?.imageUrl} alt='Profile' className='w-8 h-8 rounded-full border border-gray-200' />
+                        ) : (
+                            <div className='w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-xs'>
+                                {user?.fullName?.[0] || <UserIcon size={14} />}
+                            </div>
+                        )}
+                        <div>
+                            <p className="text-xs font-bold text-gray-800 line-clamp-1">{user?.fullName || 'Guest'}</p>
+                            <p className="text-[10px] text-gray-500 line-clamp-1">{user?.primaryEmailAddress?.emailAddress || 'Sign in for more features'}</p>
+                        </div>
+                    </div>
+                    <button onClick={() => setIsMobileMenuOpen(false)} className="p-1.5 bg-white text-gray-500 hover:bg-gray-100 rounded-lg shadow-sm border border-gray-200">
+                        <X size={18} />
+                    </button>
+                </div>
+
+                <div className='flex-1 overflow-y-auto p-4 flex flex-col gap-1 text-[13px]'>
+                    
+                    {/* EXPLORE SECTION */}
+                    <h4 className='text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-2 mb-1.5 ml-1'>Explore</h4>
+                    <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className='flex items-center gap-3 p-2.5 rounded-xl hover:bg-blue-50 text-gray-700 font-bold transition'>
+                        <div className='p-1.5 rounded-lg bg-blue-100 text-blue-600'><Search size={16} /></div> Find Jobs
+                    </Link>
+                    <Link to="/upskilling" onClick={() => setIsMobileMenuOpen(false)} className='flex items-center gap-3 p-2.5 rounded-xl hover:bg-emerald-50 text-gray-700 font-bold transition'>
+                        <div className='p-1.5 rounded-lg bg-emerald-100 text-emerald-600'><GraduationCap size={16} /></div> Upskill
+                    </Link>
+
+                    {/* CAREER TOOLS SECTION */}
+                    <h4 className='text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-4 mb-1.5 ml-1'>Career Tools</h4>
+                    <a href="/resumes" onClick={(e) => { setIsMobileMenuOpen(false); handleFeatureClick(e, '/resumes'); }} className='flex items-center gap-3 p-2.5 rounded-xl hover:bg-violet-50 text-gray-700 font-bold transition'>
+                        <div className='p-1.5 rounded-lg bg-violet-100 text-violet-600'><FileText size={16} /></div> Resume Builder
+                    </a>
+                    <a href="/smart-match" onClick={(e) => { setIsMobileMenuOpen(false); handleFeatureClick(e, '/smart-match'); }} className='flex items-center gap-3 p-2.5 rounded-xl hover:bg-violet-50 text-gray-700 font-bold transition'>
+                        <div className='p-1.5 rounded-lg bg-violet-100 text-violet-600'><Lightbulb size={16} /></div> SmartMatch AI
+                    </a>
+                    <div className='flex items-center gap-3 p-2.5 rounded-xl hover:bg-amber-50 text-gray-700 font-bold transition cursor-pointer' onClick={() => setIsMobileMenuOpen(false)}>
+                        <div className='p-1.5 rounded-lg bg-amber-100 text-amber-600'><TrendingUp size={16} /></div> Insights
+                    </div>
+
+                    {/* DASHBOARD SECTION */}
+                    <h4 className='text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-4 mb-1.5 ml-1'>My Dashboard</h4>
+                    <Link to="/user-dashboard" onClick={() => setIsMobileMenuOpen(false)} className='flex items-center gap-3 p-2.5 rounded-xl hover:bg-gray-50 text-gray-700 font-bold transition'>
+                        <div className='p-1.5 rounded-lg bg-gray-100 text-gray-600'><LayoutDashboard size={16} /></div> Overview
+                    </Link>
+                    <Link to="/saved-jobs" onClick={() => setIsMobileMenuOpen(false)} className='flex items-center gap-3 p-2.5 rounded-xl hover:bg-gray-50 text-gray-700 font-bold transition'>
+                        <div className='p-1.5 rounded-lg bg-gray-100 text-gray-600'><Bookmark size={16} /></div> Saved Jobs
+                    </Link>
+                    <div onClick={() => { navigate('/user-dashboard?tab=manage-resumes'); setIsMobileMenuOpen(false); }} className='flex items-center gap-3 p-2.5 rounded-xl hover:bg-gray-50 text-gray-700 font-bold transition cursor-pointer'>
+                        <div className='p-1.5 rounded-lg bg-gray-100 text-gray-600'><FileText size={16} /></div> Manage Resumes
+                    </div>
+                    <Link to="/applied-jobs" onClick={() => setIsMobileMenuOpen(false)} className='flex items-center gap-3 p-2.5 rounded-xl hover:bg-gray-50 text-gray-700 font-bold transition'>
+                        <div className='p-1.5 rounded-lg bg-gray-100 text-gray-600'><Briefcase size={16} /></div> Applied Jobs
+                    </Link>
+
+                    {/* INSTITUTE PORTAL */}
+                    <h4 className='text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-4 mb-1.5 ml-1'>Partner Portal</h4>
+                    <button 
+                        onClick={() => { window.open('http://localhost:5176/', '_blank'); setIsMobileMenuOpen(false); }} 
+                        className='flex items-center gap-3 p-2.5 rounded-xl hover:bg-orange-50 text-orange-700 font-bold transition w-full text-left'
+                    >
+                        <div className='p-1.5 rounded-lg bg-orange-100 text-orange-600'><Building2 size={16} /></div> Teach Skills
+                    </button>
+                    
+                    {/* AUTH ACTION */}
+                    <div className="mt-8 pt-4 border-t border-gray-100">
+                        {user ? (
+                            <button onClick={() => { signOut(); setIsMobileMenuOpen(false); }} className="flex items-center gap-2 justify-center w-full py-2.5 bg-red-50 text-red-600 rounded-xl font-bold">
+                                <LogOut size={16} /> Logout
+                            </button>
+                        ) : (
+                            <button onClick={() => { openSignIn(); setIsMobileMenuOpen(false); }} className="flex items-center gap-2 justify-center w-full py-2.5 bg-blue-600 text-white rounded-xl font-bold">
+                                <UserIcon size={16} /> Login
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>

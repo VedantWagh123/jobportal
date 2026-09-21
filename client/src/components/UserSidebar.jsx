@@ -105,7 +105,7 @@ const UserSidebar = () => {
                         {/* Institute Portal */}
                         {instituteToken ? (
                             <button
-                                onClick={() => window.location.href = 'http://localhost:5175/'}
+                                onClick={() => window.open('http://localhost:5176/', '_blank')}
                                 className='w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition group'
                             >
                                 <div className='flex items-center gap-3'>
@@ -116,7 +116,7 @@ const UserSidebar = () => {
                             </button>
                         ) : (
                             <button
-                                onClick={() => window.location.href = 'http://localhost:5175/login'}
+                                onClick={() => window.open('http://localhost:5176/login', '_blank')}
                                 className='w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition group'
                             >
                                 <div className='flex items-center gap-3'>
@@ -162,9 +162,9 @@ const UserSidebar = () => {
                         </li>
                     </ul>
 
-                    <button className='w-full bg-blue-600 text-white text-[12px] font-bold py-2.5 rounded-[12px] hover:bg-blue-700 transition-colors flex items-center justify-center gap-1'>
+                    <Link to="/pricing" className='w-full bg-blue-600 text-white text-[12px] font-bold py-2.5 rounded-[12px] hover:bg-blue-700 transition-colors flex items-center justify-center gap-1'>
                         Explore More <ArrowRight size={14} />
-                    </button>
+                    </Link>
                 </div>
             </div>
         </div>

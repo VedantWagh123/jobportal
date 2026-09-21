@@ -11,7 +11,10 @@ const userSchema = new mongoose.Schema({
     address: { type: String },
     city: { type: String },
     college: { type: String },
-    savedJobs: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Job' }]
+    savedJobs: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Job' }],
+    isPremium: { type: Boolean, default: false },
+    razorpayCustomerId: { type: String },
+    subscriptionId: { type: String }
 }, { timestamps: true })
 
 const User = mongoose.model('User', userSchema)

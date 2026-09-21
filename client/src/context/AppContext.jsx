@@ -43,6 +43,8 @@ export const AppContextProvider = (props) => {
     })
     const [savedJobs, setSavedJobs] = useState([])
     const [isChatbotOpen, setIsChatbotOpen] = useState(false)
+    const [showPremiumPopup, setShowPremiumPopup] = useState(false)
+    const [isPremium, setIsPremium] = useState(false)
     const prevUserRef = useRef(undefined)
 
     // Function to handle saved jobs
@@ -299,6 +301,8 @@ export const AppContextProvider = (props) => {
         fetchUserApplications,
         savedJobs, toggleSaveJob,
         isChatbotOpen, setIsChatbotOpen,
+        showPremiumPopup, setShowPremiumPopup,
+        isPremium, setIsPremium,
         selectedCategories, setSelectedCategories,
         selectedLocations, setSelectedLocations,
         fetchNextPage, hasNextPage, isFetchingNextPage, jobsStatus

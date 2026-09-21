@@ -17,6 +17,7 @@ import superAdminRoutes from './routes/superAdmin/index.js'
 import intelligenceRoutes from './routes/intelligenceRoutes.js'
 import resumeRoutes from './routes/resumeRoutes.js'
 import smartMatchRoutes from './routes/smartMatchRoutes.js'
+import paymentRoutes from './routes/paymentRoutes.js'
 import { startJobProcessor } from './services/jobProcessor.js'
 import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
@@ -43,9 +44,9 @@ process.on('unhandledRejection', (err) => {
 // Initialize Express
 const app = express()
 const httpServer = createServer(app);
-// Connect to database
-await connectDB()
-await connectCloudinary()
+// Connect to database (non-blocking)
+connectDB().catch(console.error);
+connectCloudinary().catch(console.error);
 
 // Middlewares
 
@@ -100,6 +101,7 @@ app.use('/api/institute', instituteRoutes)
 app.use('/api/intelligence', intelligenceRoutes)
 app.use('/api/resumes', resumeRoutes)
 app.use('/api/smartmatch', smartMatchRoutes)
+app.use('/api/payments', paymentRoutes)
 
 // Super Admin
 app.use('/api/super-admin', superAdminRoutes)

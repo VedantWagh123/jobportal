@@ -1,7 +1,31 @@
 node_modules/
+
+# Environment files - all variants, all subdirectories
 .env
+.env.*
+**/.env
+**/.env.*
+!**/.env.example
+
 dist/
 build/
 .DS_Store
+
+# Uploads (keep gitkeep placeholder only)
 server/uploads/*
 !server/uploads/.gitkeep
+
+# Error logs and debug output
+server/error_log.txt
+*.log
+
+# One-off test/debug scripts (not part of the app)
+server/test_gemini.js
+server/test_gemini2.js
+server/testController.js
+server/testQueries.js
+server/check_districts.js
+server/check_districts2.js
+server/check_institutes.js
+server/check_users.js
+server/find_infotech.js

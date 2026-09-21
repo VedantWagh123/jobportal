@@ -13,6 +13,31 @@ const getOllamaConfig = () => ({
     model: process.env.OLLAMA_MODEL || 'llava'
 });
 
+// MODEL POOL — rotates across models on quota exhaustion
+const GEMINI_MODELS = [
+    'gemini-3.6-flash',
+    'gemini-2.5-flash',
+    'gemini-3.5-flash',
+    'gemini-3.7-flash',
+    'gemini-3.1-flash-lite',
+];
+const GEMINI_MODEL = GEMINI_MODELS[0]; // for logging
+
+// Cached system settings - refreshes every 60s
+let _settingsCache = null;
+let _settingsCacheTime = 0;
+const getSettings = async () => {
+    const now = Date.now();
+    if (_settingsCache && (now - _settingsCacheTime) < 60000) return _settingsCache;
+    try {
+        _settingsCache = await SystemSetting.findOne().lean();
+        _settingsCacheTime = now;
+    } catch (e) {
+        return null;
+    }
+    return _settingsCache;
+};
+
 // Fallback helper for Ollama text generation
 const callOllama = async (prompt, formatJSON = false) => {
     try {
@@ -22,8 +47,8 @@ const callOllama = async (prompt, formatJSON = false) => {
             model: model,
             prompt: prompt,
             stream: false,
-            ...(formatJSON && { format: 'json' }) // Some Ollama versions support this flag
-        });
+            ...(formatJSON && { format: 'json' })
+        }, { timeout: 20000 });
         return response.data.response;
     } catch (err) {
         console.error("[Ollama] Fallback also failed:", err.message);
@@ -31,38 +56,129 @@ const callOllama = async (prompt, formatJSON = false) => {
     }
 };
 
-// Initialize Gemini SDK lazily to avoid dotenv hoisting issues
-const getAIInstance = () => {
-    return process.env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }) : null;
+// ============================================================
+// GEMINI ERROR ANALYZER — Shows root cause clearly in terminal
+// ============================================================
+const analyzeGeminiError = (error, keyIndex, attempt) => {
+    const statusCode = error?.status || error?.response?.status || error?.code || 'UNKNOWN';
+    const rawMsg     = error?.message || String(error);
+    const details    = error?.errorDetails || error?.response?.data?.error || null;
+
+    let category = 'UNKNOWN';
+    let suggestion = '';
+
+    if (rawMsg.includes('429') || rawMsg.includes('RESOURCE_EXHAUSTED') || rawMsg.includes('quota') || statusCode === 429) {
+        category = 'QUOTA_EXHAUSTED';
+        suggestion = 'Daily/minute quota exceeded. Auto-switching to next API key.';
+    } else if (rawMsg.includes('404') || rawMsg.includes('not found') || rawMsg.includes('not supported')) {
+        category = 'MODEL_NOT_FOUND';
+        suggestion = `Model name is invalid or not accessible with this API key. Model used: ${GEMINI_MODEL}`;
+    } else if (rawMsg.includes('403') || rawMsg.includes('PERMISSION_DENIED') || rawMsg.includes('API key not valid')) {
+        category = 'INVALID_API_KEY';
+        suggestion = 'API key is invalid or does not have permission to use this model.';
+    } else if (rawMsg.includes('503') || rawMsg.includes('UNAVAILABLE') || rawMsg.includes('overloaded')) {
+        category = 'SERVICE_OVERLOADED';
+        suggestion = 'Gemini servers are overloaded / high demand. Will retry with next key.';
+    } else if (rawMsg.includes('401') || rawMsg.includes('UNAUTHENTICATED')) {
+        category = 'AUTH_FAILED';
+        suggestion = 'Authentication failed — check that the API key is correctly set in .env';
+    } else if (rawMsg.includes('ECONNREFUSED') || rawMsg.includes('ENOTFOUND') || rawMsg.includes('network')) {
+        category = 'NETWORK_ERROR';
+        suggestion = 'Cannot reach Google servers. Check your internet connection.';
+    } else if (rawMsg.includes('500') || rawMsg.includes('INTERNAL')) {
+        category = 'GEMINI_SERVER_ERROR';
+        suggestion = 'Internal error on Google servers. Not your fault — retrying.';
+    } else if (rawMsg.includes('timeout') || rawMsg.includes('DEADLINE_EXCEEDED')) {
+        category = 'TIMEOUT';
+        suggestion = 'Request timed out. Gemini is slow or prompt is too large.';
+    }
+
+    const sep = '─'.repeat(60);
+    console.error(`\n\x1b[31m┌${sep}┐\x1b[0m`);
+    console.error(`\x1b[31m│  🔴 GEMINI API ERROR  (Key ${keyIndex + 1}, Attempt ${attempt + 1})\x1b[0m`);
+    console.error(`\x1b[31m├${sep}┤\x1b[0m`);
+    console.error(`\x1b[33m│  Category   :\x1b[0m ${category}`);
+    console.error(`\x1b[33m│  HTTP Code  :\x1b[0m ${statusCode}`);
+    console.error(`\x1b[33m│  Model      :\x1b[0m ${GEMINI_MODEL}`);
+    console.error(`\x1b[33m│  Raw Error  :\x1b[0m ${rawMsg.substring(0, 200)}`);
+    if (details) console.error(`\x1b[33m│  Details    :\x1b[0m ${JSON.stringify(details).substring(0, 200)}`);
+    console.error(`\x1b[36m│  Suggestion :\x1b[0m ${suggestion || 'Unknown error — check logs above.'}`);
+    console.error(`\x1b[31m└${sep}┘\x1b[0m\n`);
+
+    return category;
 };
+
+// ============================================================
+// CENTRAL MULTI-KEY FALLBACK EXECUTOR
+// Tries KEY_1, then KEY_2. If both fail, throws.
+// ============================================================
+let currentKeyIndex = 0;
+
+const executeWithFallback = async (executeFn) => {
+    const keys = [
+        process.env.GEMINI_API_KEY,
+        process.env.GEMINI_API_KEY_2
+    ].filter(Boolean);
+
+    if (keys.length === 0) {
+        console.error('\x1b[31m[Gemini] FATAL: No API keys found in .env!\x1b[0m');
+        throw new Error("No GEMINI_API_KEY found in environment.");
+    }
+
+    // Build (key, model) combos pool
+    const combos = [];
+    for (const model of GEMINI_MODELS) {
+        for (const key of keys) {
+            combos.push({ key, model });
+        }
+    }
+    const totalCombos = combos.length;
+
+    let lastError = null;
+    let lastCategory = '';
+    for (let attempt = 0; attempt < totalCombos; attempt++) {
+        const { key: keyToUse, model: modelToUse } = combos[currentKeyIndex % totalCombos];
+        console.log(`\x1b[36m[Gemini aiService]\x1b[0m Combo ${currentKeyIndex % totalCombos + 1}/${totalCombos} — Model: ${modelToUse}, Key: ...${keyToUse.slice(-6)}`);
+        try {
+            const ai = new GoogleGenAI({ apiKey: keyToUse });
+            const result = await executeFn(ai, modelToUse);
+            console.log(`\x1b[32m[Gemini aiService] ✓ Success — Model: ${modelToUse}\x1b[0m`);
+            return result;
+        } catch (err) {
+            lastError = err;
+            lastCategory = analyzeGeminiError(err, currentKeyIndex % totalCombos, attempt);
+            currentKeyIndex++;
+            if (attempt + 1 < totalCombos) {
+                const next = combos[currentKeyIndex % totalCombos];
+                if (['QUOTA_EXHAUSTED', 'MODEL_NOT_FOUND', 'INVALID_API_KEY'].includes(lastCategory)) {
+                    console.warn(`\x1b[33m[Gemini aiService] Quota on ${modelToUse}. Switching to ${next.model}...\x1b[0m`);
+                } else {
+                    console.warn(`\x1b[33m[Gemini aiService] Transient error. Retrying with ${next.model}...\x1b[0m`);
+                }
+            }
+        }
+    }
+    console.error(`\x1b[31m[Gemini aiService] ALL ${totalCombos} combos exhausted [${lastCategory}].\x1b[0m`);
+    throw new Error(`All Gemini combos failed [${lastCategory}]: ${lastError?.message}`);
+};
+
 
 /**
  * Clean Job Description text to save tokens and improve extraction accuracy
  */
 const cleanText = (text) => {
     if (!text) return "";
-    // Remove HTML tags
     let cleaned = text.replace(/<[^>]*>?/gm, ' ');
-    // Remove excessive whitespace and newlines
     cleaned = cleaned.replace(/\s+/g, ' ').trim();
-    // Cap at 5000 characters just in case it's huge
     return cleaned.substring(0, 5000);
 };
 
 export const parseJobDescription = async (jobId, title, description) => {
     try {
         console.log(`[Job Intelligence] Starting extraction for Job: ${title}`);
-        
-        // 1. Update Job Status to Processing
         await Job.findByIdAndUpdate(jobId, { intelligenceStatus: 'Processing' });
 
-        const ai = getAIInstance();
-        if (!ai) {
-            throw new Error("GEMINI_API_KEY is not configured.");
-        }
-
         const cleanedDescription = cleanText(description);
-
         const prompt = `
             You are an expert technical recruiter and IT ontology system.
             Extract all distinct hard skills, frameworks, tools, and programming languages from the following job description.
@@ -85,30 +201,29 @@ export const parseJobDescription = async (jobId, title, description) => {
             Ensure no markdown formatting or backticks wrap the JSON response.
         `;
 
-        // 2. Call Gemini or Fallback to Ollama
         let jsonString = "";
         try {
-            const settings = await SystemSetting.findOne();
+            const settings = await getSettings();
             if (settings && settings.forceOllama) {
                 console.log("[System] Force Ollama is ON. Bypassing Gemini...");
                 throw new Error("Forced Ollama Bypass");
             }
-            if (!ai) throw new Error("GEMINI_API_KEY is not configured.");
-            const response = await ai.models.generateContent({
-                model: 'gemini-2.5-flash',
-                contents: prompt,
-                config: {
-                    temperature: 0.1, // Keep it deterministic
-                    responseMimeType: "application/json"
-                }
+            jsonString = await executeWithFallback(async (ai, model) => {
+                const response = await ai.models.generateContent({
+                    model: model,
+                    contents: prompt,
+                    config: {
+                        temperature: 0.1,
+                        responseMimeType: "application/json"
+                    }
+                });
+                return response.text;
             });
-            jsonString = response.text;
         } catch (geminiError) {
             console.warn(`[Job Intelligence] Gemini failed (${geminiError.message}). Falling back to Ollama...`);
             jsonString = await callOllama(prompt, true);
         }
 
-        // Clean JSON string (remove markdown ticks if present)
         jsonString = jsonString.replace(/```json/gi, '').replace(/```/g, '').trim();
         let extractedData;
         try {
@@ -135,7 +250,6 @@ export const parseJobDescription = async (jobId, title, description) => {
             { upsert: true, new: true }
         );
 
-        // 3. Controlled Normalization & Matching
         let matchedCount = 0;
         let unresolvedCount = 0;
         const normalizedSkillNames = new Set();
@@ -147,7 +261,6 @@ export const parseJobDescription = async (jobId, title, description) => {
             const normalizedInput = rawName.trim();
             const confidence = typeof extracted.confidence === 'number' ? extracted.confidence : 0;
 
-            // Search Master Ontology by Exact Name OR by Alias (case-insensitive)
             const skillDoc = await Skill.findOne({
                 $or: [
                     { name: { $regex: new RegExp(`^${normalizedInput}$`, "i") } },
@@ -156,30 +269,18 @@ export const parseJobDescription = async (jobId, title, description) => {
             });
 
             if (skillDoc) {
-                // MATCH FOUND: Create/Update JobSkill
                 await JobSkill.findOneAndUpdate(
                     { jobId, skillId: skillDoc._id },
-                    { 
-                        proficiency: 'Unspecified', 
-                        isCore: true,
-                        extractedViaAI: true 
-                    },
+                    { proficiency: 'Unspecified', isCore: true, extractedViaAI: true },
                     { upsert: true, new: true }
                 );
                 matchedCount++;
                 normalizedSkillNames.add(skillDoc.name);
             } else {
-                // NO MATCH: Create UnresolvedSkill for Admin review
-                // Convert to lowercase for unique indexing of unresolved skills
                 const normalizedForUnique = normalizedInput.toLowerCase();
-                
                 await UnresolvedSkill.findOneAndUpdate(
                     { jobId, normalizedName: normalizedForUnique },
-                    {
-                        rawName: rawName,
-                        confidence: confidence,
-                        status: 'pending'
-                    },
+                    { rawName: rawName, confidence: confidence, status: 'pending' },
                     { upsert: true }
                 );
                 unresolvedCount++;
@@ -187,21 +288,18 @@ export const parseJobDescription = async (jobId, title, description) => {
             }
         }
 
-        // 4. Update Job Status to Completed
-        await Job.findByIdAndUpdate(jobId, { 
+        await Job.findByIdAndUpdate(jobId, {
             intelligenceStatus: 'Completed',
             intelligenceLastError: null,
-            intelligenceRetryCount: 0, // Reset on success
-            skills: Array.from(normalizedSkillNames) // Sync normalized skills to Job array for frontend
+            intelligenceRetryCount: 0,
+            skills: Array.from(normalizedSkillNames)
         });
 
         console.log(`[Job Intelligence] Successfully mapped ${matchedCount} skills to Job ${jobId}. Recorded ${unresolvedCount} unknown skills.`);
 
     } catch (error) {
         console.error(`[Job Intelligence Error] Job: ${jobId}`, error);
-        
-        // Mark Job as Failed so it can be retried later
-        await Job.findByIdAndUpdate(jobId, { 
+        await Job.findByIdAndUpdate(jobId, {
             intelligenceStatus: 'Failed',
             intelligenceLastError: error.message,
             $inc: { intelligenceRetryCount: 1 }
@@ -213,11 +311,6 @@ export const parseJobDescription = async (jobId, title, description) => {
  * Step 10: AI What-If Simulator - Phase 1: Intent Extraction
  */
 export const extractSimulationIntent = async (userPrompt) => {
-    const ai = getAIInstance();
-    if (!ai) {
-        console.warn("[AI Service] GEMINI_API_KEY is missing. Will try Ollama Fallback Intent.");
-    }
-
     const prompt = `
         You are an AI assistant for a Government Skill & Labor Intelligence Platform.
         A policymaker is asking a "What-If" question about opening new training batches.
@@ -237,23 +330,20 @@ export const extractSimulationIntent = async (userPrompt) => {
     `;
 
     try {
-        let responseText = "";
-        const settings = await SystemSetting.findOne();
+        const settings = await getSettings();
         if (settings && settings.forceOllama) {
             console.log("[System] Force Ollama is ON. Bypassing Gemini...");
             throw new Error("Forced Ollama Bypass");
         }
-        if (!ai) throw new Error("GEMINI_API_KEY missing");
-        
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: prompt,
-            config: {
-                temperature: 0.1,
-                responseMimeType: "application/json"
-            }
+
+        const responseText = await executeWithFallback(async (ai, model) => {
+            const response = await ai.models.generateContent({
+                model: model,
+                contents: prompt,
+                config: { temperature: 0.1, responseMimeType: "application/json" }
+            });
+            return response.text;
         });
-        responseText = response.text;
         const intent = JSON.parse(responseText.replace(/```json/gi, '').replace(/```/g, '').trim());
         return { ...intent, isFallback: false };
     } catch (err) {
@@ -264,7 +354,6 @@ export const extractSimulationIntent = async (userPrompt) => {
             return { ...intent, isFallback: true };
         } catch (ollamaErr) {
             console.error("[AI Service] Ollama intent fallback also failed:", ollamaErr.message);
-            // Final Static Fallback
             return {
                 queryType: "specific_injection",
                 skill: "React (Fallback)",
@@ -281,11 +370,6 @@ export const extractSimulationIntent = async (userPrompt) => {
  * Step 10b: AI What-If Simulator - Phase 2b: Open Ended Suggestion
  */
 export const generateOpenEndedPrediction = async (userPrompt, topGaps) => {
-    const ai = getAIInstance();
-    if (!ai) {
-        console.warn("[AI Service] GEMINI_API_KEY is missing. Will try Ollama Open Ended Prediction.");
-    }
-
     const prompt = `
         You are an expert advisor for the Government Skill Development Mission.
         The policymaker asks: "${userPrompt}"
@@ -297,25 +381,27 @@ export const generateOpenEndedPrediction = async (userPrompt, topGaps) => {
     `;
 
     try {
-        const settings = await SystemSetting.findOne();
+        const settings = await getSettings();
         if (settings && settings.forceOllama) {
             console.log("[System] Force Ollama is ON. Bypassing Gemini...");
             throw new Error("Forced Ollama Bypass");
         }
-        if (!ai) throw new Error("GEMINI_API_KEY missing");
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: prompt,
-            config: { temperature: 0.5 }
+        const responseText = await executeWithFallback(async (ai, model) => {
+            const response = await ai.models.generateContent({
+                model: model,
+                contents: prompt,
+                config: { temperature: 0.5 }
+            });
+            return response.text;
         });
-        return { text: response.text, isFallback: false };
+        return { text: responseText, isFallback: false };
     } catch (err) {
         console.warn(`[AI Service] Open Ended Prediction failed (${err.message}). Falling back to Ollama...`);
         try {
             const ollamaText = await callOllama(prompt);
             return { text: ollamaText, isFallback: true };
         } catch (ollamaErr) {
-            return { 
+            return {
                 text: `[STATIC FALLBACK]\nBased on the data, focus on high-demand skills.`,
                 isFallback: true
             };
@@ -327,11 +413,6 @@ export const generateOpenEndedPrediction = async (userPrompt, topGaps) => {
  * Step 10: AI What-If Simulator - Phase 2: Prediction Generation
  */
 export const generateSimulationPrediction = async (intent, marketData) => {
-    const ai = getAIInstance();
-    if (!ai) {
-        console.warn("[AI Service] GEMINI_API_KEY is missing. Will try Ollama Fallback Prediction.");
-    }
-
     const prompt = `
         You are a senior data analyst and advisor for the Government Skill Development Mission.
         The policymaker wants to know the outcome of this hypothetical scenario:
@@ -349,28 +430,27 @@ export const generateSimulationPrediction = async (intent, marketData) => {
     `;
 
     try {
-        const settings = await SystemSetting.findOne();
+        const settings = await getSettings();
         if (settings && settings.forceOllama) {
             console.log("[System] Force Ollama is ON. Bypassing Gemini...");
             throw new Error("Forced Ollama Bypass");
         }
-        if (!ai) throw new Error("GEMINI_API_KEY missing");
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: prompt,
-            config: {
-                temperature: 0.4,
-            }
+        const responseText = await executeWithFallback(async (ai, model) => {
+            const response = await ai.models.generateContent({
+                model: model,
+                contents: prompt,
+                config: { temperature: 0.4 }
+            });
+            return response.text;
         });
-
-        return { text: response.text, isFallback: false };
+        return { text: responseText, isFallback: false };
     } catch (err) {
         console.warn(`[AI Service] Prediction failed (${err.message}). Falling back to Ollama...`);
         try {
             const ollamaText = await callOllama(prompt);
             return { text: ollamaText, isFallback: true };
         } catch (ollamaErr) {
-            return { 
+            return {
                 text: `[STATIC FALLBACK]\nBased on the current market data, adding these batches will significantly help reduce the skill gap for ${intent.skill} in ${intent.district}. We highly recommend proceeding with this policy action to ensure strong placements.`,
                 isFallback: true
             };
@@ -379,12 +459,6 @@ export const generateSimulationPrediction = async (intent, marketData) => {
 };
 
 export const generatePolicyInsights = async (forecastData) => {
-    const ai = getAIInstance();
-    if (!ai) {
-        console.warn("[AI Service] GEMINI_API_KEY is missing. Will return fallback insights.");
-        return "AI Policy Insights are currently unavailable because the API key is not configured.";
-    }
-
     const { emergingSkills, decliningSkills, shortages } = forecastData;
 
     const summaryData = {
@@ -407,21 +481,25 @@ export const generatePolicyInsights = async (forecastData) => {
     `;
 
     try {
-        const settings = await SystemSetting.findOne();
+        const settings = await getSettings();
         if (settings && settings.forceOllama) {
             console.log("[System] Force Ollama is ON. Bypassing Gemini...");
             throw new Error("Forced Ollama Bypass");
         }
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: prompt,
-            config: {
-                temperature: 0.3,
-            }
+        const responseText = await executeWithFallback(async (ai, model) => {
+            const response = await ai.models.generateContent({
+                model: model,
+                contents: prompt,
+                config: { temperature: 0.3 }
+            });
+            return response.text;
         });
-        return response.text;
+        return responseText;
     } catch (err) {
         console.warn(`[AI Service] Policy insights failed: ${err.message}`);
         return "AI Insight generation failed at this time. However, based on the data, the state should focus on expanding training capacity for the listed emerging and shortage skills.";
     }
 };
+
+
+

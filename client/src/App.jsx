@@ -8,6 +8,7 @@ import 'react-toastify/dist/ReactToastify.css';
 // Loading Component
 import Loading from './components/Loading'
 import ErrorBoundary from './components/ErrorBoundary'
+import PremiumUnlockModal from './components/PremiumUnlockModal'
 
 // Lazy Load Components
 const Home = lazy(() => import('./pages/Home'))
@@ -31,6 +32,7 @@ const SavedJobs = lazy(() => import('./pages/SavedJobs'))
 const ResumeDashboard = lazy(() => import('./pages/ResumeDashboard'))
 const ResumeBuilder = lazy(() => import('./pages/ResumeBuilder'))
 const SmartMatch = lazy(() => import('./pages/SmartMatch'))
+const Pricing = lazy(() => import('./pages/Pricing'))
 
 const App = () => {
 
@@ -41,6 +43,7 @@ const App = () => {
       <ErrorBoundary>
       <Suspense fallback={<Loading />}>
         <ToastContainer />
+        <PremiumUnlockModal />
         <Routes>
           {/* User Portal Routes wrapped in UserLayout */}
           <Route element={<UserLayout />}>
@@ -53,6 +56,7 @@ const App = () => {
             <Route path='/saved-jobs' element={<SavedJobs />} />
             <Route path='/resumes' element={<ResumeDashboard />} />
             <Route path='/smart-match' element={<SmartMatch />} />
+            <Route path='/pricing' element={<Pricing />} />
           </Route>
           
           {/* Standalone Full-Screen Routes */}

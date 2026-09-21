@@ -68,10 +68,14 @@ export const analyzeResume = async (req, res) => {
 
         const extractedData = await analyzeResumeForSmartMatch(text);
 
+        if (extractedData.isResume === false) {
+            return res.status(400).json({ success: false, message: 'The uploaded document does not appear to be a valid resume. Please upload a resume containing your skills, experience, and education.' });
+        }
+
         const rawSkills = [...(extractedData.technicalSkills || []), ...(extractedData.softSkills || [])];
         const normalizedSkills = Array.from(new Set(rawSkills.map(s => SkillNormalizationService.cleanSkillString(s)).filter(s => s)));
 
-        const embeddingText = `Skills: ${normalizedSkills.join(', ')}. Experience: ${extractedData.experience.map(e => e.jobTitle).join(', ')}`;
+        const embeddingText = `Skills: ${normalizedSkills.join(', ')}. Experience: ${(extractedData.experience || []).map(e => e.jobTitle).join(', ')}`;
         let embedding = [];
         try {
             embedding = await generateEmbedding(embeddingText);

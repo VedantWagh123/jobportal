@@ -2,6 +2,7 @@ import { useContext } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AppContext } from '../context/AppContext'
 import { Sparkles, Target, ClipboardList, GraduationCap, Building2, ArrowRight, FileText, Star, Users } from 'lucide-react'
+import { motion } from 'framer-motion'
 
 const FEATURES = [
     {
@@ -105,11 +106,17 @@ const FeaturesSection = () => {
     }
 
     return (
-        <section className="px-6 lg:px-8 mx-auto py-16">
+        <section className="px-6 lg:px-8 mx-auto py-16 overflow-hidden">
             <div className="max-w-screen-xl mx-auto">
 
                 {/* ── Section Header ── */}
-                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-12">
+                <motion.div 
+                    initial={{ opacity: 0, y: 30 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, amount: 0.3 }}
+                    transition={{ duration: 0.6, ease: 'easeOut' }}
+                    className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-12"
+                >
                     <div>
                         <span className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 tracking-widest uppercase mb-3">
                             <Sparkles size={13} className="text-blue-500" />
@@ -129,14 +136,31 @@ const FeaturesSection = () => {
                     >
                         Explore All Features <ArrowRight size={16} />
                     </button>
-                </div>
+                </motion.div>
 
                 {/* ── Feature Cards Grid ── */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
+                <motion.div 
+                    initial="hidden"
+                    whileInView="visible"
+                    viewport={{ once: true, amount: 0.2 }}
+                    variants={{
+                        hidden: {},
+                        visible: {
+                            transition: {
+                                staggerChildren: 0.15
+                            }
+                        }
+                    }}
+                    className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-8"
+                >
                     {FEATURES.map((f) => {
                         const Icon = f.icon
                         return (
-                            <div
+                            <motion.div
+                                variants={{
+                                    hidden: { opacity: 0, y: 30 },
+                                    visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' } }
+                                }}
                                 key={f.num}
                                 className={`group relative flex flex-col p-6 bg-white rounded-2xl border ${f.accent.border} ${f.accent.glow} shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer overflow-hidden`}
                                 onClick={() => handleCardClick(f)}
@@ -172,17 +196,34 @@ const FeaturesSection = () => {
                                     {f.cta}
                                     <ArrowRight size={14} className="group-hover/btn:translate-x-1 transition-transform duration-200" />
                                 </button>
-                            </div>
+                            </motion.div>
                         )
                     })}
-                </div>
+                </motion.div>
 
                 {/* ── Stats Row ── */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <motion.div 
+                    initial="hidden"
+                    whileInView="visible"
+                    viewport={{ once: true, amount: 0.2 }}
+                    variants={{
+                        hidden: {},
+                        visible: {
+                            transition: {
+                                staggerChildren: 0.15
+                            }
+                        }
+                    }}
+                    className="grid grid-cols-2 sm:grid-cols-4 gap-4"
+                >
                     {STATS.map((stat) => {
                         const Icon = stat.icon
                         return (
-                            <div
+                            <motion.div
+                                variants={{
+                                    hidden: { opacity: 0, scale: 0.9 },
+                                    visible: { opacity: 1, scale: 1, transition: { duration: 0.5, ease: 'easeOut' } }
+                                }}
                                 key={stat.label}
                                 className="flex items-center gap-4 bg-white border border-gray-100 rounded-2xl px-5 py-4 shadow-sm hover:shadow-md transition-all duration-200"
                             >
@@ -193,10 +234,10 @@ const FeaturesSection = () => {
                                     <p className={`text-xl font-extrabold ${stat.color} leading-none`}>{stat.value}</p>
                                     <p className="text-xs text-gray-500 font-medium mt-0.5 leading-tight">{stat.label}</p>
                                 </div>
-                            </div>
+                            </motion.div>
                         )
                     })}
-                </div>
+                </motion.div>
 
             </div>
         </section>

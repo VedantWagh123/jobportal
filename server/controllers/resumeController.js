@@ -401,16 +401,18 @@ export const uploadResumeAndExtract = async (req, res) => {
             return res.status(400).json({ success: false, message: "Could not extract text from the uploaded file. It might be an image-based PDF without selectable text." });
         }
 
-        const prompt = `You are an expert ATS resume parser. Your task is to extract information from the following resume text and format it into a strictly defined JSON structure.
+        const prompt = `You are an expert ATS resume parser. Your task is to analyze the following text and determine if it is a resume. A valid resume typically contains sections like Professional Summary, Skills, Experience, or Education.
         
 CRITICAL RULES: 
 1. Return ONLY a valid JSON object. Do not include markdown code block syntax (like \`\`\`json). Do not include any conversational text.
-2. DO NOT INVENT OR HALLUCINATE DATA. If a field (like a skill, project, or date) is not present in the text, leave it as an empty string "" or an empty array [].
-3. DO NOT SUMMARIZE OR CUT CONTENT. EXTRACT 100% OF THE ORIGINAL CONTENT WORD-FOR-WORD. Extract the exact full text for responsibilities, descriptions, and summaries as written in the resume. Never omit any details.
-4. DETERMINE SECTION ORDER. Based on the flow of the original text, identify the order in which sections appeared and return them in "sectionOrder". Valid sections are: "summary", "experience", "education", "skills", "projects", "certifications", "achievements".
+2. If the text is CLEARLY NOT a resume (e.g., it is an offer letter, a random article, a receipt, or general text), you MUST return EXACTLY this JSON: {"isResume": false}.
+3. DO NOT INVENT OR HALLUCINATE DATA. If a field (like a skill, project, or date) is not present in the text, leave it as an empty string "" or an empty array [].
+4. DO NOT SUMMARIZE OR CUT CONTENT. EXTRACT 100% OF THE ORIGINAL CONTENT WORD-FOR-WORD. Extract the exact full text for responsibilities, descriptions, and summaries as written in the resume. Never omit any details.
+5. DETERMINE SECTION ORDER. Based on the flow of the original text, identify the order in which sections appeared and return them in "sectionOrder". Valid sections are: "summary", "experience", "education", "skills", "projects", "certifications", "achievements".
 
 Extract the text into this exact JSON schema:
 {
+    "isResume": true,
     "sectionOrder": ["summary", "experience", "education", "skills", "projects", "certifications", "achievements"],
     "personalInfo": {
         "fullName": "Extracted full name",
@@ -496,6 +498,10 @@ ${extractedText.substring(0, 15000)}
         } catch (e) {
             console.error("Failed to parse extracted JSON from AI", e, "Raw:", aiResponse);
             return res.status(500).json({ success: false, message: "AI generated an invalid structure. Please try again." });
+        }
+
+        if (parsedResult.isResume === false) {
+            return res.status(400).json({ success: false, message: "The uploaded document does not appear to be a valid resume. Please upload a resume containing your skills, experience, and education." });
         }
 
         res.json({ success: true, extractedData: parsedResult });

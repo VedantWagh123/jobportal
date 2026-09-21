@@ -14,6 +14,7 @@ const EmployersManagement = lazy(() => import('./pages/EmployersManagement'));
 const UsersManagement = lazy(() => import('./pages/UsersManagement'));
 const Settings = lazy(() => import('./pages/Settings'));
 const ReportsAnalytics = lazy(() => import('./pages/ReportsAnalytics'));
+const AiCommandCenter = lazy(() => import('./pages/AiCommandCenter'));
 
 // Protect routes
 const ProtectedRoute = ({ children }) => {
@@ -40,6 +41,7 @@ function AppRoutes() {
                     <Route path="users" element={<UsersManagement />} />
                     <Route path="settings" element={<Settings />} />
                     <Route path="reports" element={<ReportsAnalytics />} />
+                    <Route path="ai-command-center" element={<AiCommandCenter />} />
                 </Route>
             </Routes>
         </Suspense>

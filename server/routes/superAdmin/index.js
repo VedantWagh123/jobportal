@@ -8,6 +8,7 @@ import employerRoutes from './employerRoutes.js';
 import notificationRoutes from './notificationRoutes.js';
 import settingsRoutes from './settingsRoutes.js';
 import userRoutes from './userRoutes.js';
+import aiCommandCenterRoutes from './aiCommandCenterRoutes.js';
 
 const router = express.Router();
 
@@ -20,5 +21,6 @@ router.use('/employers', employerRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/settings', settingsRoutes);
 router.use('/users', userRoutes);
+router.use('/ai-command-center', aiCommandCenterRoutes);
 
 export default router;

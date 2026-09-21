@@ -4,11 +4,14 @@ import Hero from '../components/Hero'
 import JobListing from '../components/JobListing'
 import AppDownload from '../components/AppDownload'
 import FeaturesSection from '../components/FeaturesSection'
+import EmployerCTA from '../components/EmployerCTA'
 import Footer from '../components/Footer'
 import SEO from '../components/SEO'
 import { AppContext } from '../context/AppContext'
 import CompleteProfileModal from '../components/CompleteProfileModal'
 import { AlertCircle } from 'lucide-react'
+import HomeResumeAnalyzer from '../components/HomeResumeAnalyzer'
+import HomeInterviewPrep from '../components/HomeInterviewPrep'
 
 const Home = () => {
   const { userData, isProfileModalOpen, setIsProfileModalOpen } = useContext(AppContext);
@@ -40,7 +43,10 @@ const Home = () => {
 
       <Hero />
       <JobListing />
+      <HomeResumeAnalyzer />
+      <HomeInterviewPrep />
       <FeaturesSection />
+      <EmployerCTA />
       <AppDownload />
       <Footer />
       

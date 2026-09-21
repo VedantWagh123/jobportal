@@ -83,6 +83,8 @@ axios.interceptors.response.use(
   }
 );
 
+import ErrorBoundary from './components/ErrorBoundary.jsx'
+
 createRoot(document.getElementById('root')).render(
   <QueryClientProvider client={queryClient}>
     <ClerkProvider publishableKey={PUBLISHABLE_KEY} afterSignOutUrl="/">
@@ -90,7 +92,9 @@ createRoot(document.getElementById('root')).render(
         <SocketProvider>
           <AppContextProvider>
             <AdminContextProvider>
-              <App />
+              <ErrorBoundary>
+                <App />
+              </ErrorBoundary>
             </AdminContextProvider>
           </AppContextProvider>
         </SocketProvider>

@@ -25,6 +25,13 @@ const jobSchema = new mongoose.Schema({
 jobSchema.index({ visible: 1, date: -1 });
 jobSchema.index({ companyId: 1 });
 
+// Indexes for fast search and filtering (Scale Optimization)
+jobSchema.index({ skills: 1 });
+jobSchema.index({ location: 1 });
+jobSchema.index({ category: 1 });
+jobSchema.index({ visible: 1, category: 1, date: -1 });
+jobSchema.index({ title: 'text', description: 'text' });
+
 const Job = mongoose.model('Job', jobSchema)
 
 export default Job

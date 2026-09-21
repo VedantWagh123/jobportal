@@ -1,41 +1,46 @@
 import React from 'react';
+import { AlertTriangle, RefreshCw } from 'lucide-react';
 
 class ErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false, error: null, errorInfo: null };
-  }
-
-  static getDerivedStateFromError(error) {
-    return { hasError: true };
-  }
-
-  componentDidCatch(error, errorInfo) {
-    console.error("ErrorBoundary caught an error", error, errorInfo);
-    this.setState({ error, errorInfo });
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div style={{ padding: '20px', backgroundColor: '#fee2e2', color: '#991b1b', borderRadius: '8px', margin: '20px', fontFamily: 'monospace' }}>
-          <h2 style={{ fontSize: '18px', fontWeight: 'bold' }}>Something went wrong.</h2>
-          <details style={{ whiteSpace: 'pre-wrap', marginTop: '10px' }}>
-            {this.state.error && this.state.error.toString()}
-            <br />
-            {this.state.errorInfo && this.state.errorInfo.componentStack}
-          </details>
-          <button 
-            onClick={() => window.location.reload()}
-            style={{ marginTop: '15px', padding: '8px 16px', backgroundColor: '#991b1b', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-          >
-            Reload Page
-          </button>
-        </div>
-      );
+    constructor(props) {
+        super(props);
+        this.state = { hasError: false, errorInfo: null };
     }
-    return this.props.children;
-  }
+
+    static getDerivedStateFromError(error) {
+        return { hasError: true };
+    }
+
+    componentDidCatch(error, errorInfo) {
+        console.error("ErrorBoundary caught an error:", error, errorInfo);
+        this.setState({ errorInfo });
+    }
+
+    render() {
+        if (this.state.hasError) {
+            return (
+                <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+                    <div className="bg-white max-w-md w-full rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.08)] p-8 text-center border border-gray-100">
+                        <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <AlertTriangle size={32} />
+                        </div>
+                        <h1 className="text-2xl font-bold text-gray-900 mb-2">Oops! Something went wrong.</h1>
+                        <p className="text-gray-500 text-sm mb-8 leading-relaxed">
+                            We're sorry, but an unexpected error occurred. Our system has logged the issue. Please refresh the page to try again.
+                        </p>
+                        <button 
+                            onClick={() => window.location.reload()} 
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+                        >
+                            <RefreshCw size={18} /> Refresh Page
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        return this.props.children; 
+    }
 }
 
 export default ErrorBoundary;

@@ -42,77 +42,77 @@ const JobCard = ({ job }) => {
     return (
         <div 
             onClick={() => { navigate(`/apply-job/${job._id}`); window.scrollTo(0, 0) }} 
-            className={`relative overflow-hidden ${variant.bg} p-6 rounded-[24px] border ${variant.border} shadow-[0_2px_12px_-4px_rgba(0,0,0,0.02)] ${variant.hoverBorder} hover:shadow-[0_12px_24px_-8px_rgba(0,0,0,0.08)] hover:-translate-y-1.5 cursor-pointer transition-all duration-300 flex flex-col h-full group bg-gradient-to-br ${variant.glow} to-white/10`}
+            className={`relative overflow-hidden ${variant.bg} p-3 sm:p-4 md:p-6 rounded-[16px] md:rounded-[24px] border ${variant.border} shadow-[0_2px_12px_-4px_rgba(0,0,0,0.02)] ${variant.hoverBorder} hover:shadow-[0_12px_24px_-8px_rgba(0,0,0,0.08)] hover:-translate-y-1.5 cursor-pointer transition-all duration-300 flex flex-col h-full group bg-gradient-to-br ${variant.glow} to-white/10`}
         >
             {/* Top Header */}
-            <div className='flex justify-between items-start mb-6 relative z-10'>
+            <div className='flex justify-between items-start mb-3 md:mb-6 relative z-10'>
                 <div 
-                    className='flex items-center gap-3 cursor-pointer group/company'
+                    className='flex items-center gap-1.5 md:gap-3 cursor-pointer group/company'
                     onClick={(e) => { e.stopPropagation(); if(job.companyId?._id) navigate(`/company/${job.companyId._id}`); window.scrollTo(0,0); }}
                 >
-                    <div className='w-12 h-12 bg-white rounded-[14px] shadow-sm border border-gray-100/80 flex items-center justify-center p-2.5 shrink-0 group-hover/company:border-blue-200 transition-colors'>
+                    <div className='w-8 h-8 md:w-12 md:h-12 bg-white rounded-[10px] md:rounded-[14px] shadow-sm border border-gray-100/80 flex items-center justify-center p-1.5 md:p-2.5 shrink-0 group-hover/company:border-blue-200 transition-colors'>
                         <img className='max-h-full max-w-full object-contain' src={job.companyId?.image || ''} alt={job.companyId?.name || 'Company'} />
                     </div>
                     <div>
-                        <h4 className='font-bold text-gray-900 text-sm tracking-tight group-hover/company:text-blue-600 transition-colors'>{job.companyId?.name || 'Unknown Company'}</h4>
-                        <p className='text-[11px] text-gray-500 font-medium mt-0.5'>{job.location}</p>
+                        <h4 className='font-bold text-gray-900 text-[10px] sm:text-xs md:text-sm tracking-tight group-hover/company:text-blue-600 transition-colors line-clamp-1'>{job.companyId?.name || 'Unknown Company'}</h4>
+                        <p className='text-[8px] md:text-[11px] text-gray-500 font-medium mt-0 md:mt-0.5 line-clamp-1'>{job.location}</p>
                     </div>
                 </div>
                 
-                <div className='flex gap-2 items-start'>
-                    <div className={`p-2 rounded-xl bg-white/60 backdrop-blur-sm shadow-[0_2px_8px_-4px_rgba(0,0,0,0.1)] ${variant.iconText}`}>
-                        <CategoryIcon size={20} strokeWidth={1.5} />
+                <div className='flex gap-1 md:gap-2 items-start'>
+                    <div className={`p-1 md:p-2 rounded-lg md:rounded-xl bg-white/60 backdrop-blur-sm shadow-[0_2px_8px_-4px_rgba(0,0,0,0.1)] ${variant.iconText}`}>
+                        <CategoryIcon className="w-3 h-3 md:w-5 md:h-5" strokeWidth={1.5} />
                     </div>
-                    <button className='text-gray-400 hover:text-orange-500 transition-colors p-1'>
-                        <Bookmark size={20} className='group-hover:text-orange-400 transition-colors' />
+                    <button className='text-gray-400 hover:text-orange-500 transition-colors p-0.5 md:p-1'>
+                        <Bookmark className="w-3 h-3 md:w-5 md:h-5 group-hover:text-orange-400 transition-colors" />
                     </button>
                 </div>
             </div>
 
             {/* Job Title & Meta */}
-            <div className='mb-5 flex-1 relative z-10'>
-                <h3 className='font-extrabold text-[19px] text-gray-900 leading-[1.3] group-hover:text-gray-700 transition-colors line-clamp-2 mb-4'>
+            <div className='mb-3 md:mb-5 flex-1 relative z-10'>
+                <h3 className='font-extrabold text-[12px] md:text-[19px] text-gray-900 leading-[1.3] group-hover:text-gray-700 transition-colors line-clamp-2 mb-2 md:mb-4'>
                     {job.title}
                 </h3>
                 
-                <div className='flex items-center flex-wrap gap-x-4 gap-y-2 text-[12px] font-medium text-gray-500'>
-                    <div className='flex items-center gap-1.5'>
-                        <Briefcase size={14} className='text-gray-400' />
+                <div className='flex items-center flex-wrap gap-x-2 md:gap-x-4 gap-y-1 md:gap-y-2 text-[8px] md:text-[12px] font-medium text-gray-500'>
+                    <div className='flex items-center gap-1 md:gap-1.5'>
+                        <Briefcase className="w-2.5 h-2.5 md:w-3.5 md:h-3.5 text-gray-400" />
                         <span>{job.jobType || 'Full Time'}</span>
                     </div>
-                    <div className='flex items-center gap-1.5'>
-                        <BarChart size={14} className='text-gray-400' />
+                    <div className='flex items-center gap-1 md:gap-1.5'>
+                        <BarChart className="w-2.5 h-2.5 md:w-3.5 md:h-3.5 text-gray-400" />
                         <span>{job.level}</span>
                     </div>
-                    <div className='flex items-center gap-1.5 max-sm:hidden'>
-                        <MapPin size={14} className='text-gray-400' />
+                    <div className='flex items-center gap-1 md:gap-1.5 max-sm:hidden'>
+                        <MapPin className="w-2.5 h-2.5 md:w-3.5 md:h-3.5 text-gray-400" />
                         <span>{job.location}</span>
                     </div>
                 </div>
             </div>
 
             {/* Skills Chips */}
-            <div className='flex flex-wrap gap-2 mb-6 relative z-10'>
+            <div className='flex flex-wrap gap-1 md:gap-2 mb-3 md:mb-6 relative z-10'>
                 {displaySkills.map((skill, idx) => (
-                    <span key={idx} className={`px-3 py-1.5 rounded-full text-[11px] font-bold tracking-wide ${variant.chipBg} ${variant.chipText}`}>
+                    <span key={idx} className={`px-2 md:px-3 py-1 md:py-1.5 rounded-full text-[7px] md:text-[11px] font-bold tracking-wide ${variant.chipBg} ${variant.chipText}`}>
                         {skill}
                     </span>
                 ))}
                 {extraSkillsCount > 0 && (
-                    <span className={`px-2.5 py-1.5 rounded-full text-[11px] font-bold tracking-wide ${variant.chipBg} ${variant.chipText}`}>
+                    <span className={`px-1.5 md:px-2.5 py-1 md:py-1.5 rounded-full text-[7px] md:text-[11px] font-bold tracking-wide ${variant.chipBg} ${variant.chipText}`}>
                         +{extraSkillsCount}
                     </span>
                 )}
             </div>
 
             {/* Action Area */}
-            <div className='flex items-center justify-between mt-auto pt-4 border-t border-black/5 relative z-10'>
-                <span className={`text-[13px] font-bold ${variant.text} flex items-center gap-1 group-hover:translate-x-1 transition-transform`}>
-                    View Details &rarr;
+            <div className='flex flex-wrap items-center justify-between mt-auto pt-2 md:pt-4 border-t border-black/5 relative z-10 gap-2'>
+                <span className={`text-[9px] md:text-[13px] font-bold ${variant.text} flex items-center gap-1 group-hover:translate-x-1 transition-transform`}>
+                    View <span className="hidden md:inline">Details</span> &rarr;
                 </span>
                 
-                <button className={`px-5 py-2.5 rounded-full text-white text-[13px] font-bold flex items-center gap-2 shadow-sm ${variant.btnBg} transition-all group-hover:shadow-md group-hover:scale-105 active:scale-95`}>
-                    <Send size={14} /> Apply Now
+                <button className={`px-3 md:px-5 py-1.5 md:py-2.5 rounded-full text-white text-[9px] md:text-[13px] font-bold flex items-center justify-center gap-1 md:gap-2 shadow-sm w-full sm:w-auto ${variant.btnBg} transition-all group-hover:shadow-md group-hover:scale-105 active:scale-95`}>
+                    <Send className="w-2.5 h-2.5 md:w-3.5 md:h-3.5" /> Apply
                 </button>
             </div>
         </div>

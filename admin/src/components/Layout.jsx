@@ -4,7 +4,7 @@ import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
 import { 
     LayoutDashboard, BookOpen, LogOut, Settings, Users, 
-    Building, Shield, Search, Bell, Maximize, ChevronDown, BarChart2, Menu, X, CheckCheck, Clock
+    Building, Shield, Search, Bell, Maximize, ChevronDown, BarChart2, Menu, X, CheckCheck, Clock, Cpu
 } from 'lucide-react';
 import SmartAssistantModal from './SmartAssistantModal';
 
@@ -96,6 +96,7 @@ const Layout = () => {
         { path: '/skills', label: 'AI Skills Queue', icon: <BookOpen size={18} /> },
         { path: '/admins', label: 'Government Admins', icon: <Users size={18} /> },
         { path: '/reports', label: 'Reports & Analytics', icon: <BarChart2 size={18} /> },
+        { path: '/ai-command-center', label: 'AI Command Center', icon: <Cpu size={18} /> },
         { path: '/settings', label: 'Settings', icon: <Settings size={18} /> },
     ];
 

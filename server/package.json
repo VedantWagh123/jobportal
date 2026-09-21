@@ -38,6 +38,7 @@
     "nodemon": "^3.1.7",
     "pdf-parse-new": "^2.1.0",
     "puppeteer": "^25.11.0",
+    "razorpay": "^2.9.8",
     "socket.io": "^4.8.3",
     "svix": "^1.42.0"
   },

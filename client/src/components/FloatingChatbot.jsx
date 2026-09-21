@@ -358,20 +358,20 @@ const FloatingChatbot = () => {
   // ─── Collapsed (Floating Button) ─────────────────────────────────────────
   if (!isOpen) {
     return (
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
+      <div className="fixed bottom-4 right-4 md:bottom-6 md:right-6 z-50 flex flex-col items-end gap-2 md:gap-3">
         <div
-          className="bg-white px-4 py-2.5 rounded-2xl rounded-br-none shadow-lg cursor-pointer border border-blue-100 hover:border-blue-300 transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5"
+          className="bg-white px-2.5 md:px-4 py-1.5 md:py-2.5 rounded-xl md:rounded-2xl rounded-br-none shadow-lg cursor-pointer border border-blue-100 hover:border-blue-300 transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5"
           onClick={() => setIsOpen(true)}
         >
-          <p className="text-sm font-medium text-gray-800 whitespace-nowrap">Hi! Need help finding a job? 👋</p>
+          <p className="text-[10px] md:text-sm font-medium text-gray-800 whitespace-nowrap">Hi! Need help finding a job? 👋</p>
         </div>
         <button
           onClick={() => setIsOpen(true)}
-          className="relative flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-tr from-blue-600 to-purple-600 shadow-2xl hover:shadow-blue-500/50 hover:scale-110 transition-all duration-300"
+          className="relative flex items-center justify-center w-11 h-11 md:w-16 md:h-16 rounded-full bg-gradient-to-tr from-blue-600 to-purple-600 shadow-2xl hover:shadow-blue-500/50 hover:scale-110 transition-all duration-300"
           style={{ animation: 'floatBounce 3s ease-in-out infinite' }}
         >
-          <img src="https://api.dicebear.com/7.x/bottts/svg?seed=SkillSet&backgroundColor=transparent" alt="AI Assistant" className="w-10 h-10 object-contain drop-shadow-md" />
-          <span className="absolute top-0.5 right-0.5 w-4 h-4 bg-green-400 border-2 border-white rounded-full" />
+          <img src="https://api.dicebear.com/7.x/bottts/svg?seed=SkillSet&backgroundColor=transparent" alt="AI Assistant" className="w-6 h-6 md:w-10 md:h-10 object-contain drop-shadow-md" />
+          <span className="absolute top-0 right-0 md:top-0.5 md:right-0.5 w-2.5 h-2.5 md:w-4 md:h-4 bg-green-400 border border-white md:border-2 rounded-full" />
         </button>
         <style>{`@keyframes floatBounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }`}</style>
       </div>

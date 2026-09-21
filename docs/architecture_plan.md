@@ -301,5 +301,29 @@ To achieve "Lightning Fast" speeds and enterprise-grade code quality, several ad
 - **The Theory:** AI matching is only as good as the underlying data structure. Flat skill arrays lead to false negatives. Skills must be grouped into hierarchical domains (e.g., React -> Frontend -> Software Engineering).
 - **Implementation:** Added intelligence scripts like `categorizeSkills.js`, `checkSkills.js`, and `seedSkills.js`. These scripts utilize clustering algorithms and AI to categorize raw skills into structured domains, drastically improving the deterministic math engine's accuracy when calculating Candidate-to-Job match percentages.
 
+### Update (Sept 19, 2026): AI Resilience, Quota Optimization & UX Refinements
+
+#### 1. Multi-Key Fallback & AI Resilience
+- **The Theory:** Relying on a single API key for free-tier LLMs (like Gemini) introduces a single point of failure (HTTP 429 Quota Exhausted). An enterprise-grade application must ensure continuous uptime even when specific accounts max out their limits.
+- **Implementation:** Developed `executeGeminiWithFallback` in `geminiAiService.js`.
+- **Features:** 
+  - An intelligent wrapper that loops through an array of API keys dynamically.
+  - Automatically intercepts API failures (including undocumented `404 Not Found` blocks for new accounts) and instantly fails over to the next available API key.
+  - Graceful final fallback: Prompts the user to boot local `Ollama` models seamlessly if all cloud keys are exhausted.
+
+#### 2. Cost & Quota Optimization for Skill Gap Generation
+- **The Theory:** AI requests are expensive and time-consuming. Auto-generating heavy AI roadmaps on page load wastes API quota and degrades performance.
+- **Implementation:** Refactored `SmartMatch.jsx` and `InlineSkillGapAnalyzer.jsx`.
+- **Features:**
+  - Removed auto-selection of matched jobs.
+  - Implemented lazy-loading: The Skill Gap roadmap generation is now exclusively user-triggered, conserving bandwidth and significantly reducing unnecessary LLM calls.
+
+#### 3. Premium Interactive UI Alerts
+- **The Theory:** Users need immediate, visual, and actionable feedback based on AI analysis. Generic system tooltips fail to convey urgency.
+- **Implementation:** Added conditional UI logic to the Job Card.
+- **Features:**
+  - Designed a high-fidelity hover popover on the "Apply Now" button.
+  - Integrates conditional UI themes (Green/Amber/Red) strictly mapped to the AI match score threshold, directly advising the user whether they are ready to apply or need upskilling.
+
 ---
 *Document officially tracks the Intelligence Layer Architecture for the GSoC platform extension.*

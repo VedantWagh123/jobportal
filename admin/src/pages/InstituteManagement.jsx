@@ -710,6 +710,14 @@ const InstituteManagement = () => {
                                         </div>
                                     </td>
                                 </tr>
+                                {expandedId === inst._id && (
+                                    <tr className="bg-gray-50/50">
+                                        <td colSpan="6" className="p-0 border-b border-gray-100">
+                                            <ExpandedDetails inst={inst} />
+                                        </td>
+                                    </tr>
+                                )}
+                                </Fragment>
                             ))}
                         </tbody>
                     </table>

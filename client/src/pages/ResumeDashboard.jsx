@@ -207,7 +207,34 @@ const ResumeDashboard = () => {
     const [isUploading, setIsUploading] = useState(false)
     const [uploadedFileName, setUploadedFileName] = useState("")
     const [extractedData, setExtractedData] = useState(null)
+    const [showVideo, setShowVideo] = useState(false)
+    
+    // Draggable Video State
+    const [videoPos, setVideoPos] = useState({ x: window.innerWidth / 2 - 350, y: window.innerHeight / 2 - 200 })
+    const [isDragging, setIsDragging] = useState(false)
+    const dragOffset = useRef({ x: 0, y: 0 })
+    
     const fileInputRef = useRef(null)
+
+    useEffect(() => {
+        const handleMouseMove = (e) => {
+            if (!isDragging) return;
+            setVideoPos({
+                x: e.clientX - dragOffset.current.x,
+                y: e.clientY - dragOffset.current.y
+            });
+        };
+        const handleMouseUp = () => setIsDragging(false);
+
+        if (isDragging) {
+            window.addEventListener('mousemove', handleMouseMove);
+            window.addEventListener('mouseup', handleMouseUp);
+        }
+        return () => {
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [isDragging]);
 
     const handleFileUpload = async (event) => {
         const file = event.target.files[0];
@@ -448,7 +475,7 @@ const ResumeDashboard = () => {
                             <button onClick={() => setIsCreationModalOpen(true)} className="bg-gradient-to-r from-[#2563EB] to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white font-bold py-3.5 px-8 rounded-xl shadow-[0_8px_20px_rgba(37,99,235,0.25)] hover:shadow-[0_12px_25px_rgba(37,99,235,0.4)] flex items-center justify-center gap-2 transition-all hover:-translate-y-1 w-full sm:w-auto text-[15px]">
                                 <Plus size={18} strokeWidth={3} /> Create New Resume <ChevronRight size={16} className="ml-1 opacity-80" />
                             </button>
-                            <button className="bg-white/90 backdrop-blur-sm hover:bg-blue-50/50 text-gray-700 font-bold py-3.5 px-6 rounded-xl border border-gray-200 hover:border-blue-200 shadow-sm hover:shadow-md flex items-center justify-center gap-2.5 transition-all hover:-translate-y-0.5 w-full sm:w-auto text-[15px] group">
+                            <button onClick={() => setShowVideo(true)} className="bg-white/90 backdrop-blur-sm hover:bg-blue-50/50 text-gray-700 font-bold py-3.5 px-6 rounded-xl border border-gray-200 hover:border-blue-200 shadow-sm hover:shadow-md flex items-center justify-center gap-2.5 transition-all hover:-translate-y-0.5 w-full sm:w-auto text-[15px] group">
                                 <div className="text-[#2563EB] flex items-center justify-center w-5 h-5 rounded-full pl-0.5 bg-blue-50 border border-blue-100 group-hover:scale-110 group-hover:shadow-[0_0_8px_rgba(37,99,235,0.3)] transition-all">
                                     <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
                                 </div>
@@ -966,6 +993,72 @@ const ResumeDashboard = () => {
                             <div className="flex items-center gap-4 justify-center md:justify-end">
                                 <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-[#3B82F6] shrink-0"><User size={20} strokeWidth={2.5} /></div>
                                 <div><h4 className="text-[13px] font-extrabold text-gray-900">Trusted by 1M+ Job Seekers</h4><p className="text-[11px] font-medium text-gray-500 mt-0.5">Join thousands building better careers</p></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Draggable Floating Video Window (No Backdrop) */}
+            {showVideo && (
+                <div 
+                    className={`fixed z-[100] w-full max-w-[700px] bg-white rounded-[24px] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)] border border-gray-100 flex flex-col ${isDragging ? 'cursor-grabbing opacity-90' : 'cursor-default'}`}
+                    style={{ 
+                        left: `${videoPos.x}px`, 
+                        top: `${videoPos.y}px`,
+                        // Ensure it doesn't get too big on small screens
+                        maxWidth: 'calc(100vw - 32px)',
+                        transition: isDragging ? 'none' : 'opacity 0.3s'
+                    }}
+                >
+                    
+                    {/* Header Bar (Drag Handle) */}
+                    <div 
+                        className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-[24px] cursor-grab active:cursor-grabbing select-none"
+                        onMouseDown={(e) => {
+                            setIsDragging(true);
+                            dragOffset.current = {
+                                x: e.clientX - videoPos.x,
+                                y: e.clientY - videoPos.y
+                            };
+                        }}
+                    >
+                        <h3 className="text-[15px] font-bold text-gray-900 flex items-center gap-2">
+                            <Sparkles size={16} className="text-blue-600" /> Watch How It Works
+                        </h3>
+                        <button 
+                            onClick={(e) => {
+                                e.stopPropagation(); // Prevent drag start when clicking close
+                                setShowVideo(false);
+                            }}
+                            className="w-8 h-8 hover:bg-red-50 hover:text-red-600 text-gray-500 rounded-full flex items-center justify-center transition-colors cursor-pointer"
+                        >
+                            <X size={18} />
+                        </button>
+                    </div>
+
+                    {/* Flexible Video Player Box */}
+                    <div className="p-4 bg-white rounded-b-[24px]">
+                        <div className="relative w-full rounded-xl overflow-hidden shadow-inner bg-slate-900 flex items-center justify-center border border-gray-200" style={{ aspectRatio: '16/9' }}>
+                            {/* The user will place their video file in the public folder as 'demo_video.mp4' */}
+                            <video 
+                                src="/demo_video.mp4" 
+                                controls 
+                                autoPlay 
+                                className="absolute inset-0 w-full h-full object-contain bg-black"
+                                onError={(e) => {
+                                    e.target.onerror = null;
+                                }}
+                            >
+                                Your browser does not support the video tag.
+                            </video>
+                            
+                            {/* Helper text if video is missing */}
+                            <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500 pointer-events-none -z-10 bg-slate-900">
+                                <div className="text-center p-6 bg-slate-800/80 rounded-xl border border-slate-700 shadow-md">
+                                    <p className="font-bold text-white mb-2">Video not found</p>
+                                    <p className="text-sm text-slate-300">Place video at: <code className="text-amber-400">client/public/demo_video.mp4</code></p>
+                                </div>
                             </div>
                         </div>
                     </div>
