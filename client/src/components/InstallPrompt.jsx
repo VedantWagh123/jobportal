@@ -49,38 +49,31 @@ const InstallPrompt = () => {
   if (!isVisible) return null;
 
   return (
-    <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 w-[90%] max-w-sm z-50 animate-fade-in-up">
-      <div className="bg-white rounded-[20px] shadow-[0_10px_40px_rgba(0,0,0,0.15)] border border-gray-100 p-5 relative overflow-hidden">
-        {/* Background Accent */}
-        <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+    <div className="fixed bottom-0 left-0 right-0 z-[9999] flex justify-center pb-6 px-4 pointer-events-none">
+      <div className="bg-white rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.15)] border border-gray-100 p-3 pr-3 w-full max-w-[340px] flex items-center gap-3 pointer-events-auto animate-fade-in-up">
         
-        <button 
-          onClick={handleClose}
-          className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 transition-colors z-10"
-        >
-          <X size={20} />
-        </button>
-
-        <div className="flex items-start gap-4 relative z-10">
-          <div className="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-[14px] flex items-center justify-center text-blue-600">
-            <Download size={24} />
-          </div>
-          
-          <div className="flex-1">
-            <h3 className="font-bold text-gray-900 text-[16px] leading-tight">Install Job Portal App</h3>
-            <p className="text-[13px] text-gray-500 mt-1 leading-snug">
-              Get the full experience on your home screen. Fast, easy, and always accessible!
-            </p>
-            
-            <div className="mt-4 flex gap-3">
-              <button 
-                onClick={handleInstallClick}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-4 rounded-[12px] text-[14px] transition-all shadow-[0_4px_14px_rgba(37,99,235,0.3)] hover:shadow-[0_6px_20px_rgba(37,99,235,0.4)]"
-              >
-                Install Now
-              </button>
-            </div>
-          </div>
+        <div className="flex-shrink-0 w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600">
+          <Download size={20} />
+        </div>
+        
+        <div className="flex-1">
+          <h3 className="font-bold text-gray-900 text-[14px] leading-tight">Job Portal App</h3>
+          <p className="text-[11px] text-gray-500 mt-0.5 leading-tight">Install for a better experience</p>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={handleInstallClick}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1.5 px-3.5 rounded-lg text-[12px] transition-colors shadow-sm"
+          >
+            Install
+          </button>
+          <button 
+            onClick={handleClose}
+            className="text-gray-400 hover:text-gray-600 p-1"
+          >
+            <X size={16} />
+          </button>
         </div>
       </div>
     </div>
