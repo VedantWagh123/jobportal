@@ -1,4 +1,4 @@
-import { Outlet, Link, useLocation } from 'react-router-dom';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useContext, useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
@@ -10,6 +10,7 @@ import {
 const Layout = () => {
     const { logout, user } = useContext(AuthContext);
     const location = useLocation();
+    const navigate = useNavigate();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [isNotifOpen, setIsNotifOpen] = useState(false);
@@ -74,6 +75,32 @@ const Layout = () => {
             });
             setNotifications(notifications.map(n => ({ ...n, isRead: true })));
         } catch (error) {}
+    };
+
+    const handleNotificationClick = async (notification) => {
+        // Mark as read immediately if unread
+        if (!notification.isRead) {
+            try {
+                await axios.post('/api/state-admin/notifications/read', { notificationId: notification._id }, {
+                    headers: { token: user.token }
+                });
+                setNotifications(notifications.map(n => n._id === notification._id ? { ...n, isRead: true } : n));
+            } catch (err) {}
+        }
+
+        // Navigate
+        let link = notification.link;
+        if (link) {
+            // Adjust link if it has a prefix
+            if (link.startsWith('/state-admin/')) link = link.replace('/state-admin', '');
+            navigate(link);
+        } else if (notification.title.toLowerCase().includes('district') || notification.title.toLowerCase().includes('skill')) {
+            navigate('/districts');
+        } else if (notification.title.toLowerCase().includes('placement')) {
+            navigate('/placement-insights');
+        }
+        
+        setIsNotifOpen(false);
     };
 
     const unreadCount = notifications.filter(n => !n.isRead).length;
@@ -326,6 +353,7 @@ const Layout = () => {
                                                 notifications.map(notification => (
                                                     <div 
                                                         key={notification._id} 
+                                                        onClick={() => handleNotificationClick(notification)}
                                                         className={`px-4 py-3 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-0 transition-colors ${!notification.isRead ? 'bg-blue-50/30' : ''}`}
                                                     >
                                                         <div className="flex gap-3">
