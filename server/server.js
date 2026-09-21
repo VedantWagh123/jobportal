@@ -64,19 +64,36 @@ const apiLimiter = rateLimit({
 app.use('/api/', apiLimiter) // Apply to all API routes
 
 // 3. Smart CORS Configuration
+// Base allowlist: all local dev frontends + any production URLs from environment.
+// ALLOWED_ORIGINS env var accepts a comma-separated list of additional origins
+// (e.g. "https://jobportal.vercel.app,https://admin.jobportal.vercel.app").
 const allowedOrigins = [
   'http://localhost:5173', // Client
   'http://localhost:5174', // Admin
   'http://localhost:5175', // Institute Admin
   'http://localhost:5176', // State Admin
+  // LAN IP support: when VITE_BACKEND_URL points to a local network IP,
+  // the browser sends requests from the same IP on the frontend port.
+  ...(process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim()).filter(Boolean)
+    : []),
 ];
 
 const corsOptions = {
   origin: function (origin, callback) {
-    // Allow everything in development/testing
-    return callback(null, true);
+    // No origin = server-to-server request (Clerk webhook, Razorpay webhook,
+    // health checks, CLI tools). These have their own signature verification
+    // and are safe to pass through.
+    if (!origin) {
+      return callback(null, true);
+    }
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    // Unknown origin — reject with a CORS error.
+    return callback(new Error(`CORS: Origin '${origin}' is not allowed.`));
   },
-  credentials: true, // Allow cookies if needed
+  credentials: true, // Required for Clerk cookie-based sessions
 };
 
 app.use(cors(corsOptions))
