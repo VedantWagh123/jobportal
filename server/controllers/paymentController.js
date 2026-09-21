@@ -2,11 +2,17 @@ import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import User from '../models/User.js';
 
-// Initialize Razorpay instance
-const razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID || 'dummy_key_id',
-    key_secret: process.env.RAZORPAY_KEY_SECRET || 'dummy_key_secret'
-});
+let razorpayInstance = null;
+
+const getRazorpay = () => {
+    if (!razorpayInstance) {
+        razorpayInstance = new Razorpay({
+            key_id: process.env.RAZORPAY_KEY_ID || 'dummy_key_id',
+            key_secret: process.env.RAZORPAY_KEY_SECRET || 'dummy_key_secret'
+        });
+    }
+    return razorpayInstance;
+};
 
 // Create One-Time Order for Premium Plan (₹10)
 export const createPremiumOrder = async (req, res) => {
@@ -23,7 +29,7 @@ export const createPremiumOrder = async (req, res) => {
             receipt: `receipt_${userId}_${Date.now()}`
         };
 
-        const order = await razorpay.orders.create(options);
+        const order = await getRazorpay().orders.create(options);
         
         res.json({ success: true, order });
     } catch (error) {
@@ -73,7 +79,7 @@ export const createFreeSubscription = async (req, res) => {
             }
         };
 
-        const subscription = await razorpay.subscriptions.create(options);
+        const subscription = await getRazorpay().subscriptions.create(options);
         
         res.json({ success: true, subscription });
     } catch (error) {
