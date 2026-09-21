@@ -29,7 +29,7 @@ const Login = () => {
                 const { data } = await axios.get('/api/institute/auth/districts');
                 if (data.success && data.districts.length > 0) {
                     setDistricts(data.districts);
-                    setDistrictId(data.districts[0]._id);
+                    // No longer setting default districtId since it's a text input now
                 }
             } catch (err) {
                 console.error("Failed to load districts", err);
