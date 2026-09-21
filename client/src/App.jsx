@@ -11,6 +11,7 @@ import ErrorBoundary from './components/ErrorBoundary'
 import PremiumUnlockModal from './components/PremiumUnlockModal'
 
 // Lazy Load Components
+import InstallPrompt from './components/InstallPrompt'
 const Home = lazy(() => import('./pages/Home'))
 const ApplyJob = lazy(() => import('./pages/ApplyJob'))
 const Applications = lazy(() => import('./pages/Applications'))
@@ -43,6 +44,7 @@ const App = () => {
       <ErrorBoundary>
       <Suspense fallback={<Loading />}>
         <ToastContainer />
+        <InstallPrompt />
         <PremiumUnlockModal />
         <Routes>
           {/* User Portal Routes wrapped in UserLayout */}
