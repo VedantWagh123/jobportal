@@ -227,12 +227,10 @@ const Login = () => {
                                         </div>
                                         <div>
                                             <label className="block text-[13px] font-bold text-gray-700 uppercase tracking-wide mb-2">District</label>
-                                            <select value={districtId} onChange={e => setDistrictId(e.target.value)} 
-                                                className="block w-full py-3.5 px-4 bg-gray-50 border border-gray-200 rounded-[14px] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A] text-[15px] font-medium text-gray-900 transition-colors appearance-none cursor-pointer">
-                                                {districts.map(d => (
-                                                    <option key={d._id} value={d._id}>{d.name}</option>
-                                                ))}
-                                            </select>
+                                            <input type="text" value={districtId} onChange={e => setDistrictId(e.target.value)} 
+                                                className="block w-full py-3.5 px-4 bg-gray-50 border border-gray-200 rounded-[14px] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A] text-[15px] font-medium text-gray-900 transition-colors"
+                                                placeholder="Enter district name"
+                                            />
                                         </div>
                                     </div>
                                     
