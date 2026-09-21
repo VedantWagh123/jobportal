@@ -7,7 +7,7 @@ import axios from 'axios'
 
 // Setup Axios Interceptors
 axios.defaults.withCredentials = true;
-axios.defaults.baseURL = import.meta.env.VITE_BACKEND_URL || '';
+axios.defaults.baseURL = import.meta.env.DEV ? 'http://localhost:5000' : (import.meta.env.VITE_BACKEND_URL || '');
 
 let isRefreshing = false;
 let failedQueue = [];

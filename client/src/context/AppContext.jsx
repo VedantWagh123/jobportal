@@ -8,7 +8,7 @@ export const AppContext = createContext()
 
 export const AppContextProvider = (props) => {
 
-    const backendUrl = import.meta.env.VITE_BACKEND_URL
+    const backendUrl = import.meta.env.DEV ? 'http://localhost:5000' : import.meta.env.VITE_BACKEND_URL;
 
     const { user, isLoaded } = useUser()
     const { getToken } = useAuth()
