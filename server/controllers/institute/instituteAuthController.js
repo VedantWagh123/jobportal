@@ -17,12 +17,20 @@ const generateToken = (id) => {
 };
 
 export const registerInstitute = async (req, res) => {
-    const { name, email, password, districtId, type, accreditation } = req.body;
+    let { name, email, password, districtId, type, accreditation } = req.body;
 
     try {
         const instituteExists = await TrainingInstitute.findOne({ email });
         if (instituteExists) {
             return res.status(400).json({ success: false, message: 'Institute with this email already exists' });
+        }
+
+        if (districtId && !districtId.match(/^[0-9a-fA-F]{24}$/)) {
+            let dist = await District.findOne({ name: { $regex: new RegExp(`^${districtId.trim()}$`, 'i') } });
+            if (!dist) {
+                dist = await District.create({ name: districtId.trim(), state: 'Maharashtra' });
+            }
+            districtId = dist._id;
         }
 
         const institute = await TrainingInstitute.create({
