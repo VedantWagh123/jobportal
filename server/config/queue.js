@@ -4,7 +4,8 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Create a single shared Redis connection for BullMQ
-let connectionOptions = process.env.REDIS_URL || {
+let redisUrl = process.env.REDIS_URL ? process.env.REDIS_URL.replace(/['"]/g, '').trim() : null;
+let connectionOptions = redisUrl || {
     host: 'localhost',
     port: 6379
 };
