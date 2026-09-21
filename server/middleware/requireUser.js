@@ -20,7 +20,10 @@ export const requireUser = async (req, res, next) => {
         let userId = req.auth?.userId;
         const authHeader = req.headers?.authorization;
 
-        // Fallback: if clerkMiddleware didn't set userId but token exists, verify manually
+        // Fallback: if clerkMiddleware didn't set userId but token exists, verify manually.
+        // verifyToken() is Clerk's cryptographic verification — signature + claims are both checked.
+        // The 48-hour clockSkewInMs already handles real-world clock drift edge cases.
+        // If this verification fails, the token is rejected — no further fallback is permitted.
         if (!userId && authHeader?.startsWith('Bearer ')) {
             const rawToken = authHeader.split(' ')[1];
             if (rawToken && rawToken !== 'null' && rawToken !== 'undefined') {
@@ -32,20 +35,10 @@ export const requireUser = async (req, res, next) => {
                     userId = payload.sub;
                     console.log(`[requireUser] Manual JWT verification succeeded: ${userId}`);
                 } catch (verifyErr) {
-                    console.warn(`[requireUser] Manual JWT verification failed: ${verifyErr.message}`);
-                    // Last resort: decode JWT payload without verification (clock skew edge case)
-                    try {
-                        const parts = rawToken.split('.');
-                        if (parts.length === 3) {
-                            const decoded = JSON.parse(Buffer.from(parts[1], 'base64url').toString());
-                            if (decoded.sub && decoded.sub.startsWith('user_')) {
-                                userId = decoded.sub;
-                                console.log(`[requireUser] Decoded userId from JWT payload: ${userId}`);
-                            }
-                        }
-                    } catch (decodeErr) {
-                        console.warn(`[requireUser] JWT decode also failed: ${decodeErr.message}`);
-                    }
+                    // Token failed cryptographic verification — reject immediately.
+                    // NEVER decode the JWT payload and trust it without signature verification.
+                    console.warn(`[requireUser] JWT verification failed: ${verifyErr.message}`);
+                    return res.status(401).json({ success: false, message: 'Unauthorized: Invalid or expired token.' });
                 }
             }
         }
