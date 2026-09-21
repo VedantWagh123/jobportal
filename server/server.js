@@ -90,6 +90,9 @@ const corsOptions = {
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
+    if (origin.endsWith('.vercel.app')) {
+      return callback(null, true);
+    }
     // Unknown origin — reject with a CORS error.
     return callback(new Error(`CORS: Origin '${origin}' is not allowed.`));
   },
