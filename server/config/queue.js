@@ -4,49 +4,41 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Create a single shared Redis connection for BullMQ
-let connectionOptions = { host: 'localhost', port: 6379 };
-let tlsOptions = undefined;
-
-if (process.env.REDIS_URL) {
-    // Strip quotes, whitespace, and ANY hidden/non-ASCII characters that copy-pasting might have added
-    let rawUrl = process.env.REDIS_URL.replace(/['"]/g, '').replace(/[^\x20-\x7E]/g, '').trim();
-    
-    try {
-        const parsedUrl = new URL(rawUrl);
-        connectionOptions = {
-            host: parsedUrl.hostname,
-            port: parsedUrl.port ? parseInt(parsedUrl.port) : 6379,
-            username: parsedUrl.username || 'default',
-            password: parsedUrl.password,
-        };
-        if (rawUrl.startsWith('rediss://')) {
-            tlsOptions = { rejectUnauthorized: false };
-        }
-    } catch (e) {
-        console.error("[Redis Error] Failed to parse REDIS_URL, falling back to raw string. Error:", e.message);
-        connectionOptions = rawUrl;
-        if (rawUrl.startsWith('rediss://')) tlsOptions = { rejectUnauthorized: false };
-    }
-}
-
-// Add prefix to avoid collision if user is sharing a Redis instance across projects
-const sharedRedisConnection = new IORedis(connectionOptions, {
+let redisOptions = {
+    host: 'localhost',
+    port: 6379,
     maxRetriesPerRequest: null,
     enableReadyCheck: false,
     family: 4, // Force IPv4 to fix ETIMEDOUT on some networks
-    tls: tlsOptions,
-    // Robust retry strategy to fix Upstash ECONNRESET idle drops
-    retryStrategy: (times) => {
-        return Math.max(Math.min(Math.exp(times), 20000), 1000);
-    },
-    reconnectOnError: (err) => {
-        const targetError = "ECONNRESET";
-        if (err.message.includes(targetError)) {
-            return true;
+    retryStrategy: (times) => Math.max(Math.min(Math.exp(times), 20000), 1000),
+    reconnectOnError: (err) => err.message.includes("ECONNRESET")
+};
+
+if (process.env.REDIS_URL) {
+    // Strip quotes, newlines, and hidden characters
+    let rawUrl = process.env.REDIS_URL.replace(/['"\n\r\t]/g, '').replace(/[^\x20-\x7E]/g, '').trim();
+    
+    // Debug log to see exact characters if it fails (using hex to avoid printing raw password)
+    console.log("[Redis] REDIS_URL length:", rawUrl.length);
+    
+    try {
+        const parsedUrl = new URL(rawUrl);
+        redisOptions.host = parsedUrl.hostname;
+        redisOptions.port = parsedUrl.port ? parseInt(parsedUrl.port) : 6379;
+        if (parsedUrl.username) redisOptions.username = parsedUrl.username;
+        if (parsedUrl.password) redisOptions.password = parsedUrl.password;
+        
+        if (rawUrl.startsWith('rediss://')) {
+            redisOptions.tls = { rejectUnauthorized: false };
         }
-        return false;
+    } catch (e) {
+        console.error("[Redis Error] URL Parsing failed! Error:", e.message);
+        // Do not crash here, let it try to connect so we can see the logs
     }
-});
+}
+
+// Pass a SINGLE object to IORedis to avoid constructor signature bugs
+const sharedRedisConnection = new IORedis(redisOptions);
 
 sharedRedisConnection.on('error', (err) => {
     // Ignore generic ECONNRESET logs in console as the retryStrategy handles them silently now
