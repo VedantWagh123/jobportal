@@ -34,7 +34,15 @@ export const createPremiumOrder = async (req, res) => {
         res.json({ success: true, order });
     } catch (error) {
         console.error('Error creating premium order:', error);
-        res.json({ success: false, message: 'Failed to create order' });
+        let errorMsg = 'Failed to create order';
+        if (error.error && error.error.description) {
+            errorMsg = error.error.description;
+        } else if (error.message) {
+            errorMsg = error.message;
+        } else if (typeof error === 'object') {
+            errorMsg = JSON.stringify(error);
+        }
+        res.json({ success: false, message: errorMsg, errorDetails: error });
     }
 };
 
@@ -84,7 +92,17 @@ export const createFreeSubscription = async (req, res) => {
         res.json({ success: true, subscription });
     } catch (error) {
         console.error('Error creating subscription:', error);
-        res.json({ success: false, message: 'Failed to create subscription' });
+        
+        let errorMsg = 'Failed to create subscription';
+        if (error.error && error.error.description) {
+            errorMsg = error.error.description;
+        } else if (error.message) {
+            errorMsg = error.message;
+        } else if (typeof error === 'object') {
+            errorMsg = JSON.stringify(error);
+        }
+
+        res.json({ success: false, message: errorMsg, errorDetails: error });
     }
 };
 
