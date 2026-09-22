@@ -435,10 +435,10 @@ const ResumeDashboard = () => {
                             <Sparkles size={14} /> Build Your Future
                         </div>
                         <h1 className="text-4xl lg:text-[46px] font-extrabold text-slate-900 tracking-tight leading-[1.15] mb-5">
-                            AI Resume <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#2563EB] to-indigo-500 drop-shadow-[0_2px_12px_rgba(37,99,235,0.2)]">Builder</span>
+                            Lumi Resume <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#2563EB] to-indigo-500 drop-shadow-[0_2px_12px_rgba(37,99,235,0.2)]">Builder</span>
                         </h1>
                         <p className="text-gray-600 text-lg font-medium max-w-xl mb-10 leading-relaxed">
-                            Create, manage, and tailor your professional resumes with the power of AI.
+                            Create, manage, and tailor your professional resumes with the power of Lumi.
                         </p>
 
                         <div className="flex flex-col sm:flex-row sm:items-center gap-6 lg:gap-8 flex-wrap mb-10" style={{ animationDelay: '0.1s' }}>
@@ -447,7 +447,7 @@ const ResumeDashboard = () => {
                                     <Zap size={18} fill="currentColor" strokeWidth={0} />
                                 </div>
                                 <div>
-                                    <h4 className="text-[13px] font-bold text-gray-900">AI-Powered Suggestions</h4>
+                                    <h4 className="text-[13px] font-bold text-gray-900">Lumi-Powered Suggestions</h4>
                                     <p className="text-[11px] text-gray-500 mt-0.5">Get smart content recommendations</p>
                                 </div>
                             </div>
@@ -574,7 +574,7 @@ const ResumeDashboard = () => {
                                         <Plus size={20} className="absolute ml-8 mt-8 bg-white rounded-full text-blue-600 p-0.5" />
                                     </div>
                                     <h2 className="text-2xl font-extrabold text-gray-900 mb-2">Create Your First Resume</h2>
-                                    <p className="text-sm text-gray-500 font-medium mb-8">Start building a professional resume with AI assistance. Choose from templates or start from scratch.</p>
+                                    <p className="text-sm text-gray-500 font-medium mb-8">Start building a professional resume with Lumi assistance. Choose from templates or start from scratch.</p>
                                     
                                     <div className="flex flex-col sm:flex-row gap-3 justify-center mb-8">
                                         <button onClick={() => setIsCreationModalOpen(true)} className="bg-blue-600 text-white font-bold py-3 px-6 rounded-xl hover:bg-blue-700 transition flex items-center justify-center gap-2">
@@ -769,7 +769,7 @@ const ResumeDashboard = () => {
                             <div className="flex items-center justify-between mb-6">
                                 <div className="flex items-center gap-2">
                                     <Star size={18} className="text-amber-500 fill-amber-500" />
-                                    <h3 className="text-lg font-bold text-gray-900">Why Use Our AI Resume Builder?</h3>
+                                    <h3 className="text-lg font-bold text-gray-900">Why Use Our Lumi Resume Builder?</h3>
                                 </div>
                                 <button className="text-xs font-bold text-blue-600 hover:text-blue-700">Learn More &rarr;</button>
                             </div>
@@ -787,7 +787,7 @@ const ResumeDashboard = () => {
                                         <Sparkles size={16} />
                                     </div>
                                     <h4 className="text-sm font-bold text-gray-900 mb-1">Better Results</h4>
-                                    <p className="text-xs text-gray-500 leading-relaxed font-medium">AI-optimized for job applications</p>
+                                    <p className="text-xs text-gray-500 leading-relaxed font-medium">Lumi-optimized for job applications</p>
                                 </div>
                                 <div className="bg-amber-50/50 border border-amber-100 p-4 rounded-xl">
                                     <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center mb-3">
@@ -867,7 +867,7 @@ const ResumeDashboard = () => {
                                 How would you like to <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#2563EB] to-blue-500">start?</span>
                             </h2>
                             <p className="text-gray-500 font-medium text-[15px] max-w-xl mx-auto leading-relaxed">
-                                Choose the fastest way to build your professional resume. Our AI is ready to help you stand out and land your dream job.
+                                Choose the fastest way to build your professional resume. Lumi is ready to help you stand out and land your dream job.
                             </p>
                             
                             {/* Floating Top Left Note */}
@@ -896,8 +896,8 @@ const ResumeDashboard = () => {
                                 <svg className="w-8 h-8 mx-auto mt-1 -rotate-90 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 9l-6 6 6 6"/><path d="M20 4v7a4 4 0 0 1-4 4H4"/></svg>
                             </div>
 
-                            {/* Option 1: AI Resume Builder */}
-                            <div onClick={() => { toast.info("AI Builder coming soon!"); setIsCreationModalOpen(false); }} className="group relative bg-white rounded-[28px] border-2 border-[#8B5CF6] shadow-[0_10px_30px_rgba(139,92,246,0.15)] hover:shadow-[0_20px_40px_rgba(139,92,246,0.25)] p-8 flex flex-col items-center text-center cursor-pointer transition-all duration-300 hover:-translate-y-1 mt-6 lg:mt-0">
+                            {/* Option 1: Lumi Resume Builder */}
+                            <div onClick={() => { toast.info("Lumi Builder coming soon!"); setIsCreationModalOpen(false); }} className="group relative bg-white rounded-[28px] border-2 border-[#8B5CF6] shadow-[0_10px_30px_rgba(139,92,246,0.15)] hover:shadow-[0_20px_40px_rgba(139,92,246,0.25)] p-8 flex flex-col items-center text-center cursor-pointer transition-all duration-300 hover:-translate-y-1 mt-6 lg:mt-0">
                                 <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-[#8B5CF6] text-white text-[11px] font-extrabold uppercase tracking-widest py-1.5 px-5 rounded-full shadow-md whitespace-nowrap flex items-center gap-1.5">
                                     <Star size={12} className="fill-white" /> RECOMMENDED
                                 </div>
@@ -905,18 +905,18 @@ const ResumeDashboard = () => {
                                 <div className="w-16 h-16 rounded-2xl bg-purple-50 text-[#8B5CF6] flex items-center justify-center mb-6 transition-transform duration-300 group-hover:scale-110">
                                     <Wand2 size={28} strokeWidth={2.5} />
                                 </div>
-                                <h3 className="text-xl font-extrabold text-gray-900 mb-3">AI Resume Builder</h3>
+                                <h3 className="text-xl font-extrabold text-gray-900 mb-3">Lumi Resume Builder</h3>
                                 <p className="text-[13px] text-gray-500 font-medium leading-relaxed mb-6">Generate a perfectly tailored resume instantly by describing your role and experience.</p>
                                 
                                 <div className="flex flex-col gap-3 w-full text-left mb-8">
-                                    <div className="flex items-center gap-3"><div className="w-5 h-5 rounded-full bg-[#8B5CF6] text-white flex items-center justify-center shrink-0"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div><span className="text-[13px] font-semibold text-gray-700">AI-powered content</span></div>
+                                    <div className="flex items-center gap-3"><div className="w-5 h-5 rounded-full bg-[#8B5CF6] text-white flex items-center justify-center shrink-0"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div><span className="text-[13px] font-semibold text-gray-700">Lumi-powered content</span></div>
                                     <div className="flex items-center gap-3"><div className="w-5 h-5 rounded-full bg-[#8B5CF6] text-white flex items-center justify-center shrink-0"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div><span className="text-[13px] font-semibold text-gray-700">Job-specific tailoring</span></div>
                                     <div className="flex items-center gap-3"><div className="w-5 h-5 rounded-full bg-[#8B5CF6] text-white flex items-center justify-center shrink-0"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div><span className="text-[13px] font-semibold text-gray-700">Professional & ATS-friendly</span></div>
                                 </div>
 
                                 <div className="mt-auto w-full">
                                     <div className="w-full bg-gradient-to-r from-[#8B5CF6] to-[#3B82F6] hover:from-[#7C3AED] hover:to-[#2563EB] text-white font-bold py-3.5 rounded-[14px] transition-colors flex items-center justify-center gap-2 shadow-md">
-                                        Start with AI <ChevronRight size={18} />
+                                        Start with Lumi <ChevronRight size={18} />
                                     </div>
                                 </div>
                             </div>
@@ -963,12 +963,12 @@ const ResumeDashboard = () => {
                                             <FileText size={16} className="shrink-0" />
                                             <span className="truncate font-semibold">{uploadedFileName}</span>
                                         </div>
-                                    ) : "Upload an existing resume and let our AI parse and format it automatically."}
+                                    ) : "Upload an existing resume and let Lumi parse and format it automatically."}
                                 </div>
                                 
                                 <div className="flex flex-col gap-3 w-full text-left mb-8">
                                     <div className="flex items-center gap-3"><div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div><span className="text-[13px] font-semibold text-gray-700">Auto-extract information</span></div>
-                                    <div className="flex items-center gap-3"><div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div><span className="text-[13px] font-semibold text-gray-700">Improve with AI suggestions</span></div>
+                                    <div className="flex items-center gap-3"><div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div><span className="text-[13px] font-semibold text-gray-700">Improve with Lumi suggestions</span></div>
                                     <div className="flex items-center gap-3"><div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div><span className="text-[13px] font-semibold text-gray-700">Get ATS-ready format</span></div>
                                 </div>
 

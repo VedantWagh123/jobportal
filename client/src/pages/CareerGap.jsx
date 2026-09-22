@@ -119,7 +119,7 @@ const CareerGap = () => {
             </div>
             <div>
               <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">
-                AI Career &amp; <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-purple-600">Skill Gap</span> Analyzer
+                Lumi Career &amp; <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-purple-600">Skill Gap</span> Analyzer
               </h1>
               <p className="text-[15px] text-gray-500 font-medium mt-1.5 max-w-2xl">
                 Select a target job to analyze your skill match. If your score is below 50%, we'll recommend government-approved training courses to bridge the gap.

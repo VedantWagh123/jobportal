@@ -145,7 +145,7 @@ const HomeResumeAnalyzer = () => {
           
           <p className="text-[18px] sm:text-[20px] font-bold text-gray-700 mb-3">Check your score in 30 seconds.</p>
           <p className="text-[14px] sm:text-[15px] font-medium text-gray-500 mb-10 max-w-[450px] leading-relaxed">
-            Get instant AI-powered feedback, fix issues, and improve your chances of getting shortlisted.
+            Get instant Lumi-powered feedback, fix issues, and improve your chances of getting shortlisted.
           </p>
 
           {/* 4 Feature Icons Row */}
@@ -182,7 +182,10 @@ const HomeResumeAnalyzer = () => {
               {isAnalyzing ? 'Analyzing...' : atsResult ? 'Re-upload Resume' : 'Upload Resume'} 
               {!isAnalyzing && <ArrowRight size={16} strokeWidth={2.5}/>}
             </button>
-            <button onClick={() => isPremium ? navigate('/resume-builder') : setShowPremiumPopup(true)} className="w-full sm:w-auto bg-white border border-blue-200 text-blue-600 font-extrabold text-[14px] px-8 py-3.5 rounded-xl hover:bg-blue-50 hover:border-blue-300 transition-colors flex items-center justify-center shadow-sm">
+            <button 
+              onClick={() => navigate('/resume-builder')}
+              className="w-full sm:w-auto bg-white border border-blue-200 text-blue-600 font-extrabold text-[14px] px-8 py-3.5 rounded-xl hover:bg-blue-50 hover:border-blue-300 transition-colors flex items-center justify-center shadow-sm"
+            >
               Build a New Resume
             </button>
           </div>
@@ -194,7 +197,7 @@ const HomeResumeAnalyzer = () => {
           {/* AI Match CTA (Shows when ATS result is available) */}
           {atsResult && (
             <div 
-              onClick={() => isPremium ? document.getElementById('job-list')?.scrollIntoView({ behavior: 'smooth' }) : setShowPremiumPopup(true)}
+              onClick={() => document.getElementById('job-list')?.scrollIntoView({ behavior: 'smooth' })}
               className="mt-8 xl:mt-10 w-full max-w-[420px] bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100/80 rounded-[20px] p-4 flex items-center gap-4 cursor-pointer hover:shadow-[0_10px_40px_rgba(79,70,229,0.12)] hover:-translate-y-1 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 group"
             >
               <div className="w-12 h-12 rounded-full bg-white shadow-sm border border-indigo-50 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-300">
@@ -390,7 +393,10 @@ const HomeResumeAnalyzer = () => {
                 </div>
               )}
 
-              <button className="w-full pointer-events-auto cursor-pointer bg-[#eff6ff] text-blue-600 hover:bg-blue-100 transition-colors font-extrabold text-[12px] py-3 rounded-xl flex items-center justify-center gap-1.5" onClick={() => isPremium ? navigate('/resume-builder') : setShowPremiumPopup(true)}>
+              <button 
+                className="w-full pointer-events-auto cursor-pointer bg-[#eff6ff] text-blue-600 hover:bg-blue-100 transition-colors font-extrabold text-[12px] py-3 rounded-xl flex items-center justify-center gap-1.5" 
+                onClick={() => navigate('/resume-builder')}
+              >
                 Build Resume Now <ArrowRight size={12} strokeWidth={2.5}/>
               </button>
             </div>

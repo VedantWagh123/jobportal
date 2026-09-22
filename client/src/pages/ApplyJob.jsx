@@ -361,7 +361,7 @@ const ApplyJob = () => {
                 </div>
               )}
 
-              {/* Premium AI Skill Match Analyzer */}
+              {/* Premium Lumi Skill Match Analyzer */}
               {userData && (
                 <div className='animate-fadeIn flex flex-col gap-6 mt-10'>
                   
@@ -377,7 +377,7 @@ const ApplyJob = () => {
                       </div>
                       <div>
                         <h2 className='text-2xl font-extrabold text-gray-900 tracking-tight'>
-                          AI Skill Match <span className='text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600'>Analyzer</span>
+                          Lumi Skill Match <span className='text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600'>Analyzer</span>
                         </h2>
                         <p className='text-[15px] text-gray-500 mt-1.5 font-medium'>
                           Compare your profile skills with this job's requirements and find your match.

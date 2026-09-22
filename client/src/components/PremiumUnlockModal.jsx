@@ -57,10 +57,10 @@ const PremiumUnlockModal = () => {
 
                             {/* Text Content */}
                             <h2 className="text-2xl font-extrabold text-gray-900 mb-3 tracking-tight">
-                                Unlock AI Power
+                                Unlock Lumi Power
                             </h2>
                             <p className="text-sm font-medium text-gray-500 mb-8 px-2 leading-relaxed">
-                                You've discovered a premium feature! Upgrade your account to access our AI Resume Builder, SmartMatch AI, and more exclusive career tools.
+                                You've discovered a premium feature! Upgrade your account to access our Lumi Resume Builder, Lumi SmartMatch, and more exclusive career tools.
                             </p>
 
                             {/* Features List */}

@@ -152,6 +152,17 @@ const SmartMatch = () => {
         return () => clearInterval(checkGoogleApi);
     }, []);
 
+    // Dropbox Chooser Logic
+    useEffect(() => {
+        if (!document.getElementById('dropboxjs')) {
+            const script = document.createElement('script');
+            script.src = 'https://www.dropbox.com/static/api/2/dropins.js';
+            script.id = 'dropboxjs';
+            script.setAttribute('data-app-key', import.meta.env.VITE_DROPBOX_APP_KEY || '');
+            document.head.appendChild(script);
+        }
+    }, []);
+
     const handleGoogleDriveClick = () => {
         if (!import.meta.env.VITE_GOOGLE_DRIVE_CLIENT_ID || !import.meta.env.VITE_GOOGLE_API_KEY) {
             toast.error("Google Drive Integration is not configured yet. Missing API Keys.");
@@ -205,6 +216,41 @@ const SmartMatch = () => {
                 toast.error("Error downloading file from Google Drive");
             }
         }
+    };
+
+    const handleDropboxClick = () => {
+        if (!import.meta.env.VITE_DROPBOX_APP_KEY) {
+            toast.error("Dropbox Integration is not configured. Missing API Key.");
+            return;
+        }
+        if (!window.Dropbox) {
+            toast.info("Dropbox API is loading, please try again in a moment...");
+            return;
+        }
+        
+        window.Dropbox.choose({
+            success: async (files) => {
+                if (files && files.length > 0) {
+                    const fileData = files[0];
+                    try {
+                        toast.info("Downloading file from Dropbox...", { autoClose: 2000 });
+                        const response = await fetch(fileData.link);
+                        if (!response.ok) throw new Error("Failed to download from Dropbox");
+                        const blob = await response.blob();
+                        const downloadedFile = new File([blob], fileData.name, { type: 'application/pdf' });
+                        validateAndSetFile(downloadedFile);
+                        toast.success("File imported successfully!");
+                    } catch (err) {
+                        console.error("Error downloading from Dropbox:", err);
+                        toast.error("Error downloading file from Dropbox");
+                    }
+                }
+            },
+            cancel: () => {},
+            linkType: "direct",
+            multiselect: false,
+            extensions: ['.pdf']
+        });
     };
 
     const startAnalysis = async () => {
@@ -303,13 +349,13 @@ const SmartMatch = () => {
                     <div className="xl:w-[45%] relative z-20 text-center xl:text-left">
                         <div className="inline-flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-full mb-6 shadow-[0_2px_12px_rgba(0,0,0,0.04)] border border-blue-100">
                             <Zap size={14} className="text-blue-600" />
-                            <span className="text-[11px] font-black text-blue-700 tracking-wider">AI POWERED</span>
+                            <span className="text-[11px] font-black text-blue-700 tracking-wider">LUMI POWERED</span>
                         </div>
                         <h1 className="text-4xl md:text-[52px] font-black text-[#1e293b] mb-5 tracking-tight leading-[1.1]">
-                            SmartMatch <span className="text-blue-600">AI</span>
+                            Lumi <span className="text-blue-600">SmartMatch</span>
                         </h1>
                         <p className="text-[#64748b] text-[15px] font-medium leading-relaxed max-w-lg mx-auto xl:mx-0 mb-10">
-                            Upload your resume and let our advanced AI analyze your skills, experience, and career profile to match you with the perfect opportunities.
+                            Upload your resume and let our advanced Lumi analyze your skills, experience, and career profile to match you with the perfect opportunities.
                         </p>
                         
                         {/* Stats Row */}
@@ -482,7 +528,7 @@ const SmartMatch = () => {
                                                     Choose from Drive
                                                 </button>
                                                 <button 
-                                                    onClick={() => toast.info('Dropbox integration coming soon!')} 
+                                                    onClick={handleDropboxClick} 
                                                     className="flex-1 bg-white border border-gray-200 hover:bg-gray-50 hover:border-gray-300 text-gray-700 px-4 py-3.5 rounded-xl font-bold transition-all flex items-center justify-center gap-2.5 shadow-sm text-[13px]"
                                                 >
                                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="#0061FF"><path d="M12.01 2.375L3.898 7.64l8.112 5.275 8.113-5.275z"/><path d="M3.898 18.193l8.112-5.274-8.112-5.275-8.112 5.275z"/><path d="M20.123 18.193l8.112-5.275-8.112-5.275-8.113 5.275z"/><path d="M12.01 22.375l-8.112-5.275h16.224z"/></svg>
@@ -501,7 +547,7 @@ const SmartMatch = () => {
                                                 onClick={(e) => { e.stopPropagation(); startAnalysis(); }}
                                                 className="bg-blue-600 hover:bg-blue-700 text-white px-10 py-3.5 rounded-2xl font-bold shadow-lg shadow-blue-500/25 transition-all flex items-center gap-2 hover:scale-[1.02]"
                                             >
-                                                <Zap size={20} /> Run SmartMatch AI
+                                                <Zap size={20} /> Run Lumi SmartMatch
                                             </button>
                                         </>
                                     )}
@@ -523,7 +569,7 @@ const SmartMatch = () => {
                                     </div>
                                     <div className="mt-10 flex flex-wrap justify-center gap-3 max-w-lg">
                                         <span className={`px-4 py-1.5 text-xs font-bold rounded-full transition-colors ${status === 'uploading' ? 'bg-blue-100 text-blue-700 animate-pulse' : 'bg-gray-100 text-gray-400'}`}>Extracting Text</span>
-                                        <span className={`px-4 py-1.5 text-xs font-bold rounded-full transition-colors ${status === 'analyzing' ? 'bg-purple-100 text-purple-700 animate-pulse' : 'bg-gray-100 text-gray-400'}`}>AI Normalization</span>
+                                        <span className={`px-4 py-1.5 text-xs font-bold rounded-full transition-colors ${status === 'analyzing' ? 'bg-purple-100 text-purple-700 animate-pulse' : 'bg-gray-100 text-gray-400'}`}>Lumi Normalization</span>
                                         <span className={`px-4 py-1.5 text-xs font-bold rounded-full transition-colors ${status === 'matching' ? 'bg-emerald-100 text-emerald-700 animate-pulse' : 'bg-gray-100 text-gray-400'}`}>Semantic Search</span>
                                     </div>
                                 </div>
@@ -532,7 +578,7 @@ const SmartMatch = () => {
                         
                         {/* Right Column: Insights List */}
                         <div className="w-full lg:w-[320px] shrink-0 bg-white rounded-[24px] shadow-[0_2px_12px_-4px_rgba(0,0,0,0.02)] border border-gray-100 p-7 flex flex-col h-full">
-                            <h3 className="text-[17px] font-extrabold text-gray-900 mb-7">Get AI-Powered Insights</h3>
+                            <h3 className="text-[17px] font-extrabold text-gray-900 mb-7">Get Lumi-Powered Insights</h3>
                             <ul className="space-y-5 flex-1">
                                 <li className="flex items-center gap-3.5">
                                     <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center shrink-0"><Target size={16} strokeWidth={2.5}/></div>
@@ -626,7 +672,7 @@ const SmartMatch = () => {
                                     </div>
                                     <div>
                                         <h4 className="font-bold text-gray-900 text-sm">Your Profile</h4>
-                                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mt-0.5">AI analyzed from resume</p>
+                                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mt-0.5">Lumi analyzed from resume</p>
                                     </div>
                                 </div>
                                 

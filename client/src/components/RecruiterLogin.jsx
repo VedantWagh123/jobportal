@@ -150,7 +150,7 @@ const RecruiterLogin = () => {
                             </div>
                             <div>
                                 <h3 className="font-bold text-gray-900 text-sm sm:text-base">Smart Hiring Tools</h3>
-                                <p className="text-[11px] sm:text-sm text-gray-500 mt-0.5">AI-powered candidate matching</p>
+                                <p className="text-[11px] sm:text-sm text-gray-500 mt-0.5">Lumi-powered candidate matching</p>
                             </div>
                         </div>
                         <div className="flex gap-3 sm:gap-4">

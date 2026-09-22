@@ -141,10 +141,11 @@ const Navbar = () => {
             triggerLoginRequired();
             return;
         }
-        if (!isPremium) {
-            setShowPremiumPopup(true);
-            return;
-        }
+        // TEMPORARILY DISABLED PREMIUM RESTRICTION
+        // if (!isPremium) {
+        //     setShowPremiumPopup(true);
+        //     return;
+        // }
         navigate(path);
     };
 
@@ -240,7 +241,7 @@ const Navbar = () => {
                                             <Lightbulb size={22} strokeWidth={2.2} />
                                         </div>
                                         <div className="flex flex-col pr-1">
-                                            <div className="text-[15px] lg:text-[16px] font-extrabold text-gray-800 group-hover/item:text-violet-700 leading-tight">SmartMatch AI</div>
+                                            <div className="text-[15px] lg:text-[16px] font-extrabold text-gray-800 group-hover/item:text-violet-700 leading-tight">Lumi SmartMatch</div>
                                             <div className="text-[11px] lg:text-[12px] text-gray-500 font-medium leading-[1.3] mt-1 max-w-[130px]">Find perfect job fits using AI</div>
                                         </div>
                                     </div>
@@ -519,7 +520,7 @@ const Navbar = () => {
                         <div className='p-1.5 rounded-lg bg-violet-100 text-violet-600'><FileText size={16} /></div> Resume Builder
                     </a>
                     <a href="/smart-match" onClick={(e) => { setIsMobileMenuOpen(false); handleFeatureClick(e, '/smart-match'); }} className='flex items-center gap-3 p-2.5 rounded-xl hover:bg-violet-50 text-gray-700 font-bold transition'>
-                        <div className='p-1.5 rounded-lg bg-violet-100 text-violet-600'><Lightbulb size={16} /></div> SmartMatch AI
+                        <div className='p-1.5 rounded-lg bg-violet-100 text-violet-600'><Lightbulb size={16} /></div> Lumi SmartMatch
                     </a>
                     <div className='flex items-center gap-3 p-2.5 rounded-xl hover:bg-amber-50 text-gray-700 font-bold transition cursor-pointer' onClick={() => setIsMobileMenuOpen(false)}>
                         <div className='p-1.5 rounded-lg bg-amber-100 text-amber-600'><TrendingUp size={16} /></div> Insights

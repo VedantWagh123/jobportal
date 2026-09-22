@@ -168,7 +168,7 @@ const ResumeBuilder = () => {
 
     const improveWithAI = async (section, content, context) => {
         if(!content || content.trim().length === 0) {
-            toast.warning("Please write something first so AI can improve it.");
+            toast.warning("Please write something first so Lumi can improve it.");
             return;
         }
         try {
@@ -181,7 +181,7 @@ const ResumeBuilder = () => {
                 return data.result;
             }
         } catch (error) {
-            toast.error("AI Improvement failed");
+            toast.error("Lumi Improvement failed");
         } finally {
             setAiLoading(false);
         }
@@ -203,7 +203,7 @@ const ResumeBuilder = () => {
                 setShowAtsModal(false);
             }
         } catch (error) {
-            toast.error(error.response?.data?.message || "ATS Score Generation failed. AI servers might be busy.");
+            toast.error(error.response?.data?.message || "ATS Score Generation failed. Lumi servers might be busy.");
             setShowAtsModal(false);
         } finally {
             setAtsLoading(false);
@@ -364,7 +364,7 @@ const ResumeBuilder = () => {
                     disabled={aiLoading}
                     className="flex items-center gap-1.5 text-xs font-bold text-violet-600 bg-violet-50 hover:bg-violet-100 px-3 py-1.5 rounded-lg transition-colors"
                 >
-                    <Sparkles size={14} /> {aiLoading ? 'Enhancing...' : 'Improve with AI'}
+                    <Sparkles size={14} /> {aiLoading ? 'Enhancing...' : 'Improve with Lumi'}
                 </button>
             </div>
             <textarea 
@@ -423,7 +423,7 @@ const ResumeBuilder = () => {
                                 disabled={aiLoading}
                                 className="text-[10px] font-bold text-violet-600 bg-violet-100 px-2 py-0.5 rounded flex items-center gap-1 hover:bg-violet-200"
                             >
-                                <Sparkles size={10} /> AI Improve
+                                <Sparkles size={10} /> Lumi Improve
                             </button>
                         </div>
                         <textarea rows={4} placeholder="- Developed..." className="w-full border border-gray-300 rounded-md p-2 text-sm custom-scrollbar" value={exp.responsibilities} onChange={e => updateArrayItem('experience', index, 'responsibilities', e.target.value)} />
@@ -522,7 +522,7 @@ const ResumeBuilder = () => {
                                 disabled={aiLoading}
                                 className="text-[10px] font-bold text-violet-600 bg-violet-100 px-2 py-0.5 rounded flex items-center gap-1 hover:bg-violet-200"
                             >
-                                <Sparkles size={10} /> AI Improve
+                                <Sparkles size={10} /> Lumi Improve
                             </button>
                         </div>
                         <textarea rows={4} placeholder="- Built..." className="w-full border border-gray-300 rounded-md p-2 text-sm custom-scrollbar" value={proj.description} onChange={e => updateArrayItem('projects', index, 'description', e.target.value)} />
@@ -1098,7 +1098,7 @@ const ResumeBuilder = () => {
                             {atsLoading ? (
                                 <div className="flex flex-col items-center justify-center py-12 gap-4">
                                     <div className="w-16 h-16 border-4 border-green-100 border-t-green-500 rounded-full animate-spin"></div>
-                                    <p className="text-gray-500 font-medium">Scanning your resume with AI...</p>
+                                    <p className="text-gray-500 font-medium">Scanning your resume with Lumi...</p>
                                 </div>
                             ) : atsData ? (
                                 <div className="flex flex-col items-center gap-8">

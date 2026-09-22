@@ -307,7 +307,7 @@ const AddJob = () => {
                             <div className="w-8 h-8 rounded-full bg-blue-600 text-white font-black text-sm flex items-center justify-center shadow-md">6</div>
                             <div>
                                 <h3 className="text-lg font-black text-gray-900 leading-none">Job Skills</h3>
-                                <p className="text-[11px] font-bold text-gray-400 mt-1 uppercase tracking-wide">Enter required skills for AI matching.</p>
+                                <p className="text-[11px] font-bold text-gray-400 mt-1 uppercase tracking-wide">Enter required skills for Lumi matching.</p>
                             </div>
                         </div>
                         

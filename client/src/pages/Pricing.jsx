@@ -163,7 +163,7 @@ const Pricing = () => {
       answer: "Absolutely. You can start with the Free Plan to explore the platform and upgrade to Premium whenever you're ready to unlock advanced tools and better job recommendations."
     },
     {
-      question: "How does the AI-powered job match work?",
+      question: "How does the Lumi-powered job match work?",
       answer: "Our intelligent matching algorithm analyzes your skills, experience, and career goals, then pairs you with job listings that perfectly align with your profile, increasing your chances of getting hired."
     },
     {
@@ -291,7 +291,7 @@ const Pricing = () => {
                 { text: "Basic resume tips", active: true },
                 { text: "Access to free courses (limited)", active: true },
                 { text: "Basic career resources", active: true },
-                { text: "AI Cover Letter Generator", active: false },
+                { text: "Lumi Cover Letter Generator", active: false },
                 { text: "Auto Job Apply Assistant", active: false },
                 { text: "Advanced Mock Interviews", active: false },
                 { text: "Priority support", active: false },
@@ -356,8 +356,8 @@ const Pricing = () => {
 
             <div className="space-y-0 mb-6">
               {[
-                "AI-powered job match (100% access)",
-                "AI Cover Letter Generator",
+                "Lumi-powered job match (100% access)",
+                "Lumi Cover Letter Generator",
                 "Auto Job Apply Assistant",
                 "Advanced resume builder (ATS friendly)",
                 "Advanced Mock Interviews & Prep",
@@ -511,10 +511,10 @@ const Pricing = () => {
                 </thead>
                 <tbody className="divide-y divide-gray-100 text-sm font-medium">
                   {[
-                    { feature: "AI-Powered Job Matches", free: "Basic (3/month)", premium: "Unlimited & Advanced", highlight: true },
-                    { feature: "Cover Letter Generator", free: <X size={18} className="text-gray-300 mx-auto" />, premium: "AI Personalized Letters", highlight: false },
-                    { feature: "Auto Job Apply", free: <X size={18} className="text-gray-300 mx-auto" />, premium: "1-Click AI Apply", highlight: true },
-                    { feature: "Resume Builder", free: "Standard Templates", premium: "ATS-Friendly + AI", highlight: false },
+                    { feature: "Lumi-Powered Job Matches", free: "Basic (3/month)", premium: "Unlimited & Advanced", highlight: true },
+                    { feature: "Cover Letter Generator", free: <X size={18} className="text-gray-300 mx-auto" />, premium: "Lumi Personalized Letters", highlight: false },
+                    { feature: "Auto Job Apply", free: <X size={18} className="text-gray-300 mx-auto" />, premium: "1-Click Lumi Apply", highlight: true },
+                    { feature: "Resume Builder", free: "Standard Templates", premium: "ATS-Friendly + Lumi", highlight: false },
                     { feature: "Premium Courses", free: "First Module Only", premium: "Full Library Access", highlight: true },
                     { feature: "Advanced Mock Interviews", free: <X size={18} className="text-gray-300 mx-auto" />, premium: "Unlimited Sessions", highlight: false },
                     { feature: "Personalized Roadmap", free: <X size={18} className="text-gray-300 mx-auto" />, premium: <Check size={18} className="text-emerald-500 mx-auto" strokeWidth={3} />, highlight: false },

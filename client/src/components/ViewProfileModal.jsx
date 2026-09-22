@@ -160,12 +160,12 @@ const ViewProfileModal = ({ isOpen, onClose }) => {
                         </div>
                     </div>
 
-                    {/* AI Extracted Skills */}
+                    {/* Lumi Extracted Skills */}
                     <div className="mt-6 bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
                         <div className="flex items-center justify-between mb-4 border-b border-gray-50 pb-3">
                             <div className="flex items-center gap-2">
                                 <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Candidate Skills</h3>
-                                <span className="bg-purple-100 text-purple-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-purple-200 shadow-sm flex items-center gap-1">✨ AI Extracted</span>
+                                <span className="bg-purple-100 text-purple-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-purple-200 shadow-sm flex items-center gap-1">✨ Lumi Extracted</span>
                             </div>
                             {userData?.resume && (
                                 <button 
