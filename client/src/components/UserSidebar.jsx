@@ -106,7 +106,10 @@ const UserSidebar = () => {
                         {/* Institute Portal */}
                         {instituteToken ? (
                             <button
-                                onClick={() => window.open('http://localhost:5176/', '_blank')}
+                                onClick={() => {
+                                    const instituteUrl = window.location.hostname === 'localhost' ? 'http://localhost:5176' : 'https://insidersinstitute-portal.vercel.app';
+                                    window.open(instituteUrl, '_blank');
+                                }}
                                 className='w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition group'
                             >
                                 <div className='flex items-center gap-3'>
@@ -117,7 +120,10 @@ const UserSidebar = () => {
                             </button>
                         ) : (
                             <button
-                                onClick={() => window.open('http://localhost:5176/login', '_blank')}
+                                onClick={() => {
+                                    const instituteUrl = window.location.hostname === 'localhost' ? 'http://localhost:5176' : 'https://insidersinstitute-portal.vercel.app';
+                                    window.open(`${instituteUrl}/login`, '_blank');
+                                }}
                                 className='w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition group'
                             >
                                 <div className='flex items-center gap-3'>

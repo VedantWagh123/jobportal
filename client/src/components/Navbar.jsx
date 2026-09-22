@@ -542,7 +542,11 @@ const Navbar = () => {
                     {/* INSTITUTE PORTAL */}
                     <h4 className='text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-4 mb-1.5 ml-1'>Partner Portal</h4>
                     <button 
-                        onClick={() => { window.open('http://localhost:5176/', '_blank'); setIsMobileMenuOpen(false); }} 
+                        onClick={() => { 
+                            const instituteUrl = window.location.hostname === 'localhost' ? 'http://localhost:5176' : 'https://insidersinstitute-portal.vercel.app';
+                            window.open(instituteUrl, '_blank'); 
+                            setIsMobileMenuOpen(false); 
+                        }} 
                         className='flex items-center gap-3 p-2.5 rounded-xl hover:bg-orange-50 text-orange-700 font-bold transition w-full text-left'
                     >
                         <div className='p-1.5 rounded-lg bg-orange-100 text-orange-600'><Building2 size={16} /></div> Teach Skills
