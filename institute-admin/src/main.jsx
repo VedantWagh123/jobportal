@@ -26,7 +26,7 @@ axios.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (error.response?.status === 401 && !originalRequest._retry && !originalRequest.url.includes('/refresh')) {
       if (isRefreshing) {
         return new Promise(function(resolve, reject) {
           failedQueue.push({ resolve, reject });
@@ -40,7 +40,7 @@ axios.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const { data } = await axios.post('/api/institute/refresh');
+        const { data } = await axios.post('/api/institute/auth/refresh');
         const token = data.token;
         
         const userInfo = JSON.parse(localStorage.getItem('instituteInfo'));

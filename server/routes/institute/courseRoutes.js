@@ -5,6 +5,9 @@ import {
     getMyCourses, createCourse, deleteCourse, updateCourseCurriculum, updateCourse,
     getMyBatches, createBatch, updateBatchStatus, updateBatch, getInstituteAlerts, extractCourseSkills, getBatchEnrollments, generateDashboardSummary, generateCoursePlan, getCurriculumGap
 } from '../../controllers/institute/instituteCourseController.js';
+import { 
+    getCloudinarySignature, getCourseLectures, addLecture, updateLecture, deleteLecture 
+} from '../../controllers/institute/lectureController.js';
 
 const router = express.Router();
 
@@ -17,6 +20,13 @@ router.post('/extract-skills', extractCourseSkills);
 router.put('/courses/:id', upload.single('image'), updateCourse);
 router.put('/courses/:id/curriculum', updateCourseCurriculum);
 router.delete('/courses/:id', deleteCourse);
+
+// Lectures (Under Courses)
+router.get('/cloudinary/signature', getCloudinarySignature);
+router.get('/courses/:courseId/lectures', getCourseLectures);
+router.post('/courses/:courseId/lectures', addLecture);
+router.put('/courses/:courseId/lectures/:lectureId', updateLecture);
+router.delete('/courses/:courseId/lectures/:lectureId', deleteLecture);
 
 // Batches
 router.get('/batches', getMyBatches);

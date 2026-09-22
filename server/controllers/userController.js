@@ -14,6 +14,7 @@ import Course from '../models/Course.js';
 import CourseSkill from '../models/CourseSkill.js';
 import CourseReview from '../models/CourseReview.js';
 import UserNotification from '../models/UserNotification.js';
+import Lecture from '../models/Lecture.js';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const pdfParse = require('pdf-parse-new');
@@ -862,3 +863,71 @@ export const useLumiCredit = async (req, res) => {
         return res.json({ success: false, message: error.message });
     }
 }
+
+export const getMyCourses = async (req, res) => {
+    try {
+        const userId = req.auth?.userId;
+        if (!userId) {
+            return res.status(401).json({ success: false, message: 'Unauthorized' });
+        }
+
+        const enrollments = await Enrollment.find({ userId })
+            .populate({
+                path: 'batchId',
+                populate: { 
+                    path: 'courseId',
+                    populate: { path: 'instituteId' }
+                }
+            })
+            .sort({ createdAt: -1 });
+
+        const myCourses = enrollments.map(e => {
+            const course = e.batchId?.courseId;
+            if (!course) return null;
+            return {
+                enrollmentId: e._id,
+                status: e.status,
+                courseId: course._id,
+                courseName: course.name,
+                courseImage: course.image,
+                instituteName: course.instituteId?.companyName || 'Unknown Institute',
+                durationMonths: course.durationMonths,
+                progressPercentage: 0, // Set to 0 since no tracking is implemented yet
+                totalLectures: course.curriculum?.reduce((acc, curr) => acc + curr.topics.length, 0) || 0,
+                enrolledAt: e.createdAt,
+            };
+        }).filter(Boolean);
+
+        return res.json({ success: true, myCourses });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ success: false, message: error.message });
+    }
+}
+
+export const getCourseLecturesUser = async (req, res) => {
+    try {
+        const userId = req.auth?.userId;
+        const { courseId } = req.params;
+
+        if (!userId) {
+            return res.status(401).json({ success: false, message: 'Unauthorized' });
+        }
+
+        // Verify if user is actually enrolled in this course
+        const enrollments = await Enrollment.find({ userId }).populate('batchId');
+        const isEnrolled = enrollments.some(e => e.batchId?.courseId?.toString() === courseId);
+
+        if (!isEnrolled) {
+            return res.status(403).json({ success: false, message: 'Not enrolled in this course' });
+        }
+
+        // Fetch published lectures only
+        const lectures = await Lecture.find({ courseId, status: { $ne: 'Draft' } }).sort({ lectureNumber: 1 });
+        
+        return res.json({ success: true, lectures });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ success: false, message: 'Server error fetching lectures' });
+    }
+};

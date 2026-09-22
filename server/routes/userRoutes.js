@@ -1,5 +1,5 @@
 import express from 'express'
-import { applyForJob, getUserData, syncUser, getUserJobApplications, updateUserResume, completeUserProfile, updateUserSkills, getTargetJobs, getCareerAnalysis, getMarketRecommendations, enrollInBatch, extractResumeSkillsAPI, getAllPublicCourses, toggleSavedJob, syncResumeToProfile, extractProfileSkills, useLumiCredit } from '../controllers/userController.js'
+import { applyForJob, getUserData, syncUser, getUserJobApplications, updateUserResume, completeUserProfile, updateUserSkills, getTargetJobs, getCareerAnalysis, getMarketRecommendations, enrollInBatch, extractResumeSkillsAPI, getAllPublicCourses, toggleSavedJob, syncResumeToProfile, extractProfileSkills, useLumiCredit, getMyCourses, getCourseLecturesUser } from '../controllers/userController.js'
 import upload from '../config/multer.js'
 import { requireUser } from '../middleware/requireUser.js'
 
@@ -48,6 +48,12 @@ router.get('/career/market-recommendations', requireUser, getMarketRecommendatio
 
 // Browse All Public Courses
 router.get('/courses', getAllPublicCourses)
+
+// Get My Enrolled Courses
+router.get('/my-courses', requireUser, getMyCourses)
+
+// Get Real Lectures for Enrolled Course
+router.get('/courses/:courseId/lectures', requireUser, getCourseLecturesUser)
 
 // Batch Enrollment
 router.post('/enroll', requireUser, enrollInBatch)

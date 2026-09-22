@@ -47,6 +47,7 @@ export const AppContextProvider = (props) => {
     const [isChatbotOpen, setIsChatbotOpen] = useState(false)
     const [showPremiumPopup, setShowPremiumPopup] = useState(false)
     const [isPremium, setIsPremium] = useState(false)
+    const [myCourses, setMyCourses] = useState([])
     const prevUserRef = useRef(undefined)
 
     // Function to handle saved jobs
@@ -291,6 +292,23 @@ export const AppContextProvider = (props) => {
         }
     }
 
+    // Function to Fetch User's Enrolled Courses
+    const fetchMyCourses = async () => {
+        try {
+            const token = await getToken();
+            if (!token) return;
+
+            const { data } = await axios.get(backendUrl + '/api/users/my-courses', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (data.success) {
+                setMyCourses(data.myCourses);
+            }
+        } catch (error) {
+            console.error("Failed to fetch my courses:", error);
+        }
+    }
+
     // Retrieve Tokens From LocalStorage
     useEffect(() => {
 
@@ -330,10 +348,12 @@ export const AppContextProvider = (props) => {
             });
             fetchUserData();
             fetchUserApplications();
+            fetchMyCourses();
         } else {
             // User has signed out — clear user data
             setUserData(null);
             setUserApplications([]);
+            setMyCourses([]);
             localStorage.removeItem('candidateUserData');
             localStorage.removeItem('candidateUserApps');
         }
@@ -389,7 +409,8 @@ export const AppContextProvider = (props) => {
         selectedCategories, setSelectedCategories,
         selectedLocations, setSelectedLocations,
         fetchNextPage, hasNextPage, isFetchingNextPage, jobsStatus,
-        checkLumiAccess, consumeLumiCredit
+        checkLumiAccess, consumeLumiCredit,
+        myCourses, fetchMyCourses
     }
 
     return (<AppContext.Provider value={value}>

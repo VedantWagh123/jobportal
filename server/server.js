@@ -136,5 +136,5 @@ Sentry.setupExpressErrorHandler(app);
 
 httpServer.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
-  startJobProcessor();
+  // startJobProcessor(); // Temporarily disabled to prevent Upstash Redis max request limits
 });

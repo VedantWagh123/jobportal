@@ -5,8 +5,9 @@ import { AuthContext } from '../context/AuthContext';
 import { 
     BookOpen, Plus, Trash2, Loader2, Sparkles, X, 
     Image as ImageIcon, User2, Calendar, MapPin, 
-    FileText, Search, GraduationCap, CheckSquare, Pencil, Upload
+    FileText, Search, GraduationCap, CheckSquare, Pencil, Upload, Eye
 } from 'lucide-react';
+import LectureManagementDrawer from '../components/LectureManagementDrawer';
 
 const Courses = () => {
     const [courses, setCourses] = useState([]);
@@ -31,6 +32,9 @@ const Courses = () => {
     const [selectedCourseForCurriculum, setSelectedCourseForCurriculum] = useState(null);
     const [curriculumData, setCurriculumData] = useState([]);
     const [isSavingCurriculum, setIsSavingCurriculum] = useState(false);
+
+    // Lecture Management State
+    const [selectedCourseForLectures, setSelectedCourseForLectures] = useState(null);
 
     const { user } = useContext(AuthContext);
     const navigate = useNavigate();
@@ -281,7 +285,7 @@ const Courses = () => {
     if (loading) return <div className="flex justify-center p-8"><Loader2 className="animate-spin text-green-600" size={32} /></div>;
 
     return (
-        <div className="w-full max-w-7xl mx-auto pb-12 text-slate-800 font-sans">
+        <div className={`w-full pb-12 text-slate-800 font-sans transition-all duration-300 ${selectedCourseForLectures ? 'lg:pr-[520px] lg:pl-8' : 'max-w-7xl mx-auto px-4 lg:px-8'}`}>
             {/* Page Header Area */}
             <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-8">
                 <div>
@@ -611,12 +615,27 @@ const Courses = () => {
                                     <p className="text-xs text-green-600 font-bold mb-1 flex items-center gap-1"><Calendar size={11}/> {course.durationMonths} Months Duration</p>
                                     <p className="text-xs text-slate-500 font-medium mb-3 flex items-center gap-1"><MapPin size={11}/> {course.location || 'Online'}</p>
                                     <p className="text-xs text-slate-500 line-clamp-2 mt-auto leading-relaxed">{course.description}</p>
-                                    <button
-                                        onClick={() => openEditModal(course)}
-                                        className="mt-3 w-full flex items-center justify-center gap-1.5 py-2 border border-slate-200 rounded-lg text-xs font-semibold text-slate-600 hover:border-green-300 hover:text-green-700 hover:bg-green-50 transition-colors"
-                                    >
-                                        <Pencil size={12} /> Edit Course
-                                    </button>
+                                    
+                                    <div className="mt-3 flex items-center justify-between gap-2">
+                                        <button
+                                            onClick={() => openEditModal(course)}
+                                            className="flex-1 flex items-center justify-center gap-1.5 py-1.5 border border-slate-200 rounded-lg text-[11px] font-semibold text-slate-600 hover:border-green-300 hover:text-green-700 hover:bg-green-50 transition-colors"
+                                        >
+                                            <Pencil size={11} /> Edit Course
+                                        </button>
+                                        <button
+                                            onClick={() => setSelectedCourseForLectures(course)}
+                                            className="flex-1 flex items-center justify-center gap-1.5 py-1.5 border border-slate-200 bg-blue-50 text-blue-700 rounded-lg text-[11px] font-bold hover:border-blue-300 hover:bg-blue-100 transition-colors"
+                                        >
+                                            <FileText size={11} /> Add Detail
+                                        </button>
+                                        <button
+                                            className="w-8 flex items-center justify-center gap-1.5 py-1.5 border border-slate-200 rounded-lg text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition-colors"
+                                            title="View Course"
+                                        >
+                                            <Eye size={12} />
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         ))}
@@ -831,7 +850,24 @@ const Courses = () => {
                     </div>
                 </div>
             </div>
-        )}
+            )}
+
+            {/* ====== LECTURE MANAGEMENT DRAWER ====== */}
+            {selectedCourseForLectures && (
+                <>
+                    {/* Backdrop */}
+                    <div 
+                        className="fixed inset-0 bg-transparent z-40" 
+                        onClick={() => setSelectedCourseForLectures(null)}
+                    />
+                    <LectureManagementDrawer 
+                        course={selectedCourseForLectures} 
+                        userToken={user?.token}
+                        onClose={() => setSelectedCourseForLectures(null)} 
+                    />
+                </>
+            )}
+
         </div>
     );
 };

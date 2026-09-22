@@ -10,7 +10,7 @@ import {
 
 const UserSidebar = () => {
     const { user } = useUser();
-    const { companyToken, instituteToken, userApplications } = useContext(AppContext);
+    const { companyToken, instituteToken, userApplications, myCourses } = useContext(AppContext);
     const location = useLocation();
 
     const isActive = (path) => location.pathname === path;
@@ -20,6 +20,7 @@ const UserSidebar = () => {
         ...(user ? [
             { path: '/applications', label: 'Applied Jobs', icon: BriefcaseBusiness, badge: userApplications ? userApplications.filter(job => job.jobId && job.companyId).length : 0, badgeType: 'count' },
             { path: '/upskilling', label: 'Upskilling', icon: Compass, badge: 'New', badgeType: 'new' },
+            ...(myCourses && myCourses.length > 0 ? [{ path: '/my-courses', label: 'My Courses', icon: GraduationCap, badge: null }] : []),
             { path: '/career-gap', label: 'Career Gap', icon: TrendingUp, badge: null },
         ] : []),
     ];

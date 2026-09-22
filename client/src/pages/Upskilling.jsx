@@ -20,7 +20,7 @@ const CATEGORIES = [
 ];
 
 const Upskilling = () => {
-    const { backendUrl, userData } = useContext(AppContext);
+    const { backendUrl, userData, fetchMyCourses } = useContext(AppContext);
     const { getToken, isSignedIn } = useAuth();
     const navigate = useNavigate();
 
@@ -130,6 +130,7 @@ const Upskilling = () => {
                 setCourses(prev => prev.map(c => 
                     c.courseId === course.courseId ? { ...c, isEnrolled: true, totalStudents: c.totalStudents + 1 } : c
                 ));
+                fetchMyCourses(); // Update myCourses context
             } else {
                 toast.error(data.message);
             }
