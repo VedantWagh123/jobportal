@@ -31,7 +31,7 @@ const initialData = {
 const ResumeBuilder = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { backendUrl, setUserData } = useContext(AppContext);
+    const { backendUrl, setUserData, consumeLumiCredit } = useContext(AppContext);
     const { getToken } = useAuth();
     
     const [resume, setResume] = useState(null);
@@ -166,26 +166,34 @@ const ResumeBuilder = () => {
         }
     };
 
-    const improveWithAI = async (section, content, context) => {
-        if(!content || content.trim().length === 0) {
-            toast.warning("Please write something first so Lumi can improve it.");
-            return;
-        }
-        try {
-            setAiLoading(true);
-            const token = await getToken();
-            const { data } = await axios.post(`${backendUrl}/api/resumes/ai/improve`, { section, content, context }, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            if (data.success) {
-                return data.result;
+    const improveWithAI = (section, content, context) => {
+        return new Promise((resolve) => {
+            if(!content || content.trim().length === 0) {
+                toast.warning("Please write something first so Lumi can improve it.");
+                resolve(null);
+                return;
             }
-        } catch (error) {
-            toast.error("Lumi Improvement failed");
-        } finally {
-            setAiLoading(false);
-        }
-        return null;
+            
+            consumeLumiCredit(async () => {
+                try {
+                    setAiLoading(true);
+                    const token = await getToken();
+                    const { data } = await axios.post(`${backendUrl}/api/resumes/ai/improve`, { section, content, context }, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                    if (data.success) {
+                        resolve(data.result);
+                    } else {
+                        resolve(null);
+                    }
+                } catch (error) {
+                    toast.error("Lumi Improvement failed");
+                    resolve(null);
+                } finally {
+                    setAiLoading(false);
+                }
+            });
+        });
     };
 
     const handleGenerateAtsScore = async () => {

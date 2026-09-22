@@ -23,7 +23,7 @@ const getVariant = (id) => {
 };
 
 const SmartMatch = () => {
-    const { backendUrl, userData } = useContext(AppContext);
+    const { backendUrl, userData, consumeLumiCredit } = useContext(AppContext);
     const navigate = useNavigate();
 
     const [file, setFile] = useState(null);
@@ -256,60 +256,62 @@ const SmartMatch = () => {
     const startAnalysis = async () => {
         if (!file) return;
 
-        try {
-            setStatus('uploading');
-            setProgress(15);
-            setStatusMessage('Uploading and extracting resume text...');
-            
-            const formData = new FormData();
-            formData.append('resume', file);
-            formData.append('userId', userData?._id || "guest");
+        consumeLumiCredit(async () => {
+            try {
+                setStatus('uploading');
+                setProgress(15);
+                setStatusMessage('Uploading and extracting resume text...');
+                
+                const formData = new FormData();
+                formData.append('resume', file);
+                formData.append('userId', userData?._id || "guest");
 
-            const uploadRes = await axios.post(`${backendUrl}/api/smartmatch/analyze`, formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
+                const uploadRes = await axios.post(`${backendUrl}/api/smartmatch/analyze`, formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
 
-            if (!uploadRes.data.success) {
-                throw new Error(uploadRes.data.message || "Failed to analyze resume.");
+                if (!uploadRes.data.success) {
+                    throw new Error(uploadRes.data.message || "Failed to analyze resume.");
+                }
+
+                const analysis = uploadRes.data.data;
+                setAnalysisData(analysis);
+                
+                setStatus('analyzing');
+                setProgress(60);
+                setStatusMessage('Normalizing skills and generating embeddings...');
+                
+                await new Promise(r => setTimeout(r, 1500));
+
+                setStatus('matching');
+                setProgress(85);
+                setStatusMessage('Searching Vector DB for perfect semantic matches...');
+
+                const matchRes = await axios.post(`${backendUrl}/api/smartmatch/match`, {
+                    analysisId: analysis._id
+                });
+
+                if (!matchRes.data.success) {
+                    throw new Error(matchRes.data.message || "Failed to find matches.");
+                }
+
+                await new Promise(r => setTimeout(r, 1000));
+                
+                const newMatches = matchRes.data.matches;
+                setMatches(newMatches);
+                // Auto-select removed to prevent unnecessary API quota usage. User must manually click 'Generate Skill Gap'.
+                setStatus('complete');
+                setProgress(100);
+                setStatusMessage('Analysis Complete!');
+                toast.success("Successfully found smart matches!");
+
+            } catch (error) {
+                console.error(error);
+                setStatus('error');
+                toast.error(error.response?.data?.message || error.message || "An error occurred.");
+                setFile(null); 
             }
-
-            const analysis = uploadRes.data.data;
-            setAnalysisData(analysis);
-            
-            setStatus('analyzing');
-            setProgress(60);
-            setStatusMessage('Normalizing skills and generating embeddings...');
-            
-            await new Promise(r => setTimeout(r, 1500));
-
-            setStatus('matching');
-            setProgress(85);
-            setStatusMessage('Searching Vector DB for perfect semantic matches...');
-
-            const matchRes = await axios.post(`${backendUrl}/api/smartmatch/match`, {
-                analysisId: analysis._id
-            });
-
-            if (!matchRes.data.success) {
-                throw new Error(matchRes.data.message || "Failed to find matches.");
-            }
-
-            await new Promise(r => setTimeout(r, 1000));
-            
-            const newMatches = matchRes.data.matches;
-            setMatches(newMatches);
-            // Auto-select removed to prevent unnecessary API quota usage. User must manually click 'Generate Skill Gap'.
-            setStatus('complete');
-            setProgress(100);
-            setStatusMessage('Analysis Complete!');
-            toast.success("Successfully found smart matches!");
-
-        } catch (error) {
-            console.error(error);
-            setStatus('error');
-            toast.error(error.response?.data?.message || error.message || "An error occurred.");
-            setFile(null); 
-        }
+        });
     };
 
     const getCompleteness = () => {

@@ -8,7 +8,7 @@ import { toast } from 'react-toastify'
 
 const HomeResumeAnalyzer = () => {
   const navigate = useNavigate();
-  const { backendUrl, userData, setIsProfileModalOpen, setShowPremiumPopup, isPremium } = useContext(AppContext);
+  const { backendUrl, userData, setIsProfileModalOpen, setShowPremiumPopup, isPremium, checkLumiAccess, consumeLumiCredit } = useContext(AppContext);
   const { isSignedIn, getToken } = useAuth();
   const { user } = useUser();
 
@@ -94,21 +94,29 @@ const HomeResumeAnalyzer = () => {
       localStorage.setItem('savedExtractedResume', JSON.stringify(uploadRes.data.extractedData));
 
       toast.info('AI is generating your ATS score...', { autoClose: 3000 });
-      const scoreRes = await axios.post(`${backendUrl}/api/resumes/ai/ats-score`, {
-        resumeData: uploadRes.data.extractedData
-      }, {
-        headers: {
-          Authorization: `Bearer ${token}`
+      
+      consumeLumiCredit(async () => {
+        try {
+            const scoreRes = await axios.post(`${backendUrl}/api/resumes/ai/ats-score`, {
+              resumeData: uploadRes.data.extractedData
+            }, {
+              headers: {
+                Authorization: `Bearer ${token}`
+              }
+            });
+
+            if (!scoreRes.data.success) {
+              throw new Error(scoreRes.data.message || 'Score generation failed');
+            }
+
+            setAtsResult(scoreRes.data.result);
+            localStorage.setItem('savedAtsResult', JSON.stringify(scoreRes.data.result));
+            toast.success("✨ Your ATS Score is ready! Double click the resume card to view full details.");
+        } catch (error) {
+            console.error(error);
+            toast.error(error.response?.data?.message || error.message || 'ATS generation failed');
         }
       });
-
-      if (!scoreRes.data.success) {
-        throw new Error(scoreRes.data.message || 'Score generation failed');
-      }
-
-      setAtsResult(scoreRes.data.result);
-      localStorage.setItem('savedAtsResult', JSON.stringify(scoreRes.data.result));
-      toast.success("✨ Your ATS Score is ready! Double click the resume card to view full details.");
       
     } catch (error) {
       console.error(error);
@@ -183,7 +191,13 @@ const HomeResumeAnalyzer = () => {
               {!isAnalyzing && <ArrowRight size={16} strokeWidth={2.5}/>}
             </button>
             <button 
-              onClick={() => navigate('/resume-builder')}
+              onClick={() => {
+                if (!isSignedIn) {
+                  toast.error("Please sign in first.");
+                  return;
+                }
+                checkLumiAccess(() => navigate('/resume-builder'))
+              }}
               className="w-full sm:w-auto bg-white border border-blue-200 text-blue-600 font-extrabold text-[14px] px-8 py-3.5 rounded-xl hover:bg-blue-50 hover:border-blue-300 transition-colors flex items-center justify-center shadow-sm"
             >
               Build a New Resume
@@ -197,7 +211,13 @@ const HomeResumeAnalyzer = () => {
           {/* AI Match CTA (Shows when ATS result is available) */}
           {atsResult && (
             <div 
-              onClick={() => document.getElementById('job-list')?.scrollIntoView({ behavior: 'smooth' })}
+              onClick={() => {
+                if (!isSignedIn) {
+                  toast.error("Please sign in first.");
+                  return;
+                }
+                checkLumiAccess(() => navigate('/smart-match'))
+              }}
               className="mt-8 xl:mt-10 w-full max-w-[420px] bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100/80 rounded-[20px] p-4 flex items-center gap-4 cursor-pointer hover:shadow-[0_10px_40px_rgba(79,70,229,0.12)] hover:-translate-y-1 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 group"
             >
               <div className="w-12 h-12 rounded-full bg-white shadow-sm border border-indigo-50 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-300">
@@ -205,7 +225,7 @@ const HomeResumeAnalyzer = () => {
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
-                  <h4 className="text-[14px] font-black text-gray-900 leading-none">Try AI Job Match</h4>
+                  <h4 className="text-[14px] font-black text-gray-900 leading-none">Try Lumi Job Match</h4>
                   <span className="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 text-[9px] font-bold uppercase tracking-wider animate-pulse">New</span>
                 </div>
                 <p className="text-[12px] font-bold text-gray-500 leading-tight">
@@ -395,7 +415,13 @@ const HomeResumeAnalyzer = () => {
 
               <button 
                 className="w-full pointer-events-auto cursor-pointer bg-[#eff6ff] text-blue-600 hover:bg-blue-100 transition-colors font-extrabold text-[12px] py-3 rounded-xl flex items-center justify-center gap-1.5" 
-                onClick={() => navigate('/resume-builder')}
+                onClick={() => {
+                  if (!isSignedIn) {
+                    toast.error("Please sign in first.");
+                    return;
+                  }
+                  checkLumiAccess(() => navigate('/resume-builder'))
+                }}
               >
                 Build Resume Now <ArrowRight size={12} strokeWidth={2.5}/>
               </button>

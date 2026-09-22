@@ -20,7 +20,7 @@ const Navbar = () => {
     const { user, isLoaded } = useUser()
     const navigate = useNavigate()
     const location = useLocation()
-    const { userData, setIsProfileModalOpen, setIsViewProfileModalOpen, searchFilter, setSearchFilter, setIsSearched, savedJobs, setShowPremiumPopup, isPremium } = useContext(AppContext)
+    const { userData, setIsProfileModalOpen, setIsViewProfileModalOpen, searchFilter, setSearchFilter, setIsSearched, savedJobs, setShowPremiumPopup, isPremium, checkLumiAccess } = useContext(AppContext)
 
     const [isDropdownOpen, setIsDropdownOpen] = useState(false)
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
@@ -141,12 +141,10 @@ const Navbar = () => {
             triggerLoginRequired();
             return;
         }
-        // TEMPORARILY DISABLED PREMIUM RESTRICTION
-        // if (!isPremium) {
-        //     setShowPremiumPopup(true);
-        //     return;
-        // }
-        navigate(path);
+        
+        checkLumiAccess(() => {
+            navigate(path);
+        });
     };
 
     const isCareerToolsActive = location.pathname.includes('/resumes');

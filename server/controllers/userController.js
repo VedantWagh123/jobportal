@@ -836,3 +836,29 @@ export const extractProfileSkills = async (req, res) => {
         return res.status(500).json({ success: false, message: error.message });
     }
 }
+
+// Decrement Lumi Credit
+export const useLumiCredit = async (req, res) => {
+    try {
+        const userId = req.auth.userId;
+        const user = await User.findById(userId);
+
+        if (!user) {
+            return res.json({ success: false, message: 'User not found' });
+        }
+
+        if (user.isPremium) {
+            return res.json({ success: true, message: 'Premium user', lumiCredits: 'unlimited' });
+        }
+
+        if (user.lumiCredits > 0) {
+            user.lumiCredits -= 1;
+            await user.save();
+            return res.json({ success: true, lumiCredits: user.lumiCredits });
+        } else {
+            return res.status(403).json({ success: false, message: 'Lumi credits exhausted' });
+        }
+    } catch (error) {
+        return res.json({ success: false, message: error.message });
+    }
+}

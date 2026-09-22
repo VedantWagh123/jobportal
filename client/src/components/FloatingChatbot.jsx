@@ -166,7 +166,7 @@ const TypingIndicator = () => (
 // ─── Main Floating Chatbot ────────────────────────────────────────────────────
 const FloatingChatbot = () => {
   const navigate = useNavigate();
-  const { backendUrl, isChatbotOpen, setIsChatbotOpen } = useContext(AppContext);
+  const { backendUrl, isChatbotOpen, setIsChatbotOpen, checkLumiAccess, consumeLumiCredit } = useContext(AppContext);
   const isOpen = isChatbotOpen;
   const setIsOpen = setIsChatbotOpen;
   const [messages, setMessages] = useState([{
@@ -293,64 +293,68 @@ const FloatingChatbot = () => {
     if (!userMessage || isLoading || isStreaming) return;
     clearInterval(streamTimerRef.current);
 
-    setInput('');
-    setShowChips(false);
-    setLastUserMessage(userMessage);
-    setMessages(prev => [...prev, { sender: 'user', type: 'text', text: userMessage, jobs: [] }]);
-    setIsLoading(true);
+    consumeLumiCredit(async () => {
+        setInput('');
+        setShowChips(false);
+        setLastUserMessage(userMessage);
+        setMessages(prev => [...prev, { sender: 'user', type: 'text', text: userMessage, jobs: [] }]);
+        setIsLoading(true);
 
-    try {
-      const history = messages.map(m => ({ sender: m.sender, text: m.text }));
-      const { data } = await axios.post(`${backendUrl}/api/users/chat`, { message: userMessage, history: history.slice(-6) });
+        try {
+          const history = messages.map(m => ({ sender: m.sender, text: m.text }));
+          const { data } = await axios.post(`${backendUrl}/api/users/chat`, { message: userMessage, history: history.slice(-6) });
 
-      if (data.success) {
-        // Add placeholder message, then stream into it
-        setMessages(prev => [...prev, { sender: 'ai', type: data.type || 'text', text: '', jobs: data.jobs || [] }]);
-        setIsLoading(false);
-        streamText(data.response, null);
-      } else {
-        setMessages(prev => [...prev, { sender: 'ai', type: 'text', text: "Sorry, I couldn't process that. Please try again! 😊", jobs: [] }]);
-        setIsLoading(false);
-      }
-    } catch (error) {
-      setMessages(prev => [...prev, {
-        sender: 'ai', type: 'error', jobs: [],
-        text: "Oops! 😅 Connection error. Please check your internet and try again.",
-      }]);
-      setIsLoading(false);
-    }
-  }, [input, isLoading, isStreaming, messages]);
+          if (data.success) {
+            // Add placeholder message, then stream into it
+            setMessages(prev => [...prev, { sender: 'ai', type: data.type || 'text', text: '', jobs: data.jobs || [] }]);
+            setIsLoading(false);
+            streamText(data.response, null);
+          } else {
+            setMessages(prev => [...prev, { sender: 'ai', type: 'text', text: "Sorry, I couldn't process that. Please try again! 😊", jobs: [] }]);
+            setIsLoading(false);
+          }
+        } catch (error) {
+          setMessages(prev => [...prev, {
+            sender: 'ai', type: 'error', jobs: [],
+            text: "Oops! 😅 Connection error. Please check your internet and try again.",
+          }]);
+          setIsLoading(false);
+        }
+    });
+  }, [input, isLoading, isStreaming, messages, consumeLumiCredit]);
 
   // ─── Regenerate Last Response ─────────────────────────────────────────────
   const handleRegenerate = useCallback(async () => {
     if (!lastUserMessage || isLoading || isStreaming) return;
     clearInterval(streamTimerRef.current);
 
-    // Remove last AI message and regenerate
-    setMessages(prev => {
-      const withoutLast = prev.filter((_, i) => i !== prev.length - 1);
-      return withoutLast;
+    consumeLumiCredit(async () => {
+        // Remove last AI message and regenerate
+        setMessages(prev => {
+          const withoutLast = prev.filter((_, i) => i !== prev.length - 1);
+          return withoutLast;
+        });
+        setIsLoading(true);
+        setIsStreaming(false);
+
+        try {
+          const historyForRegen = messages.slice(0, -1).map(m => ({ sender: m.sender, text: m.text }));
+          const { data } = await axios.post(`${backendUrl}/api/users/chat`, { message: lastUserMessage, history: historyForRegen.slice(-6) });
+
+          if (data.success) {
+            setMessages(prev => [...prev, { sender: 'ai', type: data.type || 'text', text: '', jobs: data.jobs || [] }]);
+            setIsLoading(false);
+            streamText(data.response, null);
+          } else {
+            setMessages(prev => [...prev, { sender: 'ai', type: 'text', text: "Sorry, couldn't regenerate. Please try again!", jobs: [] }]);
+            setIsLoading(false);
+          }
+        } catch {
+          setMessages(prev => [...prev, { sender: 'ai', type: 'error', text: "Regeneration failed. Please try again!", jobs: [] }]);
+          setIsLoading(false);
+        }
     });
-    setIsLoading(true);
-    setIsStreaming(false);
-
-    try {
-      const historyForRegen = messages.slice(0, -1).map(m => ({ sender: m.sender, text: m.text }));
-      const { data } = await axios.post(`${backendUrl}/api/users/chat`, { message: lastUserMessage, history: historyForRegen.slice(-6) });
-
-      if (data.success) {
-        setMessages(prev => [...prev, { sender: 'ai', type: data.type || 'text', text: '', jobs: data.jobs || [] }]);
-        setIsLoading(false);
-        streamText(data.response, null);
-      } else {
-        setMessages(prev => [...prev, { sender: 'ai', type: 'text', text: "Sorry, couldn't regenerate. Please try again!", jobs: [] }]);
-        setIsLoading(false);
-      }
-    } catch {
-      setMessages(prev => [...prev, { sender: 'ai', type: 'error', text: "Regeneration failed. Please try again!", jobs: [] }]);
-      setIsLoading(false);
-    }
-  }, [lastUserMessage, isLoading, isStreaming, messages]);
+  }, [lastUserMessage, isLoading, isStreaming, messages, consumeLumiCredit]);
 
   const handleApply = (jobId) => { navigate(`/apply-job/${jobId}`); setIsOpen(false); };
   const handleKeyDown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } };
@@ -361,12 +365,12 @@ const FloatingChatbot = () => {
       <div className="fixed bottom-4 right-4 md:bottom-6 md:right-6 z-50 flex flex-col items-end gap-2 md:gap-3">
         <div
           className="bg-white px-2.5 md:px-4 py-1.5 md:py-2.5 rounded-xl md:rounded-2xl rounded-br-none shadow-lg cursor-pointer border border-blue-100 hover:border-blue-300 transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5"
-          onClick={() => setIsOpen(true)}
+          onClick={() => checkLumiAccess(() => setIsOpen(true))}
         >
           <p className="text-[10px] md:text-sm font-medium text-gray-800 whitespace-nowrap">Hi! Need help finding a job? 👋</p>
         </div>
         <button
-          onClick={() => setIsOpen(true)}
+          onClick={() => checkLumiAccess(() => setIsOpen(true))}
           className="relative flex items-center justify-center w-11 h-11 md:w-16 md:h-16 rounded-full bg-gradient-to-tr from-blue-600 to-purple-600 shadow-2xl hover:shadow-blue-500/50 hover:scale-110 transition-all duration-300"
           style={{ animation: 'floatBounce 3s ease-in-out infinite' }}
         >

@@ -3,6 +3,8 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import { useAuth, useUser } from "@clerk/clerk-react";
 import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
+import { Sparkles } from "lucide-react";
+import { motion } from "framer-motion";
 
 export const AppContext = createContext()
 
@@ -73,6 +75,87 @@ export const AppContextProvider = (props) => {
             } catch (error) {
                 console.error("Failed to toggle saved job in DB:", error);
             }
+        }
+    }
+
+    // Function to handle Lumi Access Check (No Credit Consumed)
+    const checkLumiAccess = (callback) => {
+        if (!user) {
+            toast.error("Please login to use Lumi features.");
+            return;
+        }
+        if (userData?.isPremium) {
+            if (callback) callback();
+            return;
+        }
+        if (userData?.lumiCredits > 0) {
+            if (callback) callback();
+        } else {
+            setShowPremiumPopup(true);
+        }
+    }
+
+    // Function to handle Lumi Credit Consumption
+    const consumeLumiCredit = async (callback) => {
+        if (!user) {
+            toast.error("Please login to use Lumi features.");
+            return;
+        }
+
+        // If user is Premium, no limit
+        if (userData?.isPremium) {
+            if (callback) callback();
+            return;
+        }
+
+        // If user is Free but has credits
+        if (userData?.lumiCredits > 0) {
+            try {
+                const token = await getToken();
+                const { data } = await axios.post(backendUrl + '/api/users/use-lumi-credit', 
+                    {}, 
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
+
+                if (data.success) {
+                    setUserData(prev => ({ ...prev, lumiCredits: data.lumiCredits }));
+                    
+                    // Show Animated Warning
+                    toast(
+                        <motion.div 
+                            initial={{ opacity: 0, x: -10 }} 
+                            animate={{ opacity: 1, x: 0 }} 
+                            className="flex items-center gap-3"
+                        >
+                            <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center shrink-0">
+                                <Sparkles size={16} className="text-violet-600" />
+                            </div>
+                            <div>
+                                <p className="text-[13px] font-bold text-gray-800">✨ Lumi Feature Used</p>
+                                <p className="text-[11px] font-semibold text-gray-500">You have <span className="text-violet-600 font-black">{data.lumiCredits}</span> free uses left!</p>
+                            </div>
+                        </motion.div>,
+                        {
+                            position: "top-center",
+                            autoClose: 3500,
+                            hideProgressBar: true,
+                            closeOnClick: true,
+                            pauseOnHover: true,
+                            style: { borderRadius: '16px', padding: '12px', boxShadow: '0 10px 30px rgba(139,92,246,0.15)' }
+                        }
+                    );
+
+                    if (callback) callback();
+                } else {
+                    toast.error(data.message || "Something went wrong");
+                }
+            } catch (error) {
+                console.error("Failed to use Lumi credit:", error);
+                toast.error("Failed to connect to server.");
+            }
+        } else {
+            // Free user with 0 credits
+            setShowPremiumPopup(true);
         }
     }
 
@@ -305,7 +388,8 @@ export const AppContextProvider = (props) => {
         isPremium, setIsPremium,
         selectedCategories, setSelectedCategories,
         selectedLocations, setSelectedLocations,
-        fetchNextPage, hasNextPage, isFetchingNextPage, jobsStatus
+        fetchNextPage, hasNextPage, isFetchingNextPage, jobsStatus,
+        checkLumiAccess, consumeLumiCredit
     }
 
     return (<AppContext.Provider value={value}>

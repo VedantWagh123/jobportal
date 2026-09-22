@@ -1,9 +1,12 @@
 import express from 'express'
-import { applyForJob, getUserData, syncUser, getUserJobApplications, updateUserResume, completeUserProfile, updateUserSkills, getTargetJobs, getCareerAnalysis, getMarketRecommendations, enrollInBatch, extractResumeSkillsAPI, getAllPublicCourses, toggleSavedJob, syncResumeToProfile, extractProfileSkills } from '../controllers/userController.js'
+import { applyForJob, getUserData, syncUser, getUserJobApplications, updateUserResume, completeUserProfile, updateUserSkills, getTargetJobs, getCareerAnalysis, getMarketRecommendations, enrollInBatch, extractResumeSkillsAPI, getAllPublicCourses, toggleSavedJob, syncResumeToProfile, extractProfileSkills, useLumiCredit } from '../controllers/userController.js'
 import upload from '../config/multer.js'
 import { requireUser } from '../middleware/requireUser.js'
 
 const router = express.Router()
+
+// Use Lumi Credit
+router.post('/use-lumi-credit', requireUser, useLumiCredit)
 
 // Get user Data (requireUser auto-creates/migrates the user record)
 router.get('/user', requireUser, getUserData)

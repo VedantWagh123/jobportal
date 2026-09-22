@@ -13,6 +13,7 @@ const userSchema = new mongoose.Schema({
     college: { type: String },
     savedJobs: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Job' }],
     isPremium: { type: Boolean, default: false },
+    lumiCredits: { type: Number, default: 3 },
     razorpayCustomerId: { type: String },
     subscriptionId: { type: String }
 }, { timestamps: true })
