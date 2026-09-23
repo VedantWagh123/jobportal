@@ -2,7 +2,9 @@ import Company from '../../models/Company.js';
 import Job from '../../models/Job.js';
 import User from '../../models/User.js';
 import UserNotification from '../../models/UserNotification.js';
+import JobApplication from '../../models/JobApplication.js';
 import { getIO } from '../../config/socket.js';
+import { clearCache } from '../../utils/cache.js';
 
 // @desc    Get all employers
 // @route   GET /api/super-admin/employers
@@ -88,8 +90,15 @@ export const deleteEmployer = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Employer not found' });
         }
         
-        // Optionally, delete all jobs posted by this employer
+        // Delete all jobs posted by this employer
         await Job.deleteMany({ companyId: req.params.id });
+        
+        // Delete all job applications for this employer's jobs
+        await JobApplication.deleteMany({ companyId: req.params.id });
+
+        // Clear cache so jobs instantly disappear from the client side
+        clearCache('/api/jobs');
+        clearCache('/api/state-admin');
 
         res.json({ success: true, message: 'Employer and their jobs have been deleted' });
     } catch (error) {
