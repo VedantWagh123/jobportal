@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { GraduationCap, ArrowRight, Mic, Code2, TrendingUp, FileCheck2, BookOpen, Award, CheckCircle2, Lightbulb, Check, PlayCircle, Sparkles } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '@clerk/clerk-react'
 import hero_girl from '../assets/hero_girl.png'
 
 const BASE_TEXT = "Learn. Practice. ";
@@ -8,6 +9,7 @@ const ROTATING_WORDS = ["Grow.", "Excel.", "Succeed."];
 
 const HomeInterviewPrep = () => {
   const navigate = useNavigate();
+  const { isSignedIn } = useAuth();
   
   // Continuous Typewriter Effect State
   const [displayedText, setDisplayedText] = useState('');
@@ -177,7 +179,7 @@ const HomeInterviewPrep = () => {
           <div className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-4 xl:gap-5 perspective-1000">
             
             {/* Card 1: Mock Interviews */}
-            <div className="bg-white rounded-[28px] p-4 xl:p-5 border border-gray-100 flex flex-col group hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(0,0,0,0.06)] transition-all duration-500 cursor-pointer" onClick={() => navigate('/mock-interviews')}>
+            <div className="bg-white rounded-[28px] p-4 xl:p-5 border border-gray-100 flex flex-col group hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(0,0,0,0.06)] transition-all duration-500 cursor-pointer" onClick={() => { if (!isSignedIn) { window.dispatchEvent(new Event('requireLoginShake')); } else { navigate('/mock-interviews'); } }}>
               <div className="w-full h-[140px] bg-gradient-to-br from-[#fff1f2] to-[#ffe4e6] rounded-[20px] mb-5 flex items-end justify-center relative overflow-hidden">
                 <div className="absolute top-3 left-3 w-8 h-8 bg-white rounded-full flex items-center justify-center text-red-500 shadow-sm z-10 group-hover:rotate-12 transition-transform duration-300"><Mic size={16} strokeWidth={2.5}/></div>
                 <img src={hero_girl} className="w-[85%] h-auto object-contain object-bottom group-hover:scale-110 group-hover:-translate-y-2 transition-all duration-500 ease-out" alt="Mock Interviews" />
@@ -201,7 +203,7 @@ const HomeInterviewPrep = () => {
             </div>
 
             {/* Card 2: Technical Q&A */}
-            <div className="bg-white rounded-[28px] p-4 xl:p-5 border border-gray-100 flex flex-col group hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(0,0,0,0.06)] transition-all duration-500 cursor-pointer" onClick={() => navigate('/qa')}>
+            <div className="bg-white rounded-[28px] p-4 xl:p-5 border border-gray-100 flex flex-col group hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(0,0,0,0.06)] transition-all duration-500 cursor-pointer" onClick={() => { if (!isSignedIn) { window.dispatchEvent(new Event('requireLoginShake')); } else { navigate('/qa'); } }}>
               <div className="w-full h-[140px] bg-gradient-to-br from-[#eff6ff] to-[#e0e7ff] rounded-[20px] mb-5 flex items-end justify-center relative overflow-hidden">
                 {/* Floating decor */}
                 <div className="absolute top-10 right-4 text-blue-400 group-hover:animate-ping opacity-60"><Sparkles size={12}/></div>
@@ -269,7 +271,7 @@ const HomeInterviewPrep = () => {
             </div>
 
             {/* Card 4: Resume Tips */}
-            <div className="bg-white rounded-[28px] p-4 xl:p-5 border border-gray-100 flex flex-col group hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(0,0,0,0.06)] transition-all duration-500 cursor-pointer" onClick={() => navigate('/tips')}>
+            <div className="bg-white rounded-[28px] p-4 xl:p-5 border border-gray-100 flex flex-col group hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(0,0,0,0.06)] transition-all duration-500 cursor-pointer" onClick={() => { if (!isSignedIn) { window.dispatchEvent(new Event('requireLoginShake')); } else { navigate('/tips'); } }}>
               <div className="w-full h-[140px] bg-gradient-to-br from-[#faf5ff] to-[#f3e8ff] rounded-[20px] mb-5 flex items-center justify-center relative overflow-hidden">
                  {/* Floating decor */}
                  <div className="absolute top-12 right-8 text-purple-400 opacity-50 group-hover:-translate-y-2 group-hover:opacity-100 transition-all duration-500"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M12 2L15 9l7 1-5 5 1.5 7.5L12 19l-6.5 3.5L7 15l-5-5 7-1z" strokeLinejoin="round"/></svg></div>

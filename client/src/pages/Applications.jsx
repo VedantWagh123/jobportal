@@ -8,7 +8,7 @@ import moment from 'moment'
 import { 
   Briefcase, MapPin, Building2, Calendar, CheckCircle2, Clock, 
   XCircle, FileText, Upload, Check, ArrowRight, X, ArrowUpRight,
-  TrendingUp, Lightbulb, Search, ChevronRight
+  TrendingUp, Lightbulb, Search, ChevronRight, User, AlertCircle
 } from 'lucide-react'
 
 const Applications = () => {
@@ -51,6 +51,20 @@ const Applications = () => {
   }, [user])
 
   if (!userData) return <Loading />
+
+  // Calculate Profile Completion
+  const calculateProfileCompletion = () => {
+    let score = 0;
+    if (userData.name && userData.email) score += 20;
+    if (userData.image) score += 10;
+    if (userData.resume) score += 30;
+    if (userData.skills && userData.skills.length > 0) score += 15;
+    if (userData.phone) score += 10;
+    if (userData.city || userData.address) score += 5;
+    if (userData.college) score += 10;
+    return score;
+  }
+  const profileCompletion = calculateProfileCompletion();
 
   // Calculate KPIs
   const validApplications = userApplications.filter(job => job.jobId && job.companyId)
@@ -191,8 +205,9 @@ const Applications = () => {
                   const StatusIcon = statusUi.icon;
                   
                   // Timeline logic
+                  const isRejected = job.status === 'Rejected';
                   const isApplied = true;
-                  const isScreening = job.status === 'Accepted' || job.status === 'Pending';
+                  const isScreening = job.status === 'Accepted' || job.status === 'Pending' || isRejected;
                   const isInterview = job.status === 'Accepted';
                   const isOffer = job.status === 'Accepted';
 
@@ -238,23 +253,38 @@ const Applications = () => {
                              
                              {/* Steps */}
                              <div className="flex flex-col items-center group/item cursor-default hover:-translate-y-1 transition-transform duration-300">
-                                <div className={`w-6 h-6 rounded-full flex items-center justify-center ${isApplied ? 'bg-blue-600 ring-[6px] ring-blue-50' : 'bg-white border-[3px] border-gray-200'} shadow-sm`}></div>
-                                <span className={`text-[13px] font-extrabold mt-3.5 ${isApplied ? 'text-gray-900' : 'text-gray-400'}`}>Applied</span>
+                                <div className={`w-6 h-6 rounded-full flex items-center justify-center bg-blue-600 ring-[6px] ring-blue-50 shadow-sm`}>
+                                   <Check size={12} strokeWidth={4} className="text-white" />
+                                </div>
+                                <span className="text-[13px] font-extrabold mt-3.5 text-gray-900">Applied</span>
                                 <span className="text-[11px] font-medium text-gray-400 mt-1">{moment(job.date).format('MMM DD')}</span>
                              </div>
 
                              <div className="flex flex-col items-center group/item cursor-default hover:-translate-y-1 transition-transform duration-300">
-                                <div className={`w-6 h-6 rounded-full ${isScreening ? 'bg-blue-600 ring-[6px] ring-blue-50' : 'bg-white border-[3px] border-gray-200'} shadow-sm`}></div>
-                                <span className={`text-[13px] font-extrabold mt-3.5 ${isScreening ? 'text-gray-900' : 'text-gray-400'}`}>Screening</span>
+                                {isRejected ? (
+                                    <div className="w-6 h-6 rounded-full bg-red-500 ring-[6px] ring-red-50 flex items-center justify-center text-white shadow-sm"><X size={12} strokeWidth={4} /></div>
+                                ) : (
+                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center ${isScreening ? (job.status === 'Pending' ? 'bg-amber-100 border-2 border-amber-500 text-amber-600' : 'bg-blue-600 ring-[6px] ring-blue-50 text-white') : 'bg-white border-[3px] border-gray-200'} shadow-sm`}>
+                                       {isScreening && job.status === 'Pending' && <Clock size={12} strokeWidth={3} />}
+                                       {isScreening && job.status !== 'Pending' && !isRejected && <Check size={12} strokeWidth={4} />}
+                                    </div>
+                                )}
+                                <span className={`text-[13px] font-extrabold mt-3.5 ${isRejected ? 'text-red-500' : (isScreening ? (job.status === 'Pending' ? 'text-amber-600' : 'text-gray-900') : 'text-gray-400')}`}>
+                                  {isRejected ? 'Rejected' : 'Screening'}
+                                </span>
                              </div>
 
                              <div className="flex flex-col items-center group/item cursor-default hover:-translate-y-1 transition-transform duration-300">
-                                <div className={`w-6 h-6 rounded-full ${isInterview ? 'bg-blue-600 ring-[6px] ring-blue-50' : 'bg-white border-[3px] border-gray-200'} shadow-sm`}></div>
+                                <div className={`w-6 h-6 rounded-full flex items-center justify-center ${isInterview ? 'bg-blue-600 ring-[6px] ring-blue-50 text-white' : 'bg-white border-[3px] border-gray-200'} shadow-sm`}>
+                                   {isInterview && <Check size={12} strokeWidth={4} />}
+                                </div>
                                 <span className={`text-[13px] font-extrabold mt-3.5 ${isInterview ? 'text-gray-900' : 'text-gray-400'}`}>Interview</span>
                              </div>
 
                              <div className="flex flex-col items-center group/item cursor-default hover:-translate-y-1 transition-transform duration-300">
-                                <div className={`w-6 h-6 rounded-full ${isOffer ? 'bg-emerald-500 ring-[6px] ring-emerald-50' : 'bg-white border-[3px] border-gray-200'} shadow-sm`}></div>
+                                <div className={`w-6 h-6 rounded-full flex items-center justify-center ${isOffer ? 'bg-emerald-500 ring-[6px] ring-emerald-50 text-white' : 'bg-white border-[3px] border-gray-200'} shadow-sm`}>
+                                   {isOffer && <Check size={12} strokeWidth={4} />}
+                                </div>
                                 <span className={`text-[13px] font-extrabold mt-3.5 ${isOffer ? 'text-gray-900' : 'text-gray-400'}`}>Offer</span>
                              </div>
                           </div>
@@ -336,64 +366,79 @@ const Applications = () => {
 
           </div>
 
-          {/* Right Column: Resume Card & Pro Tip */}
+          {/* Right Column: Profile Status & Pro Tip */}
           <div className="w-full xl:w-[350px] flex flex-col gap-6 shrink-0">
             
+            {/* Profile Status Card */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8">
               <div className="flex items-center justify-between mb-8">
                 <h2 className="text-[17px] font-extrabold text-gray-900 flex items-center gap-2">
-                  <FileText size={20} className="text-blue-600" /> Resume Status
+                  <User size={20} className="text-blue-600" /> Profile Status
                 </h2>
-                <a href="#" className="text-[13px] font-bold text-blue-600 hover:underline">View</a>
+                <span className={`text-[12px] font-black px-2.5 py-1 rounded-lg ${profileCompletion === 100 ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+                  {profileCompletion}%
+                </span>
               </div>
 
-              {userData.resume ? (
-                <div className="flex flex-col items-center">
-                  <div className="relative w-32 h-32 mb-6 flex items-center justify-center">
-                    <svg className="w-full h-full transform -rotate-90 drop-shadow-sm" viewBox="0 0 100 100">
-                      <circle cx="50" cy="50" r="45" fill="none" stroke="#f1f5f9" strokeWidth="8" />
-                      <circle cx="50" cy="50" r="45" fill="none" stroke="#10b981" strokeWidth="8" strokeDasharray="283" strokeDashoffset="0" strokeLinecap="round" className="animate-[dash_1.5s_ease-out]" />
-                    </svg>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-2xl font-black text-gray-900">100%</span>
+              <div className="flex flex-col items-center">
+                <div className="relative w-32 h-32 mb-8 flex items-center justify-center">
+                  <svg className="w-full h-full transform -rotate-90 drop-shadow-sm" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="45" fill="none" stroke="#f1f5f9" strokeWidth="8" />
+                    <circle cx="50" cy="50" r="45" fill="none" stroke={profileCompletion === 100 ? "#10b981" : "#f59e0b"} strokeWidth="8" strokeDasharray="283" strokeDashoffset={283 - (283 * profileCompletion) / 100} strokeLinecap="round" className="animate-[dash_1.5s_ease-out] transition-all duration-1000" />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-2xl font-black text-gray-900">{profileCompletion}%</span>
+                  </div>
+                </div>
+                
+                {/* AI Auto Match Banner */}
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-xl p-4 mb-8 relative overflow-hidden w-full shadow-sm hover:shadow-md transition-shadow">
+                  <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-500 rounded-l-xl"></div>
+                  <div className="flex gap-3 items-start">
+                    <div className="text-blue-600 mt-0.5 shrink-0 bg-white p-1.5 rounded-lg shadow-sm border border-blue-50">
+                      <Lightbulb size={16} strokeWidth={2.5} />
+                    </div>
+                    <div>
+                      <h4 className="text-[13px] font-extrabold text-gray-900 mb-1 leading-tight">Auto Job Provisioning 🚀</h4>
+                      <p className="text-[11px] font-medium text-gray-600 leading-relaxed pr-1">
+                        {profileCompletion === 100 
+                          ? "Your profile is fully complete. AI is actively finding and recommending the best roles for you!"
+                          : "Once you provide full details & resume, our AI will automatically provide jobs tailored exclusively for you."}
+                      </p>
                     </div>
                   </div>
-                  
-                  <div className="text-center mb-8">
-                    <h3 className="font-extrabold text-gray-900 text-[16px] flex items-center justify-center gap-1.5 mb-1">
-                      Resume Uploaded <CheckCircle2 size={18} className="text-emerald-500" />
-                    </h3>
-                    <p className="text-[13px] text-gray-500 font-medium">Your profile is ready for applications.</p>
-                  </div>
+                </div>
 
-                  <div className="w-full space-y-4 mb-8 text-[13px] font-medium text-gray-600">
-                    <div className="flex items-center gap-3">
-                      <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0"><Check size={14} strokeWidth={3}/></div>
-                      Resume uploaded
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0"><Check size={14} strokeWidth={3}/></div>
-                      Profile information completed
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0"><Check size={14} strokeWidth={3}/></div>
-                      Ready to apply for jobs
-                    </div>
+                <div className="w-full space-y-3 mb-8 text-[13px] font-medium text-gray-600">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${userData.name && userData.email ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-100 text-gray-400'}`}><Check size={12} strokeWidth={3}/></div>
+                    Basic Information <span className="ml-auto text-[10px] text-gray-400">20%</span>
                   </div>
+                  <div className="flex items-center gap-3">
+                    <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${userData.resume ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-100 text-gray-400'}`}><Check size={12} strokeWidth={3}/></div>
+                    Resume Uploaded <span className="ml-auto text-[10px] text-gray-400">30%</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${userData.skills && userData.skills.length > 0 ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-100 text-gray-400'}`}><Check size={12} strokeWidth={3}/></div>
+                    Skills Added <span className="ml-auto text-[10px] text-gray-400">15%</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${userData.phone || userData.college || userData.city ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-100 text-gray-400'}`}><Check size={12} strokeWidth={3}/></div>
+                    Additional Details <span className="ml-auto text-[10px] text-gray-400">25%</span>
+                  </div>
+                </div>
 
+                {userData.resume ? (
                   <a target='_blank' href={userData.resume} rel="noreferrer" className="w-full bg-[#10b981] hover:bg-[#059669] text-white font-bold py-3.5 rounded-xl transition-colors flex items-center justify-center gap-2 text-[14px] shadow-[0_4px_15px_rgba(16,185,129,0.2)] hover:shadow-lg transform hover:-translate-y-0.5">
                     <FileText size={18} /> View Resume
                   </a>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center py-6">
-                  <div className="w-24 h-24 bg-amber-50 rounded-full flex items-center justify-center text-amber-500 mb-5">
-                    <Upload size={36} strokeWidth={2} />
+                ) : (
+                  <div className="w-full bg-amber-50 text-amber-700 font-bold py-3 rounded-xl flex flex-col items-center justify-center gap-1 border border-amber-100 text-center px-4">
+                    <span className="text-[13px]">Resume Missing</span>
+                    <span className="text-[11px] font-medium opacity-80">Upload below to reach 100%</span>
                   </div>
-                  <h3 className="font-extrabold text-gray-900 text-[16px] mb-2">Action Required</h3>
-                  <p className="text-[13px] text-gray-500 font-medium text-center">Upload your resume to apply for jobs and get matched.</p>
-                </div>
-              )}
+                )}
+              </div>
 
               <div className="mt-8 border-t border-gray-100 pt-8">
                 <h3 className="font-extrabold text-gray-900 text-[15px] mb-4">Update Resume</h3>
@@ -424,7 +469,7 @@ const Applications = () => {
                   </div>
                 ) : (
                   <button onClick={() => setIsEdit(true)} className="w-full bg-white border border-gray-200 hover:border-blue-200 hover:text-blue-600 hover:bg-blue-50 text-gray-700 font-bold py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 text-[14px]">
-                    <Upload size={18} /> Replace Resume
+                    <Upload size={18} /> {userData.resume ? 'Replace Resume' : 'Add Resume'}
                   </button>
                 )}
               </div>

@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { useContext, useState, useRef, useEffect, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
 import { AppContext } from '../context/AppContext';
@@ -13,6 +13,41 @@ const UserSidebar = () => {
     const { companyToken, instituteToken, userApplications, myCourses } = useContext(AppContext);
     const location = useLocation();
 
+    const [sidebarWidth, setSidebarWidth] = useState(220);
+    const isResizing = useRef(false);
+
+    const startResizing = useCallback((e) => {
+        e.preventDefault();
+        isResizing.current = true;
+        document.body.style.cursor = 'col-resize';
+    }, []);
+
+    const stopResizing = useCallback(() => {
+        isResizing.current = false;
+        document.body.style.cursor = 'default';
+    }, []);
+
+    const resize = useCallback(
+        (mouseMoveEvent) => {
+            if (isResizing.current) {
+                const newWidth = mouseMoveEvent.clientX;
+                if (newWidth >= 200 && newWidth <= 450) {
+                    setSidebarWidth(newWidth);
+                }
+            }
+        },
+        []
+    );
+
+    useEffect(() => {
+        window.addEventListener("mousemove", resize);
+        window.addEventListener("mouseup", stopResizing);
+        return () => {
+            window.removeEventListener("mousemove", resize);
+            window.removeEventListener("mouseup", stopResizing);
+        };
+    }, [resize, stopResizing]);
+
     const isActive = (path) => location.pathname === path;
 
         const navItems = [
@@ -26,7 +61,17 @@ const UserSidebar = () => {
     ];
 
     return (
-        <div className='w-[220px] min-h-screen border-r border-gray-200 bg-white hidden lg:flex flex-col flex-shrink-0 sticky top-0 h-screen overflow-y-auto'>
+        <div 
+            style={{ width: `${sidebarWidth}px`, minWidth: `${sidebarWidth}px` }}
+            className='relative min-h-screen border-r border-gray-200 bg-white hidden lg:flex flex-col flex-shrink-0 sticky top-0 h-screen overflow-y-auto'
+        >
+            
+            {/* ── Resize Handle ── */}
+            <div 
+                onMouseDown={startResizing}
+                className="absolute top-0 right-0 w-[4px] h-full cursor-col-resize hover:bg-blue-400 z-50 transition-colors"
+                title="Drag to resize sidebar"
+            />
 
             {/* ── Logo ── */}
             <div className='px-5 py-5 border-b border-gray-100'>
@@ -47,6 +92,7 @@ const UserSidebar = () => {
                             <Link
                                 key={path}
                                 to={path}
+                                id={path === '/my-courses' ? 'my-courses-sidebar-link' : undefined}
                                 className={`flex items-center justify-between px-3 py-2.5 rounded-[12px] transition-all duration-200 group
                                     ${active
                                         ? 'bg-blue-50 text-blue-600 font-bold'

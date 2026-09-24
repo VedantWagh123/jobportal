@@ -268,6 +268,27 @@ export const completeUserProfile = async (req, res) => {
             }
         }
 
+        // Handle File Removals
+        if (req.body.removeResume === 'true') {
+            if (userData.resume && userData.resume.includes('cloudinary.com')) {
+                const oldPublicId = userData.resume.split('/').slice(-1)[0];
+                if (oldPublicId) {
+                    await cloudinary.uploader.destroy(oldPublicId, { resource_type: 'raw' }).catch(err => console.warn("Failed to delete old resume:", err.message));
+                }
+            }
+            userData.resume = '';
+        }
+
+        if (req.body.removeImage === 'true') {
+            if (userData.image && userData.image.includes('cloudinary.com')) {
+                const publicId = userData.image.split('/').pop().split('.')[0];
+                if (publicId) {
+                    await cloudinary.uploader.destroy(publicId).catch(e => console.warn("Could not delete old image", e.message));
+                }
+            }
+            userData.image = '';
+        }
+
         // Handle File Uploads (resume and image) via req.files
         if (req.files) {
             // Upload Resume

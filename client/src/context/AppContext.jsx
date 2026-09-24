@@ -82,82 +82,46 @@ export const AppContextProvider = (props) => {
     // Function to handle Lumi Access Check (No Credit Consumed)
     const checkLumiAccess = (callback) => {
         if (!user) {
-            toast.error("Please login to use Lumi features.");
+            toast.error("Please login to use AI features.");
             return;
         }
-        if (userData?.isPremium) {
-            if (callback) callback();
-            return;
-        }
-        if (userData?.lumiCredits > 0) {
-            if (callback) callback();
-        } else {
-            setShowPremiumPopup(true);
-        }
+        // Temporarily unlocked for free
+        if (callback) callback();
     }
 
     // Function to handle Lumi Credit Consumption
     const consumeLumiCredit = async (callback) => {
         if (!user) {
-            toast.error("Please login to use Lumi features.");
+            toast.error("Please login to use AI features.");
             return;
         }
 
-        // If user is Premium, no limit
-        if (userData?.isPremium) {
-            if (callback) callback();
-            return;
-        }
-
-        // If user is Free but has credits
-        if (userData?.lumiCredits > 0) {
-            try {
-                const token = await getToken();
-                const { data } = await axios.post(backendUrl + '/api/users/use-lumi-credit', 
-                    {}, 
-                    { headers: { Authorization: `Bearer ${token}` } }
-                );
-
-                if (data.success) {
-                    setUserData(prev => ({ ...prev, lumiCredits: data.lumiCredits }));
-                    
-                    // Show Animated Warning
-                    toast(
-                        <motion.div 
-                            initial={{ opacity: 0, x: -10 }} 
-                            animate={{ opacity: 1, x: 0 }} 
-                            className="flex items-center gap-3"
-                        >
-                            <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center shrink-0">
-                                <Sparkles size={16} className="text-violet-600" />
-                            </div>
-                            <div>
-                                <p className="text-[13px] font-bold text-gray-800">✨ Lumi Feature Used</p>
-                                <p className="text-[11px] font-semibold text-gray-500">You have <span className="text-violet-600 font-black">{data.lumiCredits}</span> free uses left!</p>
-                            </div>
-                        </motion.div>,
-                        {
-                            position: "top-center",
-                            autoClose: 3500,
-                            hideProgressBar: true,
-                            closeOnClick: true,
-                            pauseOnHover: true,
-                            style: { borderRadius: '16px', padding: '12px', boxShadow: '0 10px 30px rgba(139,92,246,0.15)' }
-                        }
-                    );
-
-                    if (callback) callback();
-                } else {
-                    toast.error(data.message || "Something went wrong");
-                }
-            } catch (error) {
-                console.error("Failed to use Lumi credit:", error);
-                toast.error("Failed to connect to server.");
+        // Temporarily unlocked for free without credit consumption
+        toast(
+            <motion.div 
+                initial={{ opacity: 0, x: -10 }} 
+                animate={{ opacity: 1, x: 0 }} 
+                className="flex items-center gap-3"
+            >
+                <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+                    <Sparkles size={16} className="text-emerald-600" />
+                </div>
+                <div>
+                    <p className="text-[13px] font-bold text-gray-800">✨ AI Feature Unlocked</p>
+                    <p className="text-[11px] font-semibold text-gray-500">Currently free for all users!</p>
+                </div>
+            </motion.div>,
+            {
+                position: "top-center",
+                autoClose: 2500,
+                hideProgressBar: true,
+                closeOnClick: true,
+                pauseOnHover: true,
+                style: { borderRadius: '16px', padding: '12px', boxShadow: '0 10px 30px rgba(16,185,129,0.15)' }
             }
-        } else {
-            // Free user with 0 credits
-            setShowPremiumPopup(true);
-        }
+        );
+
+        if (callback) callback();
     }
 
     // --- React Query Implementations ---
@@ -298,7 +262,7 @@ export const AppContextProvider = (props) => {
             const token = await getToken();
             if (!token) return;
 
-            const { data } = await axios.get(backendUrl + '/api/users/my-courses', {
+            const { data } = await axios.get(backendUrl + `/api/users/my-courses?t=${Date.now()}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             if (data.success) {

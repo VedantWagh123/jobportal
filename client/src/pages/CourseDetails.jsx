@@ -2,6 +2,7 @@ import React, { useState, useContext, useEffect } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { AppContext } from '../context/AppContext';
 import { Play, Clock, Award, ArrowLeft, Heart, MessageSquare, AlertCircle, HelpCircle, Share2, Star, CheckCircle, FileText, BookOpen } from 'lucide-react';
+import { useAuth } from '@clerk/clerk-react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 
@@ -9,12 +10,17 @@ const CourseDetails = () => {
     const { id } = useParams();
     const location = useLocation();
     const navigate = useNavigate();
-    const { backendUrl, myCourses } = useContext(AppContext);
+    const { backendUrl, myCourses, fetchMyCourses, userData, setIsProfileModalOpen } = useContext(AppContext);
+    const { getToken, isSignedIn } = useAuth();
     
     const [course, setCourse] = useState(location.state?.course || null);
     const [activeTab, setActiveTab] = useState('Overview');
     const [loading, setLoading] = useState(!course);
     const [enrolling, setEnrolling] = useState(false);
+    
+    // Guide Animation State
+    const [showGuide, setShowGuide] = useState(false);
+    const [guideTarget, setGuideTarget] = useState({ x: 0, y: 0 });
 
     useEffect(() => {
         const fetchCourse = async () => {
@@ -54,14 +60,51 @@ const CourseDetails = () => {
     const tabs = ['Overview', 'Curriculum', 'Instructor', 'Reviews', 'FAQs'];
 
     const handleEnroll = async () => {
+        if (!isSignedIn) {
+            toast.info("Please login to enroll in courses");
+            return;
+        }
+
+        if (!userData || !userData.resume) {
+            toast.info("Please update your profile first before enrolling in courses.");
+            setIsProfileModalOpen(true);
+            return;
+        }
+
         setEnrolling(true);
         try {
+            const token = await getToken();
             const { data } = await axios.post(backendUrl + '/api/users/enroll', { batchId: course._id }, {
-                headers: { token: localStorage.getItem('userToken') }
+                headers: { Authorization: `Bearer ${token}` }
             });
             if (data.success) {
                 toast.success('Successfully enrolled!');
-                navigate('/my-courses');
+                await fetchMyCourses(); // Ensure context is updated before navigating
+
+                if (localStorage.getItem('hasSeenMyCoursesGuide') !== 'true') {
+                    const targetEl = document.getElementById('my-courses-sidebar-link');
+                    if (targetEl) {
+                        const rect = targetEl.getBoundingClientRect();
+                        setGuideTarget({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+                        setShowGuide(true);
+                        
+                        targetEl.style.transition = "all 0.3s";
+                        targetEl.style.boxShadow = "0 0 0 4px rgba(59, 130, 246, 0.5)";
+                        targetEl.style.backgroundColor = "rgba(239, 246, 255, 1)";
+                        
+                        setTimeout(() => {
+                            targetEl.style.boxShadow = "";
+                            targetEl.style.backgroundColor = "";
+                            setShowGuide(false);
+                            localStorage.setItem('hasSeenMyCoursesGuide', 'true');
+                            navigate('/my-courses');
+                        }, 2500);
+                    } else {
+                        navigate('/my-courses');
+                    }
+                } else {
+                    navigate('/my-courses');
+                }
             } else {
                 toast.error(data.message || 'Enrollment failed');
             }
@@ -74,7 +117,7 @@ const CourseDetails = () => {
 
     return (
         <div className="min-h-screen bg-[#F8FAFC] pb-20">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div className="w-full px-4 sm:px-6 lg:px-10 xl:px-14 mx-auto py-8 md:py-10">
                 
                 {/* Back Button */}
                 <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-slate-500 hover:text-blue-600 transition-colors font-medium text-sm mb-6 w-fit">
@@ -86,50 +129,73 @@ const CourseDetails = () => {
                     {/* LEFT COLUMN - MAIN CONTENT */}
                     <div className="lg:col-span-8 space-y-6">
                         
-                        {/* HERO BANNER */}
-                        <div className="relative w-full aspect-[21/9] sm:aspect-[21/8] bg-slate-900 rounded-3xl overflow-hidden shadow-xl group">
-                            {course.image ? (
-                                <img src={course.image} alt={course.name} className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-60 transition-opacity duration-500" />
-                            ) : (
-                                <div className="absolute inset-0 bg-gradient-to-r from-blue-900 to-indigo-900 opacity-80" />
-                            )}
-                            <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent" />
-                            <div className="absolute inset-0 bg-gradient-to-r from-slate-900/90 via-slate-900/40 to-transparent" />
+                        {/* HERO BANNER - Premium Redesign */}
+                        <div className="relative w-full rounded-[32px] overflow-hidden shadow-2xl group min-h-[340px] flex items-center bg-[#0a0f1c] border border-blue-900/30">
+                            {/* Animated Background Gradients & Orbs */}
+                            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-600/20 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/3 group-hover:bg-blue-500/30 transition-colors duration-1000"></div>
+                            <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-indigo-600/20 rounded-full blur-[100px] translate-y-1/3 -translate-x-1/4 group-hover:bg-indigo-500/30 transition-colors duration-1000"></div>
+                            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 mix-blend-overlay"></div>
                             
-                            <div className="absolute inset-0 p-6 sm:p-10 flex flex-col justify-end">
-                                <div className="flex flex-wrap gap-2 mb-4">
+                            {course.image && (
+                                <img src={course.image} alt={course.name} className="absolute inset-0 w-full h-full object-cover opacity-30 mix-blend-luminosity group-hover:opacity-40 transition-opacity duration-700" />
+                            )}
+                            
+                            {/* Glassmorphism Gradient Overlay */}
+                            <div className="absolute inset-0 bg-gradient-to-r from-[#0a0f1c] via-[#0a0f1c]/90 to-transparent z-10" />
+                            
+                            {/* Decorative Floating Elements (Right Side) */}
+                            <div className="absolute right-10 top-1/2 -translate-y-1/2 hidden md:block z-20">
+                                <div className="relative w-64 h-64">
+                                    <div className="absolute inset-0 rounded-full border border-blue-500/20 border-dashed animate-[spin_20s_linear_infinite]"></div>
+                                    <div className="absolute inset-4 rounded-full border border-indigo-500/20 animate-[spin_15s_linear_infinite_reverse]"></div>
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                        <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/30 flex items-center justify-center transform rotate-12 group-hover:rotate-0 transition-transform duration-500">
+                                            <Award size={40} className="text-white" />
+                                        </div>
+                                    </div>
+                                    {/* Small Floating Dots */}
+                                    <div className="absolute top-0 left-1/2 w-2 h-2 bg-blue-400 rounded-full shadow-[0_0_10px_#60a5fa] animate-pulse"></div>
+                                    <div className="absolute bottom-1/4 right-0 w-3 h-3 bg-indigo-400 rounded-full shadow-[0_0_10px_#818cf8] animate-bounce"></div>
+                                </div>
+                            </div>
+                            
+                            {/* Content */}
+                            <div className="relative z-30 p-8 sm:p-12 w-full max-w-3xl flex flex-col justify-center">
+                                <div className="flex flex-wrap gap-3 mb-6">
                                     {course.targetRole && (
-                                        <span className="px-3 py-1 bg-blue-600/90 backdrop-blur-sm text-white text-xs font-bold rounded-lg border border-blue-500/30 shadow-sm">
+                                        <span className="px-4 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[11px] font-black tracking-wider uppercase rounded-full shadow-lg shadow-blue-900/50">
                                             {course.targetRole.name || 'Professional'}
                                         </span>
                                     )}
-                                    <span className="px-3 py-1 bg-white/10 backdrop-blur-md text-blue-100 text-xs font-bold rounded-lg border border-white/10">
-                                        Beginner to Advanced
+                                    <span className="px-4 py-1.5 bg-white/5 backdrop-blur-md text-blue-200 text-[11px] font-bold tracking-wider uppercase rounded-full border border-white/10 flex items-center gap-1.5">
+                                        <Sparkles size={12} className="text-blue-400"/> Beginner to Advanced
                                     </span>
                                 </div>
-                                <h1 className="text-2xl sm:text-4xl font-extrabold text-white leading-tight mb-3 max-w-2xl drop-shadow-lg">
-                                    {course.name}
+                                
+                                <h1 className="text-3xl sm:text-4xl md:text-[42px] font-black text-white leading-[1.15] mb-5 tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-300">
+                                    {course.name || "Master Professional Skills"}
                                 </h1>
-                                <p className="text-slate-300 text-sm sm:text-base max-w-2xl line-clamp-2 mb-6 text-shadow-sm font-medium">
-                                    {course.description || "Master these skills from fundamentals to real-world production applications. Start learning today."}
+                                
+                                <p className="text-slate-400 text-sm sm:text-base md:text-[15px] leading-relaxed max-w-xl mb-8 font-medium">
+                                    {course.description || "Master these skills from fundamentals to real-world production applications. Start learning today and accelerate your career growth with industry experts."}
                                 </p>
                                 
-                                <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-slate-200 text-sm font-semibold">
-                                    <div className="flex items-center gap-2 bg-slate-900/40 px-3 py-1.5 rounded-lg border border-white/5 backdrop-blur-sm">
-                                        <BookOpen size={16} className="text-blue-400" />
-                                        <span>{course.curriculum?.length || 0} Modules</span>
+                                <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-slate-300 text-[13px] font-bold">
+                                    <div className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-xl border border-white/10 backdrop-blur-sm shadow-inner hover:bg-white/10 transition-colors">
+                                        <div className="w-6 h-6 rounded-md bg-blue-500/20 flex items-center justify-center"><BookOpen size={14} className="text-blue-400" /></div>
+                                        {course.curriculum?.length || 0} Modules
                                     </div>
-                                    <div className="flex items-center gap-2 bg-slate-900/40 px-3 py-1.5 rounded-lg border border-white/5 backdrop-blur-sm">
-                                        <Clock size={16} className="text-blue-400" />
-                                        <span>{course.durationMonths} Months</span>
+                                    <div className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-xl border border-white/10 backdrop-blur-sm shadow-inner hover:bg-white/10 transition-colors">
+                                        <div className="w-6 h-6 rounded-md bg-indigo-500/20 flex items-center justify-center"><Clock size={14} className="text-indigo-400" /></div>
+                                        {course.durationMonths} Months
                                     </div>
-                                    <div className="flex items-center gap-2 bg-slate-900/40 px-3 py-1.5 rounded-lg border border-white/5 backdrop-blur-sm">
-                                        <Award size={16} className="text-blue-400" />
-                                        <span>Certificate</span>
+                                    <div className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-xl border border-white/10 backdrop-blur-sm shadow-inner hover:bg-white/10 transition-colors hidden sm:flex">
+                                        <div className="w-6 h-6 rounded-md bg-emerald-500/20 flex items-center justify-center"><Award size={14} className="text-emerald-400" /></div>
+                                        Certificate
                                     </div>
-                                    <div className="flex items-center gap-2 bg-slate-900/40 px-3 py-1.5 rounded-lg border border-white/5 backdrop-blur-sm hidden sm:flex">
-                                        <Play size={16} className="text-blue-400" />
-                                        <span>Self-paced</span>
+                                    <div className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-xl border border-white/10 backdrop-blur-sm shadow-inner hover:bg-white/10 transition-colors hidden sm:flex">
+                                        <div className="w-6 h-6 rounded-md bg-purple-500/20 flex items-center justify-center"><Play size={14} className="text-purple-400" /></div>
+                                        Self-paced
                                     </div>
                                 </div>
                             </div>
@@ -404,6 +470,34 @@ const CourseDetails = () => {
                     </div>
                 </div>
             </div>
+
+            {/* CURSOR GUIDE ANIMATION OVERLAY */}
+            {showGuide && (
+                <div 
+                    className="fixed z-[9999] pointer-events-none transition-all duration-[2000ms] ease-in-out flex flex-col items-center gap-1"
+                    style={{
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-10px, -10px)'
+                    }}
+                    ref={(el) => {
+                        if (el) {
+                            setTimeout(() => {
+                                el.style.top = `${guideTarget.y}px`;
+                                el.style.left = `${guideTarget.x}px`;
+                            }, 50);
+                        }
+                    }}
+                >
+                    <div className="bg-blue-600 text-white px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-xl animate-bounce">
+                        Click My Courses
+                    </div>
+                    {/* SVG Mouse Cursor */}
+                    <svg width="24" height="36" viewBox="0 0 24 36" fill="none" className="drop-shadow-2xl">
+                        <path d="M2.93652 1.34424L20.407 24.3055L12.5117 24.9774L15.6888 34.0201L10.0211 35.8081L6.72122 26.5492L0.285856 31.0664L2.93652 1.34424Z" fill="black" stroke="white" strokeWidth="2" strokeLinejoin="round"/>
+                    </svg>
+                </div>
+            )}
         </div>
     );
 };

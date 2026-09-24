@@ -135,6 +135,14 @@ const Navbar = () => {
         setTimeout(() => setShakeLogin(false), 650); // Remove shake class after animation
     };
 
+    useEffect(() => {
+        const handleLoginShake = () => {
+            triggerLoginRequired();
+        };
+        window.addEventListener('requireLoginShake', handleLoginShake);
+        return () => window.removeEventListener('requireLoginShake', handleLoginShake);
+    }, []);
+
     const handleFeatureClick = (e, path) => {
         e.preventDefault();
         if (!user) {
@@ -149,6 +157,20 @@ const Navbar = () => {
 
     const isCareerToolsActive = location.pathname.includes('/resumes');
 
+    const calculateProfileCompletion = () => {
+        if (!userData) return 0;
+        let score = 0;
+        if (userData.name && userData.email) score += 20;
+        if (userData.image) score += 10;
+        if (userData.resume) score += 30;
+        if (userData.skills && userData.skills.length > 0) score += 15;
+        if (userData.phone) score += 10;
+        if (userData.city || userData.address) score += 5;
+        if (userData.college) score += 10;
+        return score;
+    }
+    const isProfileComplete = calculateProfileCompletion() === 100;
+
     return (
         <div className='bg-white border-b border-gray-100 py-3 sticky top-0 z-40 shadow-[0_1px_10px_rgba(0,0,0,0.05)]'>
             <div className='px-4 lg:px-6 flex items-center justify-between gap-3'>
@@ -158,22 +180,8 @@ const Navbar = () => {
                     <img src={assets.logo} alt="InsiderJobs" className="h-6 sm:h-7 object-contain" />
                 </Link>
 
-                {/* ── Search Bar ── */}
-                <div className="hidden lg:flex items-center flex-1">
-                    <form onSubmit={handleSearch} className="flex items-center bg-[#F3F4F6] hover:bg-[#E5E7EB] border border-transparent rounded-full px-4 py-2 w-full max-w-[320px] transition-all focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-300">
-                        <Search size={16} className="text-gray-400 shrink-0" />
-                        <input
-                            ref={searchRef}
-                            type="text"
-                            placeholder="Search jobs, skills, or career tools..."
-                            value={localSearch}
-                            onChange={(e) => setLocalSearch(e.target.value)}
-                            onFocus={() => setIsSearchFocused(true)}
-                            onBlur={() => setIsSearchFocused(false)}
-                            className="bg-transparent border-none outline-none text-sm font-medium text-gray-700 w-full ml-2 placeholder-gray-400"
-                        />
-                    </form>
-                </div>
+                {/* ── Search Bar Space ── */}
+                <div className="hidden lg:flex flex-1"></div>
 
                 {/* ── Quick Actions Navigation (Center) ── */}
                 <div className="hidden md:flex items-center justify-center flex-1 gap-2 xl:gap-4 mx-2">
@@ -396,9 +404,9 @@ const Navbar = () => {
                                 className='flex items-center gap-2.5 cursor-pointer py-1.5 px-2 pr-3 rounded-xl hover:bg-gray-50 transition'
                             >
                                 {userData?.image || user.imageUrl ? (
-                                    <img src={userData?.image || user.imageUrl} alt='Profile' className='w-9 h-9 rounded-full object-cover border-2 border-white shadow-sm ring-1 ring-gray-200' />
+                                    <img src={userData?.image || user.imageUrl} alt='Profile' className={`w-9 h-9 rounded-full object-cover border-2 border-white ${!isProfileComplete ? 'ring-1 ring-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.6)] animate-[pulse_2s_ease-in-out_infinite]' : 'shadow-sm ring-1 ring-gray-200'}`} />
                                 ) : (
-                                    <div className='w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-sm shadow-sm'>
+                                    <div className={`w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-sm border-2 border-white ${!isProfileComplete ? 'shadow-[0_0_15px_rgba(59,130,246,0.6)] animate-[pulse_2s_ease-in-out_infinite]' : 'shadow-sm'}`}>
                                         {user.fullName?.[0] || <UserIcon size={16} />}
                                     </div>
                                 )}

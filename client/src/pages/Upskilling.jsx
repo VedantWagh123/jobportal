@@ -20,7 +20,7 @@ const CATEGORIES = [
 ];
 
 const Upskilling = () => {
-    const { backendUrl, userData, fetchMyCourses } = useContext(AppContext);
+    const { backendUrl, userData, fetchMyCourses, setIsProfileModalOpen } = useContext(AppContext);
     const { getToken, isSignedIn } = useAuth();
     const navigate = useNavigate();
 
@@ -42,6 +42,10 @@ const Upskilling = () => {
     const [reviewRating, setReviewRating] = useState(0);
     const [reviewText, setReviewText] = useState("");
     const [submittingReview, setSubmittingReview] = useState(false);
+
+    // Guide Animation State
+    const [showGuide, setShowGuide] = useState(false);
+    const [guideTarget, setGuideTarget] = useState({ x: 0, y: 0 });
 
     useEffect(() => {
         const queryParams = new URLSearchParams(loc.search);
@@ -110,6 +114,13 @@ const Upskilling = () => {
             toast.info("Please login to enroll in courses");
             return;
         }
+
+        if (!userData || !userData.resume) {
+            toast.info("Please update your profile first before enrolling in courses.");
+            setIsProfileModalOpen(true);
+            return;
+        }
+
         if (!course.batchAvailable || !course.batchId) {
             toast.error("No active batches available for this course right now.");
             return;
@@ -130,7 +141,30 @@ const Upskilling = () => {
                 setCourses(prev => prev.map(c => 
                     c.courseId === course.courseId ? { ...c, isEnrolled: true, totalStudents: c.totalStudents + 1 } : c
                 ));
-                fetchMyCourses(); // Update myCourses context
+                await fetchMyCourses(); // Update myCourses context before unblocking UI
+
+                // TRIGGER GUIDE ANIMATION (First time only)
+                if (localStorage.getItem('hasSeenMyCoursesGuide') !== 'true') {
+                    const targetEl = document.getElementById('my-courses-sidebar-link');
+                    if (targetEl) {
+                        const rect = targetEl.getBoundingClientRect();
+                        setGuideTarget({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+                        setShowGuide(true);
+                        
+                        // Flash effect on the target
+                        targetEl.style.transition = "all 0.3s";
+                        targetEl.style.boxShadow = "0 0 0 4px rgba(59, 130, 246, 0.5)";
+                        targetEl.style.backgroundColor = "rgba(239, 246, 255, 1)";
+                        
+                        setTimeout(() => {
+                            targetEl.style.boxShadow = "";
+                            targetEl.style.backgroundColor = "";
+                            setShowGuide(false);
+                            localStorage.setItem('hasSeenMyCoursesGuide', 'true');
+                            navigate('/my-courses');
+                        }, 2500); // Navigate after 2.5s animation
+                    }
+                }
             } else {
                 toast.error(data.message);
             }
@@ -653,6 +687,35 @@ const Upskilling = () => {
                             {submittingReview ? <Loader2 size={18} className="animate-spin" /> : 'Submit Feedback'}
                         </button>
                     </div>
+                </div>
+            )}
+
+            {/* CURSOR GUIDE ANIMATION OVERLAY */}
+            {showGuide && (
+                <div 
+                    className="fixed z-[9999] pointer-events-none transition-all duration-[2000ms] ease-in-out flex flex-col items-center gap-1"
+                    style={{
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-10px, -10px)'
+                    }}
+                    ref={(el) => {
+                        if (el) {
+                            // animate to target after small delay to let it mount
+                            setTimeout(() => {
+                                el.style.top = `${guideTarget.y}px`;
+                                el.style.left = `${guideTarget.x}px`;
+                            }, 50);
+                        }
+                    }}
+                >
+                    <div className="bg-blue-600 text-white px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-xl animate-bounce">
+                        Click My Courses
+                    </div>
+                    {/* SVG Mouse Cursor */}
+                    <svg width="24" height="36" viewBox="0 0 24 36" fill="none" className="drop-shadow-2xl">
+                        <path d="M2.93652 1.34424L20.407 24.3055L12.5117 24.9774L15.6888 34.0201L10.0211 35.8081L6.72122 26.5492L0.285856 31.0664L2.93652 1.34424Z" fill="black" stroke="white" strokeWidth="2" strokeLinejoin="round"/>
+                    </svg>
                 </div>
             )}
         </div>

@@ -9,7 +9,7 @@ import Footer from '../components/Footer'
 import axios from 'axios'
 import { toast } from 'react-toastify'
 import { useAuth } from '@clerk/clerk-react'
-import { Briefcase, MapPin, BarChart, Bookmark, Building, Users, Calendar, Link as LinkIcon, ClipboardList, CheckCircle2, IndianRupee, Sparkles, Share2, ArrowRight, CheckCircle, Zap, Lightbulb, Layers, Trash2, X, Plus, Search } from 'lucide-react'
+import { Briefcase, MapPin, BarChart, Bookmark, Building, Users, Calendar, Link as LinkIcon, ClipboardList, CheckCircle2, IndianRupee, Sparkles, Share2, ArrowRight, CheckCircle, Zap, Lightbulb, Layers, Trash2, X, Plus, Search, AlertCircle, XCircle } from 'lucide-react'
 
 const ApplyJob = () => {
 
@@ -21,6 +21,10 @@ const ApplyJob = () => {
   const [isAlreadyApplied, setIsAlreadyApplied] = useState(false)
   const [activeTab, setActiveTab] = useState('Overview')
   const [newSkill, setNewSkill] = useState('')
+  const [showLowSkillPopup, setShowLowSkillPopup] = useState(false)
+  const [showSkillDetails, setShowSkillDetails] = useState(false)
+  const [publicCourses, setPublicCourses] = useState([])
+  const [loadingCourses, setLoadingCourses] = useState(false)
 
   const { jobs, backendUrl, userData, setUserData, userApplications, fetchUserApplications, savedJobs, toggleSaveJob } = useContext(AppContext)
 
@@ -37,16 +41,9 @@ const ApplyJob = () => {
     }
   }
 
-  const applyHandler = async () => {
+  const executeApply = async () => {
     try {
-      if (!userData) {
-        return toast.error('Login to apply for jobs')
-      }
-      if (!userData.resume) {
-        navigate('/applications')
-        return toast.error('Upload resume to apply')
-      }
-      
+      setShowLowSkillPopup(false);
       // OPTIMISTIC UI UPDATE
       const optimisticApp = { 
         jobId: { _id: JobData._id }, 
@@ -81,20 +78,43 @@ const ApplyJob = () => {
     }
   }
 
+  const applyHandler = () => {
+    if (!userData) {
+      return toast.error('Login to apply for jobs')
+    }
+    if (!userData.resume) {
+      navigate('/applications')
+      return toast.warn('Please upload your resume to apply for this job', { autoClose: 5000 })
+    }
+
+    const currentDisplaySkills = JobData.skills && JobData.skills.length > 0 ? JobData.skills : [JobData.category || 'Problem Solving'];
+    const currentMatch = calculateMatch(userData.skills, currentDisplaySkills);
+
+    if (currentMatch < 60) {
+      setShowLowSkillPopup(true);
+      setShowSkillDetails(false);
+    } else {
+      executeApply();
+    }
+  }
+
   const checkAlreadyApplied = () => {
     const hasApplied = userApplications.some(item => item.jobId?._id === JobData._id)
     setIsAlreadyApplied(hasApplied)
   }
 
-  const calculateMatch = (userSkills, jobSkills) => {
-    if (!jobSkills || jobSkills.length === 0) return 0;
-    if (!userSkills || userSkills.length === 0) return 0;
-    
-    const uSkillsArray = Array.isArray(userSkills) ? userSkills : (typeof userSkills === 'string' ? userSkills.split(',') : []);
-    const jSkillsArray = Array.isArray(jobSkills) ? jobSkills : (typeof jobSkills === 'string' ? jobSkills.split(',') : []);
+  const parseSkills = (skills) => {
+    if (!skills) return [];
+    if (typeof skills === 'string') return skills.split(',').map(s => s.trim().toLowerCase()).filter(s => s !== '');
+    if (Array.isArray(skills)) {
+      return skills.flatMap(s => typeof s === 'string' ? s.split(',').map(x => x.trim().toLowerCase()) : []).filter(s => s !== '');
+    }
+    return [];
+  };
 
-    const validUserSkills = uSkillsArray.map(s => typeof s === 'string' ? s.trim().toLowerCase() : '').filter(s => s !== '');
-    const validJobSkills = jSkillsArray.map(s => typeof s === 'string' ? s.trim().toLowerCase() : '').filter(s => s !== '');
+  const calculateMatch = (userSkills, jobSkills) => {
+    const validUserSkills = parseSkills(userSkills);
+    const validJobSkills = parseSkills(jobSkills);
     
     if (validJobSkills.length === 0 || validUserSkills.length === 0) return 0;
 
@@ -106,9 +126,9 @@ const ApplyJob = () => {
     if (!skill || !jobSkills || jobSkills.length === 0) return false;
     const s = String(skill).trim().toLowerCase();
     if (!s) return false;
-    return jobSkills.some(js => {
-      const j = String(js).trim().toLowerCase();
-      return j === s || j.includes(s) || s.includes(j);
+    const validJobSkills = parseSkills(jobSkills);
+    return validJobSkills.some(js => {
+      return js === s || js.includes(s) || s.includes(js);
     });
   }
 
@@ -178,6 +198,24 @@ const ApplyJob = () => {
   }, [id])
 
   useEffect(() => {
+    if (showSkillDetails && publicCourses.length === 0) {
+      const fetchCourses = async () => {
+        setLoadingCourses(true);
+        try {
+          const { data } = await axios.get(backendUrl + '/api/users/courses');
+          if (data.success) {
+            setPublicCourses(data.courses);
+          }
+        } catch (error) {
+          console.error(error);
+        }
+        setLoadingCourses(false);
+      }
+      fetchCourses()
+    }
+  }, [showSkillDetails, backendUrl, publicCourses.length])
+
+  useEffect(() => {
     if (userApplications.length > 0 && JobData) {
       checkAlreadyApplied()
     }
@@ -188,6 +226,21 @@ const ApplyJob = () => {
   if (!JobData.companyId || typeof JobData.companyId !== 'object') return <Loading />
 
   const displaySkills = JobData.skills && JobData.skills.length > 0 ? JobData.skills : [JobData.category || 'Problem Solving']
+  
+  const userSkillsList = userData && userData.skills ? (Array.isArray(userData.skills) ? userData.skills : (typeof userData.skills === 'string' ? userData.skills.split(',') : [])) : [];
+  const acquiredSkills = displaySkills.filter(skill => isSkillMatched(skill, userSkillsList));
+  const missingSkills = displaySkills.filter(skill => !isSkillMatched(skill, userSkillsList));
+
+  const recommendedCourses = publicCourses.filter(course => {
+    if (!course.coveredSkills || course.coveredSkills.length === 0) return false;
+    return missingSkills.some(missingSkill => {
+      const ms = String(missingSkill).trim().toLowerCase();
+      return course.coveredSkills.some(cs => {
+        const css = String(cs).trim().toLowerCase();
+        return css === ms || css.includes(ms) || ms.includes(css);
+      });
+    });
+  }).slice(0, 3); // top 3 courses
   
   const similarJobs = jobs.filter(job => 
       job._id !== JobData._id && 
@@ -579,6 +632,104 @@ const ApplyJob = () => {
                       </div>
                     </div>
 
+                    {/* Skill Gap Details */}
+                    {showSkillDetails && (
+                      <div id="skill-details-section" className="bg-white rounded-2xl p-6 md:p-8 border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mt-8 animate-fadeIn">
+                        <div className="mb-6">
+                          <h4 className="text-xl font-extrabold text-gray-900 flex items-center gap-2.5">
+                            <BarChart size={24} className="text-blue-500"/> Skill Gap Analysis
+                          </h4>
+                          <p className="text-[15px] text-gray-500 mt-1.5 font-medium">Here is a detailed breakdown of the skills required for this job and your current proficiency.</p>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                          {/* Acquired Skills */}
+                          <div className="bg-green-50/50 rounded-2xl p-5 border border-green-100/50">
+                            <h5 className="font-extrabold text-green-800 flex items-center gap-2 mb-4">
+                              <CheckCircle2 size={18} className="text-green-600" /> Acquired Skills ({acquiredSkills.length})
+                            </h5>
+                            {acquiredSkills.length > 0 ? (
+                              <div className="flex flex-col gap-3">
+                                {acquiredSkills.map((skill, idx) => (
+                                  <div key={idx} className="flex items-center gap-3 bg-white p-3 rounded-xl border border-green-100 shadow-sm">
+                                    <div className="w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center shrink-0">
+                                      <CheckCircle2 size={16} />
+                                    </div>
+                                    <span className="font-bold text-gray-800 text-[14px]">{skill}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-sm text-gray-500 italic">No acquired skills for this job.</p>
+                            )}
+                          </div>
+
+                          {/* Missing Skills */}
+                          <div className="bg-red-50/50 rounded-2xl p-5 border border-red-100/50">
+                            <h5 className="font-extrabold text-red-800 flex items-center gap-2 mb-4">
+                              <AlertCircle size={18} className="text-red-500" /> Skills to Develop ({missingSkills.length})
+                            </h5>
+                            {missingSkills.length > 0 ? (
+                              <div className="flex flex-col gap-3">
+                                {missingSkills.map((skill, idx) => (
+                                  <div key={idx} className="flex items-center gap-3 bg-white p-3 rounded-xl border border-red-100 shadow-sm">
+                                    <div className="w-8 h-8 rounded-full bg-red-100 text-red-500 flex items-center justify-center shrink-0">
+                                      <XCircle size={16} />
+                                    </div>
+                                    <span className="font-bold text-gray-800 text-[14px]">{skill}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-sm text-gray-500 italic">You have all the required skills!</p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Recommended Courses (Only for Missing Skills) */}
+                        {missingSkills.length > 0 && (
+                          <div className="mt-8 border-t border-gray-100 pt-8">
+                            <h4 className="text-lg font-extrabold text-gray-900 flex items-center gap-2 mb-2">
+                              <Sparkles size={20} className="text-purple-500" /> Recommended Courses
+                            </h4>
+                            <p className="text-[14px] text-gray-500 mb-6 font-medium">Courses that cover the specific skills you need to develop for this role.</p>
+                            
+                            {loadingCourses ? (
+                              <div className="flex justify-center p-4"><div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div></div>
+                            ) : recommendedCourses.length > 0 ? (
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                                {recommendedCourses.map(course => (
+                                  <div key={course.courseId} onClick={() => navigate(`/course/${course.courseId}`)} className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow cursor-pointer flex flex-col h-full">
+                                    <img src={course.courseImage || 'https://via.placeholder.com/400x200?text=Course'} alt={course.courseName} className="w-full h-32 object-cover" />
+                                    <div className="p-4 flex flex-col flex-1">
+                                      <h5 className="font-bold text-gray-900 text-[15px] mb-1 line-clamp-2">{course.courseName}</h5>
+                                      <p className="text-[12px] text-gray-500 mb-3">{course.instituteName}</p>
+                                      
+                                      <div className="mt-auto">
+                                        <div className="flex flex-wrap gap-1 mb-3">
+                                          {course.coveredSkills.slice(0, 2).map((s, i) => (
+                                            <span key={i} className="text-[10px] font-bold bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full">{s}</span>
+                                          ))}
+                                          {course.coveredSkills.length > 2 && (
+                                            <span className="text-[10px] font-bold bg-gray-50 text-gray-600 px-2 py-0.5 rounded-full">+{course.coveredSkills.length - 2}</span>
+                                          )}
+                                        </div>
+                                        <button className="w-full py-2 bg-gray-50 hover:bg-gray-100 text-gray-800 font-bold text-xs rounded-lg transition-colors border border-gray-200">View Course</button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="bg-gray-50 rounded-xl p-6 text-center border border-gray-100">
+                                <p className="text-gray-500 font-medium text-sm">No courses currently available that match your missing skills.</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                   </div>
                 </div>
               )}
@@ -780,6 +931,83 @@ const ApplyJob = () => {
       </div>
       
       <Footer />
+
+      {/* Low Skill Popup */}
+      {showLowSkillPopup && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 pointer-events-none">
+          <div className="bg-white rounded-[24px] p-8 max-w-[500px] w-full shadow-[0_24px_60px_-12px_rgba(0,0,0,0.15)] ring-1 ring-black/5 border border-gray-50 pointer-events-auto transform transition-all animate-fadeIn relative flex flex-col">
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-red-400 to-orange-400 rounded-t-[24px]"></div>
+            
+            <button 
+              onClick={() => setShowLowSkillPopup(false)}
+              className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
+              aria-label="Close"
+            >
+              <X size={20} />
+            </button>
+            
+            <div className="flex flex-col items-center text-center mt-2">
+              <div className="w-16 h-16 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center mb-5 shadow-sm border border-red-100">
+                <AlertCircle size={32} />
+              </div>
+              <h3 className="text-2xl font-black text-gray-900 mb-3 tracking-tight">Skill Match Too Low</h3>
+              <div className="bg-gray-50 rounded-xl p-4 mb-6 border border-gray-100 shadow-inner">
+                <p className="text-[15px] text-gray-700 font-medium leading-relaxed">
+                  Your skill match is <span className="font-bold text-red-600">below 60%</span>. We strongly recommend developing your skills before applying. Please cancel and review the required skills below to see what you need to learn or improve.
+                </p>
+              </div>
+              
+              <div className="flex flex-col gap-3 w-full">
+                <button 
+                  onClick={() => {
+                    setShowLowSkillPopup(false);
+                    setShowSkillDetails(true);
+                    setTimeout(() => {
+                      const element = document.getElementById('skill-details-section');
+                      if (element) {
+                        const targetTop = element.getBoundingClientRect().top + window.scrollY - 80;
+                        const startPosition = window.pageYOffset;
+                        const distance = targetTop - startPosition;
+                        const duration = 1200; // 1.2 seconds for slow cinematic scroll
+                        let startTime = null;
+
+                        const ease = (t, b, c, d) => {
+                          t /= d / 2;
+                          if (t < 1) return c / 2 * t * t + b;
+                          t--;
+                          return -c / 2 * (t * (t - 2) - 1) + b;
+                        };
+
+                        const animation = (currentTime) => {
+                          if (startTime === null) startTime = currentTime;
+                          const timeElapsed = currentTime - startTime;
+                          const run = ease(timeElapsed, startPosition, distance, duration);
+                          window.scrollTo(0, run);
+                          if (timeElapsed < duration) {
+                            requestAnimationFrame(animation);
+                          } else {
+                            window.scrollTo(0, targetTop);
+                          }
+                        };
+                        requestAnimationFrame(animation);
+                      }
+                    }, 150);
+                  }}
+                  className="w-full py-3.5 px-4 rounded-xl font-bold text-white bg-green-600 hover:bg-green-700 shadow-md shadow-green-500/20 hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                >
+                  <CheckCircle2 size={18} /> Cancel & View Required Skills
+                </button>
+                <button 
+                  onClick={executeApply}
+                  className="w-full py-3.5 px-4 rounded-xl font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-100 transition-all flex items-center justify-center gap-2"
+                >
+                  <X size={18} /> Proceed with Application Anyway
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

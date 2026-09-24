@@ -49,8 +49,7 @@ const HomeResumeAnalyzer = () => {
 
   const handleUploadClick = () => {
     if (!isSignedIn) {
-      toast.error("Please sign in to use the AI Resume Analyzer.");
-      navigate('/applications');
+      window.dispatchEvent(new Event('requireLoginShake'));
       return;
     }
     if (fileInputRef.current) {
@@ -193,7 +192,7 @@ const HomeResumeAnalyzer = () => {
             <button 
               onClick={() => {
                 if (!isSignedIn) {
-                  toast.error("Please sign in first.");
+                  window.dispatchEvent(new Event('requireLoginShake'));
                   return;
                 }
                 checkLumiAccess(() => navigate('/resume-builder'))
@@ -213,7 +212,7 @@ const HomeResumeAnalyzer = () => {
             <div 
               onClick={() => {
                 if (!isSignedIn) {
-                  toast.error("Please sign in first.");
+                  window.dispatchEvent(new Event('requireLoginShake'));
                   return;
                 }
                 checkLumiAccess(() => navigate('/smart-match'))
@@ -417,7 +416,7 @@ const HomeResumeAnalyzer = () => {
                 className="w-full pointer-events-auto cursor-pointer bg-[#eff6ff] text-blue-600 hover:bg-blue-100 transition-colors font-extrabold text-[12px] py-3 rounded-xl flex items-center justify-center gap-1.5" 
                 onClick={() => {
                   if (!isSignedIn) {
-                    toast.error("Please sign in first.");
+                    window.dispatchEvent(new Event('requireLoginShake'));
                     return;
                   }
                   checkLumiAccess(() => navigate('/resume-builder'))

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { AppContext } from '../context/AppContext'
 import { Sparkles, Target, ClipboardList, GraduationCap, Building2, ArrowRight, FileText, Star, Users } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { useAuth } from '@clerk/clerk-react'
 
 const FEATURES = [
     {
@@ -92,8 +93,14 @@ const STATS = [
 const FeaturesSection = () => {
     const navigate = useNavigate()
     const { setIsChatbotOpen } = useContext(AppContext)
+    const { isSignedIn } = useAuth()
 
     const handleCardClick = (f) => {
+        if (!isSignedIn && f.action !== 'scroll') {
+            window.dispatchEvent(new Event('requireLoginShake'));
+            return;
+        }
+
         if (f.action === 'chatbot') {
             setIsChatbotOpen(true)
         } else if (f.action === 'navigate') {

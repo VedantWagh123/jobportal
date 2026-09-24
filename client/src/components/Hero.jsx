@@ -11,67 +11,100 @@ const Hero = () => {
     const titleRef = useRef(null)
     const locationRef = useRef(null)
     
-    // Typing animation state
-    const [animatedPlaceholder, setAnimatedPlaceholder] = useState('');
+    // Typing & Mouse animation state
+    const [animatedTitle, setAnimatedTitle] = useState('');
+    const [animatedLocation, setAnimatedLocation] = useState('');
+    const [activeField, setActiveField] = useState('title'); // 'title', 'location', 'none'
     const [isInteracting, setIsInteracting] = useState(false);
+    const [fakeCursorState, setFakeCursorState] = useState('hidden'); // 'hidden', 'entering', 'clicking', 'leaving'
     const [showCursor, setShowCursor] = useState(true);
-    const [hasText, setHasText] = useState(false);
+    const [hasTitleText, setHasTitleText] = useState(false);
+    const [hasLocationText, setHasLocationText] = useState(false);
 
     const searchExamples = [
-        "Software Developer", 
-        "Full Stack Developer", 
-        "AI Engineer", 
-        "Data Analyst", 
-        "Frontend Developer", 
-        "Cloud Engineer", 
-        "Cybersecurity Engineer"
+        { title: "Software Developer", location: "Bangalore, India" },
+        { title: "Full Stack Developer", location: "Remote" },
+        { title: "Data Analyst", location: "Pune, Maharashtra" },
+        { title: "Cloud Engineer", location: "New Delhi" },
+        { title: "AI Researcher", location: "Mumbai, India" }
     ];
+
+    useEffect(() => {
+        const cursorInterval = setInterval(() => {
+            setShowCursor(prev => !prev);
+        }, 530);
+        return () => clearInterval(cursorInterval);
+    }, []);
 
     useEffect(() => {
         if (isInteracting) return;
         
-        let i = 0; // example index
-        let j = 0; // character index
-        let isDeleting = false;
-        let timeoutId;
+        let isMounted = true;
+        let currentIndex = 0;
         
-        const type = () => {
-            if (isInteracting) return;
-            
-            const currentExample = searchExamples[i];
-            
-            if (isDeleting) {
-                setAnimatedPlaceholder(currentExample.substring(0, j - 1));
-                j--;
-                if (j === 0) {
-                    isDeleting = false;
-                    i = (i + 1) % searchExamples.length;
-                    timeoutId = setTimeout(type, 500);
-                } else {
-                    timeoutId = setTimeout(type, 40);
+        const delay = (ms) => new Promise(res => setTimeout(res, ms));
+
+        const runAnimation = async () => {
+            while (isMounted && !isInteracting) {
+                const current = searchExamples[currentIndex];
+                
+                // Reset states
+                setFakeCursorState('hidden');
+                setActiveField('title');
+                setAnimatedTitle('');
+                setAnimatedLocation('');
+                
+                await delay(800); // Initial pause
+                if (!isMounted || isInteracting) return;
+                
+                // 1. Type Title
+                for (let i = 0; i <= current.title.length; i++) {
+                    if (!isMounted || isInteracting) return;
+                    setAnimatedTitle(current.title.substring(0, i));
+                    await delay(60 + Math.random() * 40);
                 }
-            } else {
-                setAnimatedPlaceholder(currentExample.substring(0, j + 1));
-                j++;
-                if (j === currentExample.length) {
-                    isDeleting = true;
-                    timeoutId = setTimeout(type, 1800);
-                } else {
-                    timeoutId = setTimeout(type, 80);
+                
+                await delay(400); // Pause between fields
+                if (!isMounted || isInteracting) return;
+                
+                // 2. Type Location
+                setActiveField('location');
+                for (let i = 0; i <= current.location.length; i++) {
+                    if (!isMounted || isInteracting) return;
+                    setAnimatedLocation(current.location.substring(0, i));
+                    await delay(60 + Math.random() * 40);
                 }
+                
+                await delay(800); // Pause before mouse enters
+                if (!isMounted || isInteracting) return;
+                
+                // 3. Mouse Animation
+                setActiveField('none');
+                setFakeCursorState('entering');
+                await delay(1200); // Slower, dramatic swoop in
+                
+                if (!isMounted || isInteracting) return;
+                setFakeCursorState('clicking');
+                await delay(300); // Slightly longer click hold
+                
+                if (!isMounted || isInteracting) return;
+                setFakeCursorState('leaving');
+                await delay(800); // Slow fade out and leave
+                
+                if (!isMounted || isInteracting) return;
+                // Clear inputs
+                setAnimatedTitle('');
+                setAnimatedLocation('');
+                
+                await delay(600); // Wait before starting next sequence
+                
+                currentIndex = (currentIndex + 1) % searchExamples.length;
             }
         };
-        
-        timeoutId = setTimeout(type, 800);
-        
-        const cursorInterval = setInterval(() => {
-            setShowCursor(prev => !prev);
-        }, 530);
-        
-        return () => {
-            clearTimeout(timeoutId);
-            clearInterval(cursorInterval);
-        };
+
+        runAnimation();
+
+        return () => { isMounted = false; };
     }, [isInteracting]);
 
     const onSearch = (e) => {
@@ -160,11 +193,11 @@ const Hero = () => {
                         <div className='flex items-center flex-1 px-1 md:px-4 w-full'>
                             <Search className='text-blue-500 shrink-0 w-2.5 h-2.5 md:w-[18px] md:h-[18px]' />
                             <div className="relative w-full ml-1 md:ml-2 flex items-center overflow-hidden">
-                                {/* Animated Visual Layer */}
-                                {!isInteracting && !hasText && (
+                                {/* Animated Visual Layer for Title */}
+                                {!isInteracting && !hasTitleText && (
                                     <div className="absolute left-0 md:left-2 top-1/2 -translate-y-1/2 pointer-events-none flex items-center text-gray-800 text-[6px] sm:text-[8px] md:text-sm font-medium z-0 whitespace-nowrap">
-                                        {animatedPlaceholder}
-                                        <span className={`inline-block w-[1px] md:w-[1.5px] h-[8px] md:h-[18px] bg-blue-600 ml-[1px] transition-opacity duration-75 ${showCursor ? 'opacity-100' : 'opacity-0'}`}></span>
+                                        {animatedTitle}
+                                        <span className={`inline-block w-[1px] md:w-[1.5px] h-[8px] md:h-[18px] bg-blue-600 ml-[1px] transition-opacity duration-75 ${(activeField === 'title' && showCursor) ? 'opacity-100' : 'opacity-0'}`}></span>
                                     </div>
                                 )}
                                 <input type="text"
@@ -173,10 +206,10 @@ const Hero = () => {
                                     ref={titleRef}
                                     onFocus={() => setIsInteracting(true)}
                                     onBlur={(e) => {
-                                        if (!e.target.value) setIsInteracting(false);
+                                        if (!e.target.value && !locationRef.current?.value) setIsInteracting(false);
                                     }}
                                     onChange={(e) => {
-                                        setHasText(!!e.target.value);
+                                        setHasTitleText(!!e.target.value);
                                         if (e.target.value) setIsInteracting(true);
                                     }}
                                 />
@@ -185,14 +218,52 @@ const Hero = () => {
                         <div className='w-px h-3 md:h-8 bg-gray-200 block'></div>
                         <div className='flex items-center flex-1 px-1 md:px-4 w-full border-0 pt-0'>
                             <MapPin className='text-gray-400 shrink-0 w-2.5 h-2.5 md:w-[18px] md:h-[18px]' />
-                            <input type="text"
-                                placeholder='City or Remote'
-                                className='bg-transparent text-gray-800 placeholder-gray-400 p-0 md:p-2 outline-none w-full ml-0.5 md:ml-2 text-[6px] sm:text-[8px] md:text-sm font-medium h-4 md:h-auto'
-                                ref={locationRef}
-                            />
+                            <div className="relative w-full ml-0.5 md:ml-2 flex items-center overflow-hidden">
+                                {/* Animated Visual Layer for Location */}
+                                {!isInteracting && !hasLocationText && (
+                                    <div className="absolute left-0 md:left-2 top-1/2 -translate-y-1/2 pointer-events-none flex items-center text-gray-800 text-[6px] sm:text-[8px] md:text-sm font-medium z-0 whitespace-nowrap">
+                                        {animatedLocation}
+                                        <span className={`inline-block w-[1px] md:w-[1.5px] h-[8px] md:h-[18px] bg-blue-600 ml-[1px] transition-opacity duration-75 ${(activeField === 'location' && showCursor) ? 'opacity-100' : 'opacity-0'}`}></span>
+                                    </div>
+                                )}
+                                <input type="text"
+                                    placeholder={isInteracting ? 'City or Remote' : ''}
+                                    className='bg-transparent text-gray-800 placeholder-gray-400 p-0 md:p-2 outline-none w-full text-[6px] sm:text-[8px] md:text-sm font-medium h-4 md:h-auto relative z-10'
+                                    ref={locationRef}
+                                    onFocus={() => setIsInteracting(true)}
+                                    onBlur={(e) => {
+                                        if (!e.target.value && !titleRef.current?.value) setIsInteracting(false);
+                                    }}
+                                    onChange={(e) => {
+                                        setHasLocationText(!!e.target.value);
+                                        if (e.target.value) setIsInteracting(true);
+                                    }}
+                                />
+                            </div>
                         </div>
-                        <button type="submit" className='w-auto bg-[#2563EB] text-white px-1.5 py-0.5 sm:px-3 sm:py-1 md:px-8 md:py-3 rounded-full font-bold shadow-md hover:bg-blue-700 hover:shadow-lg hover:-translate-y-0.5 transition-all flex items-center justify-center gap-0.5 md:gap-2 text-[6px] sm:text-[8px] md:text-sm shrink-0'>
+                        <button type="submit" className={`relative overflow-visible w-auto bg-[#2563EB] text-white px-1.5 py-0.5 sm:px-3 sm:py-1 md:px-8 md:py-3 rounded-full font-bold shadow-md transition-all flex items-center justify-center gap-0.5 md:gap-2 text-[6px] sm:text-[8px] md:text-sm shrink-0 ${fakeCursorState === 'clicking' ? 'scale-95 bg-blue-700 shadow-inner' : 'hover:bg-blue-700 hover:shadow-lg hover:-translate-y-0.5'}`}>
                             Search <span className="hidden md:inline">&rarr;</span>
+                            
+                            {/* Fake Mouse Cursor */}
+                            <motion.div
+                                initial={{ opacity: 0, x: 120, y: 120, rotate: 10 }}
+                                animate={
+                                    fakeCursorState === 'entering' ? { opacity: 1, x: 10, y: 10, rotate: 0, scale: 1 } :
+                                    fakeCursorState === 'clicking' ? { opacity: 1, x: 10, y: 10, rotate: -5, scale: 0.85 } :
+                                    fakeCursorState === 'leaving' ? { opacity: 0, x: 80, y: 120, rotate: 15, scale: 1 } :
+                                    { opacity: 0, x: 120, y: 120, rotate: 10, scale: 1 }
+                                }
+                                transition={{ 
+                                    duration: fakeCursorState === 'entering' ? 1.2 : fakeCursorState === 'leaving' ? 0.8 : 0.25, 
+                                    ease: fakeCursorState === 'entering' ? [0.34, 1.56, 0.64, 1] : "easeInOut" 
+                                }}
+                                className="absolute z-50 pointer-events-none"
+                                style={{ right: '35%', bottom: '-45%' }}
+                            >
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="drop-shadow-[0_8px_15px_rgba(0,0,0,0.3)]">
+                                    <path d="M5.5 3.21V20.8c0 .45.54.67.85.35l4.86-4.86a.5.5 0 0 1 .35-.15h6.42c.45 0 .67-.54.35-.85L6.35 3.35a.5.5 0 0 0-.85.35z" fill="#111827" stroke="#FFFFFF" strokeWidth="1.5" strokeLinejoin="round"/>
+                                </svg>
+                            </motion.div>
                         </button>
                     </form>
 
