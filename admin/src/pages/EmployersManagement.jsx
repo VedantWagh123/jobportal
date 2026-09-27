@@ -700,8 +700,8 @@ const EmployersManagement = () => {
                                                 <Eye size={16} className="text-blue-500"/>
                                             </button>
 
-                                            {/* Approve (shown for Pending or Banned) */}
-                                            {(emp.status === 'Pending' || emp.status === 'Banned') && (
+                                            {/* Approve (shown only for Pending) */}
+                                            {emp.status === 'Pending' && (
                                                 <button
                                                     onClick={() => setModal({ type: 'approve', id: emp._id, name: emp.name })}
                                                     disabled={actionLoading === emp._id}

@@ -8,6 +8,7 @@ import Course from '../models/Course.js';
 import { analyzeResumeForSmartMatch, generateEmbedding, generateSkillGapRoadmap } from '../services/geminiAiService.js';
 import SkillNormalizationService from '../services/SkillNormalizationService.js';
 import SkillGapService from '../services/skillGapService.js';
+import pineconeService from '../services/pineconeService.js';
 
 const storage = multer.memoryStorage();
 const roadmapCache = new Map();
@@ -93,6 +94,11 @@ export const analyzeResume = async (req, res) => {
         });
         await analysis.save();
 
+        // Pinecone Upsert (Non-blocking, silent fallback if disabled)
+        if (embedding && embedding.length > 0) {
+            pineconeService.upsertVector('resumes', analysis._id.toString(), embedding, { userId }).catch(e => console.log(e));
+        }
+
         res.json({ success: true, data: analysis });
 
     } catch (error) {
@@ -112,6 +118,16 @@ export const getMatches = async (req, res) => {
 
         const activeJobs = await Job.find({ visible: true }).populate('companyId', 'name image');
         const jobIntelligences = await JobIntelligence.find({ jobId: { $in: activeJobs.map(j => j._id) } });
+
+        // Attempt Pinecone fast-query if available
+        let pineconeScores = null;
+        if (pineconeService.isReady && analysis.embedding && analysis.embedding.length > 0) {
+            const pineconeResults = await pineconeService.queryVector('jobs', analysis.embedding, 100);
+            if (pineconeResults) {
+                pineconeScores = new Map();
+                pineconeResults.forEach(match => pineconeScores.set(match.id, match.score));
+            }
+        }
 
         const matches = [];
 
@@ -143,7 +159,9 @@ export const getMatches = async (req, res) => {
             const skillScore = (matchedSkills.length / requiredSkills.length) * 100;
 
             let semanticScore = 0;
-            if (intel && intel.embedding && intel.embedding.length > 0 && analysis.embedding && analysis.embedding.length > 0) {
+            if (pineconeScores && pineconeScores.has(job._id.toString())) {
+                semanticScore = pineconeScores.get(job._id.toString()) * 100;
+            } else if (intel && intel.embedding && intel.embedding.length > 0 && analysis.embedding && analysis.embedding.length > 0) {
                 semanticScore = cosineSimilarity(analysis.embedding, intel.embedding) * 100;
                 semanticScore = Math.max(0, semanticScore);
             } else {

@@ -3,7 +3,7 @@ import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
 import { 
     Users, ShieldCheck, 
-    Calendar, Building2, AlertTriangle, GraduationCap, Briefcase, ChevronDown, MoreVertical
+    Calendar, Building2, AlertTriangle, GraduationCap, Briefcase, ChevronDown, MoreVertical, Clock
 } from 'lucide-react';
 import { 
     BarChart, Bar, PieChart, Pie, Cell,
@@ -81,16 +81,38 @@ const GlobalStyles = ({ activeStates = [] }) => (
             box-shadow: 0 4px 6px rgba(0,0,0,0.04), 0 10px 20px rgba(0,0,0,0.04);
         }
         
-        .svg-map { width: 100%; height: auto; stroke: #ffffff; stroke-width: 0.5px; stroke-linecap: round; stroke-linejoin: round; }
-        .svg-map__location { fill: #E0F2FE; transition: fill 0.2s ease-in-out; cursor: pointer; }
-        .svg-map__location:hover { fill: #BAE6FD; }
+        .svg-map { width: 100%; height: auto; stroke: #cbd5e1; stroke-width: 1px; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.05)); }
+        .svg-map__location { fill: #f8fafc; transition: all 0.3s ease-in-out; cursor: pointer; }
+        .svg-map__location:hover { fill: #e2e8f0; }
         
         ${activeStates.map(code => `
-            #${code} { fill: #3B82F6 !important; stroke: #fff !important; }
+            #${code} { fill: #FCA5A5 !important; stroke: #fff !important; }
         `).join('\n')}
 
         /* Highlight Maharashtra (Primary Hub) */
-        #in-mh { fill: #1D4ED8 !important; stroke: #fff !important; }
+        #in-mh { fill: #EF4444 !important; stroke: #fff !important; }
+
+        @keyframes sweep {
+            0% { transform: translateX(-150%) skewX(-15deg); }
+            100% { transform: translateX(200%) skewX(-15deg); }
+        }
+        .animate-sweep {
+            animation: sweep 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        }
+        @keyframes float-slow {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-10px) scale(1.05); }
+        }
+        .animate-float-slow {
+            animation: float-slow 6s ease-in-out infinite;
+        }
+        @keyframes spin-very-slow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .animate-spin-slow {
+            animation: spin-very-slow 60s linear infinite;
+        }
     `}</style>
 );
 
@@ -248,7 +270,7 @@ const Dashboard = () => {
     }
 
     return (
-        <div className="space-y-6 pb-12 relative">
+        <div className="flex flex-col gap-5 pb-12 relative -mt-2">
             <GlobalStyles activeStates={stats?.networkPresence?.activeStates || []} />
             
             {/* Floating Map Tooltip */}
@@ -309,46 +331,113 @@ const Dashboard = () => {
                 />
             )}
             
-            {/* HERO HEADER */}
-            <div className="premium-card p-6 flex flex-col md:flex-row justify-between items-center relative overflow-hidden bg-white">
-                {/* Background Illustration Overlay (Mimicking the reference image) */}
-                <div className="absolute right-0 top-0 bottom-0 w-1/2 opacity-30 pointer-events-none" 
-                     style={{ 
-                         backgroundImage: 'url("https://www.transparenttextures.com/patterns/cubes.png")',
-                         backgroundPosition: 'right center',
-                         backgroundRepeat: 'no-repeat',
-                         backgroundSize: 'cover'
-                     }}>
+            {/* HERO HEADER - Redesigned to match System Command Center UI */}
+            <div className="group bg-gradient-to-r from-[#f8faff] via-white to-[#f0f9ff] rounded-[18px] border border-gray-100 shadow-sm relative overflow-hidden flex flex-col md:flex-row items-center justify-between p-6 sm:p-7 z-10 border-l-[6px] border-l-blue-600 hover:shadow-lg transition-all duration-500 hover:border-l-blue-700 cursor-default">
+                
+                {/* Shine Sweep Animation on Hover */}
+                <div className="absolute top-0 bottom-0 left-0 w-1/2 bg-gradient-to-r from-transparent via-white/80 to-transparent -translate-x-[150%] skew-x-[-15deg] group-hover:animate-sweep z-20 pointer-events-none"></div>
+                
+                {/* Abstract Background Shapes (Matches Image) */}
+                <div className="absolute right-0 top-0 bottom-0 w-1/2 pointer-events-none overflow-hidden">
+                    {/* Large blurred circles for gradient effect */}
+                    <div className="absolute top-[-20%] right-[-10%] w-[400px] h-[400px] bg-blue-100/40 rounded-full blur-[80px] animate-float-slow"></div>
+                    <div className="absolute bottom-[-20%] right-[30%] w-[300px] h-[300px] bg-emerald-100/30 rounded-full blur-[60px] animate-float-slow" style={{animationDelay: '1s'}}></div>
+                    <div className="absolute top-[20%] right-[50%] w-[250px] h-[250px] bg-amber-100/30 rounded-full blur-[70px] animate-float-slow" style={{animationDelay: '2s'}}></div>
+                    
+                    {/* Ashoka Chakra Watermark */}
+                    <svg viewBox="0 0 100 100" className="absolute -top-10 -right-10 w-[240px] h-[240px] opacity-[0.03] text-blue-900 animate-spin-slow" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="50" cy="50" r="46" fill="none" stroke="currentColor" strokeWidth="2.5"/>
+                        <circle cx="50" cy="50" r="7" fill="currentColor"/>
+                        {Array.from({length:24},(_,i)=>{
+                            const a=(i*15*Math.PI)/180;
+                            return <line key={i} x1={50+7*Math.cos(a)} y1={50+7*Math.sin(a)} x2={50+46*Math.cos(a)} y2={50+46*Math.sin(a)} stroke="currentColor" strokeWidth="1.2"/>;
+                        })}
+                    </svg>
+
+                    {/* Parliament Dome Outline (Simulated SVG) */}
+                    <svg viewBox="0 0 400 200" className="absolute bottom-0 right-0 w-[450px] opacity-10" preserveAspectRatio="xMaxYMax meet">
+                        {/* Dome */}
+                        <path d="M 200 40 C 150 40 130 90 120 120 L 280 120 C 270 90 250 40 200 40 Z" fill="none" stroke="#0f172a" strokeWidth="2" />
+                        <rect x="180" y="20" width="40" height="20" fill="none" stroke="#0f172a" strokeWidth="2" />
+                        <path d="M 200 10 L 200 20" fill="none" stroke="#0f172a" strokeWidth="2" />
+                        {/* Main Body */}
+                        <rect x="80" y="120" width="240" height="80" fill="none" stroke="#0f172a" strokeWidth="2" />
+                        {/* Pillars */}
+                        {Array.from({length: 11}).map((_, i) => (
+                            <line key={i} x1={90 + (i*22)} y1="120" x2={90 + (i*22)} y2="200" stroke="#0f172a" strokeWidth="2" />
+                        ))}
+                        {/* Side Domes */}
+                        <path d="M 60 90 C 40 90 30 110 30 120 L 90 120 C 90 110 80 90 60 90 Z" fill="none" stroke="#0f172a" strokeWidth="1.5" />
+                        <rect x="20" y="120" width="80" height="80" fill="none" stroke="#0f172a" strokeWidth="1.5" />
+                        <path d="M 340 90 C 320 90 310 110 310 120 L 370 120 C 370 110 360 90 340 90 Z" fill="none" stroke="#0f172a" strokeWidth="1.5" />
+                        <rect x="300" y="120" width="80" height="80" fill="none" stroke="#0f172a" strokeWidth="1.5" />
+                    </svg>
                 </div>
                 
-                <div className="flex items-center gap-4 z-10 w-full">
-                    <div className="w-12 h-14 bg-gray-900 rounded-lg flex items-center justify-center shrink-0">
-                        {/* Govt Emblem Placeholder */}
-                        <img src="/ashoka_emblem.png" alt="Emblem" className="w-8 h-8 object-contain filter invert" onError={(e)=>{e.target.style.display='none'}}/>
+                {/* Left Content Area */}
+                <div className="flex items-start sm:items-center gap-5 sm:gap-6 z-10 w-full relative">
+                    {/* Ashoka Emblem Box */}
+                    <div className="w-[84px] h-[84px] sm:w-[96px] sm:h-[96px] bg-[#e8f1ff] rounded-[16px] flex items-center justify-center shrink-0 border border-[#d1e2ff] group-hover:scale-110 group-hover:shadow-md transition-all duration-500 group-hover:border-blue-200">
+                        <img 
+                            src="/ashoka_emblem.png" 
+                            alt="Emblem" 
+                            className="w-[52px] h-[52px] sm:w-[60px] sm:h-[60px] object-contain opacity-90 group-hover:drop-shadow-sm transition-all duration-500" 
+                            onError={(e)=>{
+                                e.target.src='https://upload.wikimedia.org/wikipedia/commons/thumb/5/55/Emblem_of_India.svg/100px-Emblem_of_India.svg.png';
+                            }}
+                        />
                     </div>
-                    <div className="flex-1">
-                        <nav className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">
-                            <span>National Portal</span>
+                    
+                    <div className="flex-1 min-w-0">
+                        {/* Breadcrumbs */}
+                        <nav className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-black tracking-widest uppercase mb-1 sm:mb-1.5">
+                            <span className="text-gray-500">National Portal</span>
                             <span className="text-gray-300">/</span>
                             <span className="text-blue-600">System Command Center</span>
                         </nav>
-                        <h1 className="text-[22px] font-black text-gray-900 tracking-tight leading-none mb-1.5">System Command Center</h1>
-                        <p className="text-gray-500 text-[12px] font-medium leading-relaxed max-w-lg mb-3">
+                        
+                        {/* Title */}
+                        <h1 className="text-[28px] sm:text-[34px] font-black text-gray-900 tracking-tight leading-none mb-2 sm:mb-2.5">
+                            System <span className="text-blue-600">Command Center</span>
+                        </h1>
+                        
+                        {/* Description */}
+                        <p className="text-gray-500 text-[12px] sm:text-[13px] font-medium leading-relaxed max-w-[620px] mb-4 sm:mb-5">
                             Centralized operations control. Monitor system health, background AI queues, pending approvals, and total platform metrics.
                         </p>
-                        <div className="flex items-center gap-3">
-                            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-green-50 rounded-full border border-green-100">
-                                <span className={`w-1.5 h-1.5 rounded-full ${refreshing ? 'bg-yellow-400 animate-pulse' : 'bg-green-500'}`}></span>
-                                <span className="text-[10px] font-bold text-green-700 uppercase tracking-widest">{refreshing ? 'Syncing...' : 'System Online'}</span>
+                        
+                        {/* Status Pills Row */}
+                        <div className="flex items-center flex-wrap gap-3 sm:gap-4">
+                            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#e4fcf0] rounded-full text-emerald-700 text-[10px] sm:text-[11px] font-black tracking-widest border border-[#c1eed8]">
+                                <span className={`w-1.5 h-1.5 rounded-full ${refreshing ? 'bg-amber-400 animate-pulse' : 'bg-emerald-500'}`}></span>
+                                {refreshing ? 'SYNCING...' : 'SYSTEM ONLINE'}
                             </div>
-                            <span className="text-[11px] font-medium text-gray-400">Last updated: {new Date().toLocaleTimeString()} | All systems operational</span>
+                            
+                            <div className="h-4 w-px bg-gray-200 hidden sm:block"></div>
+                            
+                            <div className="flex items-center gap-1.5 text-[11px] sm:text-[12px] font-bold text-gray-500">
+                                <Clock size={14} className="text-gray-400"/> 
+                                <span>Last updated: {new Date().toLocaleTimeString()}</span>
+                            </div>
+                            
+                            <div className="h-4 w-px bg-gray-200 hidden sm:block"></div>
+                            
+                            <div className="flex items-center gap-1.5 text-[11px] sm:text-[12px] font-bold text-gray-500">
+                                <ShieldCheck size={15} className="text-gray-400"/> 
+                                <span>All systems operational</span>
+                            </div>
                         </div>
                     </div>
-                    
-                    {/* Optional Right Side Text from Reference */}
-                    <div className="hidden lg:block text-right z-10 pr-8">
-                        <h2 className="text-[20px] font-black text-blue-900/20 leading-none">Viksit Bharat</h2>
-                        <h2 className="text-[20px] font-black text-blue-900/20 leading-none">Skilled Bharat</h2>
+                </div>
+                
+                {/* Right Side Text (Viksit Bharat) */}
+                <div className="hidden xl:flex flex-col items-end z-10 pl-8 shrink-0 relative top-1">
+                    <h2 className="text-[24px] font-black text-blue-900 leading-tight tracking-tight">Viksit Bharat</h2>
+                    <h2 className="text-[24px] font-black text-blue-600 leading-tight tracking-tight">Skilled Bharat</h2>
+                    <div className="flex gap-1 justify-end mt-2">
+                        <div className="w-10 h-[3.5px] bg-[#FF9933] rounded-full"></div>
+                        <div className="w-10 h-[3.5px] bg-gray-200 rounded-full"></div>
+                        <div className="w-10 h-[3.5px] bg-[#138808] rounded-full"></div>
                     </div>
                 </div>
             </div>
@@ -508,12 +597,28 @@ const Dashboard = () => {
                     </div>
                     
                     <div className="flex-1 flex items-center justify-center relative mt-4">
-                        <div className="w-full max-w-[180px] opacity-80 pl-4">
+                        <div className="w-full max-w-[220px] relative pl-4 drop-shadow-md pb-4">
                             <CustomSVGMap 
                                 map={India} 
                                 onLocationMouseOver={handleMapMouseOver}
                                 onLocationMouseOut={() => setMapTooltip({ show: false, x: 0, y: 0, content: '' })}
                             />
+                            {/* District Markers (Small pulsing dots over Maharashtra/Active regions) */}
+                            <div className="absolute top-[52%] left-[28%] group z-10">
+                                <div className="absolute inset-0 bg-red-500 rounded-full animate-ping opacity-75"></div>
+                                <div className="relative w-2 h-2 bg-red-600 rounded-full border-[1.5px] border-white cursor-pointer group-hover:scale-150 transition-transform shadow-sm"></div>
+                                <div className="absolute top-3 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900 text-white text-[8px] font-bold px-1.5 py-0.5 rounded pointer-events-none whitespace-nowrap">Mumbai District</div>
+                            </div>
+                            <div className="absolute top-[48%] left-[38%] group z-10">
+                                <div className="absolute inset-0 bg-red-500 rounded-full animate-ping opacity-75" style={{animationDelay: '0.5s'}}></div>
+                                <div className="relative w-2 h-2 bg-red-600 rounded-full border-[1.5px] border-white cursor-pointer group-hover:scale-150 transition-transform shadow-sm"></div>
+                                <div className="absolute top-3 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900 text-white text-[8px] font-bold px-1.5 py-0.5 rounded pointer-events-none whitespace-nowrap">Nagpur Node</div>
+                            </div>
+                            <div className="absolute top-[56%] left-[32%] group z-10">
+                                <div className="absolute inset-0 bg-red-500 rounded-full animate-ping opacity-75" style={{animationDelay: '1s'}}></div>
+                                <div className="relative w-2 h-2 bg-red-600 rounded-full border-[1.5px] border-white cursor-pointer group-hover:scale-150 transition-transform shadow-sm"></div>
+                                <div className="absolute top-3 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900 text-white text-[8px] font-bold px-1.5 py-0.5 rounded pointer-events-none whitespace-nowrap">Pune District</div>
+                            </div>
                         </div>
                         
                         {/* Overlay Stats */}
@@ -544,8 +649,8 @@ const Dashboard = () => {
                     
                     {/* Legend */}
                     <div className="flex items-center justify-center gap-4 mt-4 border-t border-gray-50 pt-3">
-                        <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-sm bg-[#1D4ED8]"></div><span className="text-[9px] text-gray-600 font-bold">Primary Hub (Maharashtra)</span></div>
-                        <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-sm bg-[#3B82F6]"></div><span className="text-[9px] text-gray-600 font-bold">Active Institutes</span></div>
+                        <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-sm bg-red-500"></div><span className="text-[9px] text-gray-600 font-bold">Primary Hub (Maharashtra)</span></div>
+                        <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-sm bg-red-300"></div><span className="text-[9px] text-gray-600 font-bold">Active Institutes</span></div>
                         <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-sm bg-[#E0F2FE]"></div><span className="text-[9px] text-gray-600 font-bold">Upcoming Hubs</span></div>
                     </div>
                 </div>

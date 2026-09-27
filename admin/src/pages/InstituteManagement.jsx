@@ -535,8 +535,8 @@ const InstituteManagement = () => {
                                     <tr onClick={() => setExpandedId(expandedId === inst._id ? null : inst._id)} className="hover:bg-amber-50 transition-colors duration-150 au cursor-pointer" style={{animationDelay:`${idx*50}ms`}}>
                                         <td className="px-5 sm:px-7 py-3.5">
                                             <div className="flex items-center gap-2.5">
-                                                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center font-black text-white text-[13px] shadow-sm shrink-0">
-                                                    {(inst.name||'I')[0].toUpperCase()}
+                                                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center font-black text-white text-[13px] shadow-sm shrink-0 overflow-hidden">
+                                                    {inst.image ? <img src={inst.image} alt={inst.name} className="w-full h-full object-cover" /> : (inst.name||'I')[0].toUpperCase()}
                                                 </div>
                                                 <div>
                                                     <p className="font-bold text-gray-900 text-[13px] leading-tight group-hover:text-amber-700">{inst.name||'—'}</p>
@@ -678,8 +678,8 @@ const InstituteManagement = () => {
                                 <tr onClick={() => setExpandedId(expandedId === inst._id ? null : inst._id)} className="inst-row group cursor-pointer transition-all duration-150 au" style={{animationDelay:`${idx*35}ms`}}>
                                     <td className="px-4 sm:px-6 py-4">
                                         <div className="flex items-center gap-2.5 sm:gap-3">
-                                            <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-700 flex items-center justify-center font-black text-white text-[13px] shadow-sm shrink-0 group-hover:scale-110 transition-transform duration-300">
-                                                {(inst.name||'I')[0].toUpperCase()}
+                                            <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-700 flex items-center justify-center font-black text-white text-[13px] shadow-sm shrink-0 group-hover:scale-110 transition-transform duration-300 overflow-hidden">
+                                                {inst.image ? <img src={inst.image} alt={inst.name} className="w-full h-full object-cover" /> : (inst.name||'I')[0].toUpperCase()}
                                                 {inst.isApproved && (
                                                     <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-white flex items-center justify-center">
                                                         <Check size={7} className="text-white" strokeWidth={3}/>

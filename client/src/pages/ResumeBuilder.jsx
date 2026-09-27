@@ -40,6 +40,13 @@ const ResumeBuilder = () => {
     const [activeTab, setActiveTab] = useState('personal');
     const [aiLoading, setAiLoading] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [showFullscreenHint, setShowFullscreenHint] = useState(true);
+
+    // Auto-hide full screen hint after 10 seconds
+    useEffect(() => {
+        const timer = setTimeout(() => setShowFullscreenHint(false), 10000);
+        return () => clearTimeout(timer);
+    }, []);
     const previewRef = useRef(null);
     
     // ATS & Sync State
@@ -1058,14 +1065,33 @@ const ResumeBuilder = () => {
                     ref={previewRef}
                     className="hidden lg:flex flex-col flex-1 bg-gray-100 overflow-hidden relative items-center justify-center"
                 >
-                    {/* Full Screen Toggle Button */}
-                    <button 
-                        onClick={toggleFullScreen}
-                        className="absolute top-6 right-6 z-10 w-10 h-10 bg-white text-gray-700 rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 active:scale-95 transition-all"
-                        title={isFullscreen ? "Exit Full Screen" : "Full Screen"}
-                    >
-                        {isFullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
-                    </button>
+                    {/* Full Screen Toggle Button with Hint */}
+                    <div className="absolute top-6 right-6 z-10 flex flex-col items-center gap-2">
+                        {showFullscreenHint && !isFullscreen && (
+                            <div className="flex flex-col items-center gap-1 animate-in fade-in slide-in-from-top-4 duration-700">
+                                <span className="text-[11px] font-extrabold text-blue-600 bg-white px-3 py-1.5 rounded-lg shadow-lg border border-blue-100 whitespace-nowrap">
+                                    Full Screen
+                                </span>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500 animate-bounce">
+                                    <path d="M12 5v14"></path>
+                                    <path d="m19 12-7 7-7-7"></path>
+                                </svg>
+                            </div>
+                        )}
+                        <button 
+                            onClick={() => {
+                                setShowFullscreenHint(false);
+                                toggleFullScreen();
+                            }}
+                            className={`relative w-10 h-10 bg-white text-gray-700 rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 active:scale-95 transition-all ${showFullscreenHint && !isFullscreen ? 'ring-4 ring-blue-500/30' : ''}`}
+                            title={isFullscreen ? "Exit Full Screen" : "Full Screen"}
+                        >
+                            {showFullscreenHint && !isFullscreen && (
+                                <span className="absolute inset-0 rounded-full bg-blue-500 opacity-20 animate-ping"></span>
+                            )}
+                            {isFullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
+                        </button>
+                    </div>
 
                     {/* The A4 Canvas Container */}
                     <div className="flex-1 w-full overflow-y-auto flex justify-center custom-scrollbar">

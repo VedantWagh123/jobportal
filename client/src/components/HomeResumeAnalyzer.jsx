@@ -17,6 +17,8 @@ const HomeResumeAnalyzer = () => {
   const [isResumeModalOpen, setIsResumeModalOpen] = useState(false);
   const [uploadedFileUrl, setUploadedFileUrl] = useState(null);
   const [uploadedFileType, setUploadedFileType] = useState(null);
+  const [isScoreExpanded, setIsScoreExpanded] = useState(false);
+  const [animatedScore, setAnimatedScore] = useState(0);
   
   // Persist state to local storage so refresh doesn't lose data
   const [atsResult, setAtsResult] = useState(() => {
@@ -66,71 +68,97 @@ const HomeResumeAnalyzer = () => {
       return;
     }
 
-    try {
-      setIsAnalyzing(true);
-      const token = await getToken();
-      
-      const fileUrl = URL.createObjectURL(file);
-      setUploadedFileUrl(fileUrl);
-      setUploadedFileType(file.type);
+    // Wrap the entire upload and analysis process inside consumeLumiCredit
+    // so that isAnalyzing state is perfectly synchronized with the actual API calls.
+    consumeLumiCredit(async () => {
+      try {
+        setIsAnalyzing(true);
+        const token = await getToken();
+        
+        const fileUrl = URL.createObjectURL(file);
+        setUploadedFileUrl(fileUrl);
+        setUploadedFileType(file.type);
 
-      const formData = new FormData();
-      formData.append('resumeFile', file);
+        const formData = new FormData();
+        formData.append('resumeFile', file);
 
-      toast.info('Extracting text from resume...', { autoClose: 2000 });
-      const uploadRes = await axios.post(`${backendUrl}/api/resumes/upload`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-          Authorization: `Bearer ${token}`
+        toast.info('Extracting text from resume...', { autoClose: 2000 });
+        const uploadRes = await axios.post(`${backendUrl}/api/resumes/upload`, formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            Authorization: `Bearer ${token}`
+          }
+        });
+        
+        if (!uploadRes.data.success) {
+          throw new Error(uploadRes.data.message || 'Extraction failed');
         }
-      });
-      
-      if (!uploadRes.data.success) {
-        throw new Error(uploadRes.data.message || 'Extraction failed');
-      }
 
-      setExtractedResume(uploadRes.data.extractedData);
-      localStorage.setItem('savedExtractedResume', JSON.stringify(uploadRes.data.extractedData));
+        setExtractedResume(uploadRes.data.extractedData);
+        localStorage.setItem('savedExtractedResume', JSON.stringify(uploadRes.data.extractedData));
 
-      toast.info('AI is generating your ATS score...', { autoClose: 3000 });
-      
-      consumeLumiCredit(async () => {
-        try {
-            const scoreRes = await axios.post(`${backendUrl}/api/resumes/ai/ats-score`, {
-              resumeData: uploadRes.data.extractedData
-            }, {
-              headers: {
-                Authorization: `Bearer ${token}`
-              }
-            });
-
-            if (!scoreRes.data.success) {
-              throw new Error(scoreRes.data.message || 'Score generation failed');
+        toast.info('AI is generating your ATS score...', { autoClose: 3000 });
+        
+        const scoreRes = await axios.post(`${backendUrl}/api/resumes/ai/ats-score`, {
+            resumeData: uploadRes.data.extractedData
+        }, {
+            headers: {
+            Authorization: `Bearer ${token}`
             }
+        });
 
-            setAtsResult(scoreRes.data.result);
-            localStorage.setItem('savedAtsResult', JSON.stringify(scoreRes.data.result));
-            toast.success("✨ Your ATS Score is ready! Double click the resume card to view full details.");
-        } catch (error) {
-            console.error(error);
-            toast.error(error.response?.data?.message || error.message || 'ATS generation failed');
+        if (!scoreRes.data.success) {
+            throw new Error(scoreRes.data.message || 'Score generation failed');
         }
-      });
-      
-    } catch (error) {
-      console.error(error);
-      toast.error(error.response?.data?.message || error.message || 'Something went wrong during analysis');
-    } finally {
-      setIsAnalyzing(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
+
+        setAtsResult(scoreRes.data.result);
+        localStorage.setItem('savedAtsResult', JSON.stringify(scoreRes.data.result));
+        toast.success("✨ Your ATS Score is ready! Double click the cards to view details.");
+        
+      } catch (error) {
+        console.error(error);
+        toast.error(error.response?.data?.message || error.message || 'Something went wrong during analysis');
+      } finally {
+        setIsAnalyzing(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }
+    });
   }
 
   const displayScore = atsResult?.score || 78;
-  const circleOffset = 264 - (264 * displayScore) / 100;
+  const circleOffset = 264 - (264 * animatedScore) / 100;
+
+  // Real-time Scanning Effect & Score Counter
+  useEffect(() => {
+    let timer;
+    if (isAnalyzing) {
+      // Random scanning effect while analyzing
+      timer = setInterval(() => {
+        setAnimatedScore(Math.floor(Math.random() * 99) + 1);
+      }, 50);
+    } else {
+      // Smooth count up to actual score
+      let start = 0;
+      setAnimatedScore(0); // Reset before counting
+      timer = setInterval(() => {
+        start += 2; // Speed of counting
+        if (start >= displayScore) {
+          setAnimatedScore(displayScore);
+          clearInterval(timer);
+        } else {
+          setAnimatedScore(start);
+        }
+      }, 20);
+    }
+    return () => clearInterval(timer);
+  }, [isAnalyzing, displayScore]);
 
   return (
-    <section id="ats-section" className="w-full max-w-[1900px] mx-auto mt-12 md:mt-16 mb-6 px-2 md:px-6">
+    <section 
+      id="ats-section" 
+      className="w-full max-w-[1900px] mx-auto mt-12 md:mt-16 mb-6 px-2 md:px-6 select-none"
+      onDoubleClick={() => setIsScoreExpanded(false)}
+    >
       <input type="file" ref={fileInputRef} className="hidden" accept=".pdf,.docx" onChange={handleFileChange} />
       <div className="bg-gradient-to-r from-[#f0f7ff] via-[#f8fafc] to-[#f0f7ff] border border-blue-100/70 rounded-[32px] p-8 md:p-12 lg:p-16 relative overflow-hidden flex flex-col xl:flex-row items-center justify-between gap-10 shadow-[0_8px_40px_rgba(37,99,235,0.04)]">
         
@@ -195,7 +223,7 @@ const HomeResumeAnalyzer = () => {
                   window.dispatchEvent(new Event('requireLoginShake'));
                   return;
                 }
-                checkLumiAccess(() => navigate('/resume-builder'))
+                checkLumiAccess(() => navigate('/resumes'))
               }}
               className="w-full sm:w-auto bg-white border border-blue-200 text-blue-600 font-extrabold text-[14px] px-8 py-3.5 rounded-xl hover:bg-blue-50 hover:border-blue-300 transition-colors flex items-center justify-center shadow-sm"
             >
@@ -351,22 +379,42 @@ const HomeResumeAnalyzer = () => {
             </div>
 
             {/* Main Score Card (Center-Right spaced) */}
-            <div className={`absolute left-[330px] top-[20px] w-[270px] bg-white rounded-3xl shadow-[0_25px_60px_rgba(0,0,0,0.12)] border border-blue-50/80 p-6 z-20 transition-all duration-700 ${isAnalyzing ? 'blur-sm scale-95 opacity-50 pointer-events-none' : 'blur-0 scale-100 opacity-100 pointer-events-auto'}`}>
+            <div 
+              onDoubleClick={(e) => {
+                e.stopPropagation();
+                setIsScoreExpanded(!isScoreExpanded);
+              }}
+              className={`absolute left-[330px] top-[20px] bg-white rounded-3xl shadow-[0_25px_60px_rgba(0,0,0,0.12)] border border-blue-50/80 p-6 transition-all duration-[800ms] ease-[cubic-bezier(0.23,1,0.32,1)] cursor-pointer ${isAnalyzing ? 'blur-sm scale-95 opacity-50 pointer-events-none z-20 w-[270px]' : 'blur-0 opacity-100 pointer-events-auto z-30'} ${isScoreExpanded ? 'w-[320px] scale-[1.15] translate-x-[20px] translate-y-[20px] shadow-[0_40px_100px_rgba(37,99,235,0.2)]' : 'w-[270px] scale-100 translate-x-0 translate-y-0 hover:shadow-[0_30px_70px_rgba(0,0,0,0.15)]'}`}
+            >
               <div className="flex flex-col items-center mb-5">
                 <div className="relative w-24 h-24 flex items-center justify-center mb-4">
                   <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
                     <circle cx="50" cy="50" r="42" fill="none" stroke="#f1f5f9" strokeWidth="12" />
-                    <circle cx="50" cy="50" r="42" fill="none" stroke={displayScore >= 75 ? "#10b981" : displayScore >= 50 ? "#f59e0b" : "#ef4444"} strokeWidth="12" strokeDasharray="264" strokeDashoffset={circleOffset} strokeLinecap="round" className="transition-all duration-1000 ease-out" />
+                    <circle 
+                      cx="50" 
+                      cy="50" 
+                      r="42" 
+                      fill="none" 
+                      stroke={animatedScore >= 75 ? "#10b981" : animatedScore >= 50 ? "#f59e0b" : "#ef4444"} 
+                      strokeWidth="12" 
+                      strokeDasharray="264" 
+                      strokeDashoffset={circleOffset} 
+                      strokeLinecap="round" 
+                      className={isAnalyzing ? '' : 'transition-all duration-300 ease-out'} 
+                    />
                   </svg>
                   <div className="absolute inset-0 flex items-center justify-center flex-col">
-                    <span className="text-[28px] font-black text-gray-900 leading-none tracking-tighter">{displayScore}<span className="text-[11px] text-gray-400 font-bold">/100</span></span>
+                    <span className={`text-[28px] font-black leading-none tracking-tighter ${isAnalyzing ? 'text-blue-500 animate-pulse' : 'text-gray-900'}`}>
+                      {animatedScore}
+                      <span className="text-[11px] text-gray-400 font-bold">/100</span>
+                    </span>
                   </div>
                 </div>
-                <h4 className={`text-[16px] font-black mb-1.5 ${displayScore >= 75 ? 'text-[#059669]' : displayScore >= 50 ? 'text-[#d97706]' : 'text-[#dc2626]'}`}>
-                  {displayScore >= 75 ? 'Good Score!' : displayScore >= 50 ? 'Needs Work' : 'Poor Score'}
+                <h4 className={`text-[16px] font-black mb-1.5 ${isAnalyzing ? 'text-blue-500 animate-pulse' : displayScore >= 75 ? 'text-[#059669]' : displayScore >= 50 ? 'text-[#d97706]' : 'text-[#dc2626]'}`}>
+                  {isAnalyzing ? 'Scanning...' : displayScore >= 75 ? 'Good Score!' : displayScore >= 50 ? 'Needs Work' : 'Poor Score'}
                 </h4>
                 <p className="text-[11px] text-gray-500 font-bold text-center leading-tight px-2">
-                  {displayScore >= 75 ? 'Your resume is ATS friendly, but can be improved.' : 'Your resume lacks critical ATS elements. Consider rewriting.'}
+                  {isAnalyzing ? 'AI is deeply analyzing your resume data...' : displayScore >= 75 ? 'Your resume is ATS friendly, but can be improved.' : 'Your resume lacks critical ATS elements. Consider rewriting.'}
                 </p>
               </div>
               
@@ -419,7 +467,7 @@ const HomeResumeAnalyzer = () => {
                     window.dispatchEvent(new Event('requireLoginShake'));
                     return;
                   }
-                  checkLumiAccess(() => navigate('/resume-builder'))
+                  checkLumiAccess(() => navigate('/resumes'))
                 }}
               >
                 Build Resume Now <ArrowRight size={12} strokeWidth={2.5}/>

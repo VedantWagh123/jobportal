@@ -24,6 +24,7 @@ import rateLimit from 'express-rate-limit'
 import mongoSanitize from 'express-mongo-sanitize'
 import cookieParser from 'cookie-parser'
 import { notFound, errorHandler } from './middleware/errorHandler.js'
+import pineconeService from './services/pineconeService.js'
 
 import { createServer } from 'http';
 import { initSocket } from './config/socket.js';
@@ -136,5 +137,6 @@ Sentry.setupExpressErrorHandler(app);
 
 httpServer.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
+  pineconeService.init();
   // startJobProcessor(); // Temporarily disabled to prevent Upstash Redis max request limits
 });
