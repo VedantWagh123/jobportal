@@ -56,7 +56,8 @@ const resumeSchema = new mongoose.Schema({
         databases: [{ type: String }],
         tools: [{ type: String }],
         cloudDevOps: [{ type: String }],
-        softSkills: [{ type: String }]
+        softSkills: [{ type: String }],
+        coursework: [{ type: String }]
     },
     
     projects: [{

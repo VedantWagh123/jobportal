@@ -21,11 +21,11 @@ const initialData = {
     summary: '',
     experience: [],
     education: [],
-    skills: { technical: [], programmingLanguages: [], frameworks: [], databases: [], tools: [], softSkills: [] },
+    skills: { technical: [], programmingLanguages: [], frameworks: [], databases: [], tools: [], softSkills: [], coursework: [] },
     projects: [],
     certifications: [],
     achievements: [],
-    sectionOrder: ['summary', 'experience', 'projects', 'skills', 'education', 'certifications', 'achievements']
+    sectionOrder: ['summary', 'coursework', 'experience', 'projects', 'skills', 'education', 'certifications', 'achievements']
 };
 
 const ResumeBuilder = () => {
@@ -109,7 +109,20 @@ const ResumeBuilder = () => {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 if (data.success) {
-                    setResume({ ...initialData, ...data.resume });
+                    const fetchedResume = { ...initialData, ...data.resume };
+                    const allSections = ['summary', 'experience', 'projects', 'skills', 'education', 'certifications', 'achievements'];
+                    const existingOrder = Array.isArray(fetchedResume.sectionOrder) && fetchedResume.sectionOrder.length > 0
+                        ? fetchedResume.sectionOrder
+                        : allSections;
+                    const completeOrder = [...existingOrder];
+                    allSections.forEach(sec => {
+                        if (!completeOrder.includes(sec)) {
+                            completeOrder.push(sec);
+                        }
+                    });
+                    fetchedResume.sectionOrder = completeOrder;
+                    if (!Array.isArray(fetchedResume.achievements)) fetchedResume.achievements = [];
+                    setResume(fetchedResume);
                 }
             } catch (error) {
                 toast.error("Failed to load resume");
@@ -559,10 +572,10 @@ const ResumeBuilder = () => {
             <h2 className="text-xl font-bold text-gray-800 border-b pb-2 mb-4">Skills</h2>
             <p className="text-sm text-gray-500 mb-4">Type a skill and press <strong>Enter</strong> or <strong>Comma ( , )</strong> to add it.</p>
             
-            {['technical', 'programmingLanguages', 'frameworks', 'databases', 'tools', 'softSkills'].map((category) => (
+            {['technical', 'programmingLanguages', 'frameworks', 'databases', 'tools', 'softSkills', 'coursework'].map((category) => (
                 <div key={category} className="mb-4">
                     <label className="block text-xs font-bold text-gray-600 uppercase mb-2">
-                        {category.replace(/([A-Z])/g, ' $1').trim()}
+                        {category === 'coursework' ? 'Relevant Coursework' : category.replace(/([A-Z])/g, ' $1').trim()}
                     </label>
                     
                     <div className="flex flex-wrap gap-2 mb-2">
@@ -608,7 +621,7 @@ const ResumeBuilder = () => {
                             }
                             e.currentTarget.value = '';
                         }}
-                        placeholder={`Add ${category === 'frameworks' ? 'React, Node.js' : 'Skill'}...`}
+                        placeholder={`Add ${category === 'coursework' ? 'Data Integrity, Data Visualization' : (category === 'frameworks' ? 'React, Node.js' : 'Skill')}...`}
                     />
                 </div>
             ))}
@@ -656,115 +669,289 @@ const ResumeBuilder = () => {
         </div>
     );
 
+    const handleAddAchievement = () => {
+        const defaultOrder = ['summary', 'experience', 'projects', 'skills', 'education', 'certifications', 'achievements'];
+        const currentOrder = (Array.isArray(resume.sectionOrder) && resume.sectionOrder.length > 0)
+            ? resume.sectionOrder
+            : defaultOrder;
+        const updatedOrder = currentOrder.includes('achievements') ? currentOrder : [...currentOrder, 'achievements'];
+        
+        updateResume({ 
+            achievements: [...(resume.achievements || []), { achievementName: '', organization: '', date: '', description: '' }],
+            sectionOrder: updatedOrder
+        });
+    };
+
     const renderAchievements = () => (
         <div className="space-y-6">
-            <h2 className="text-xl font-bold text-gray-800 border-b pb-2 mb-4">Achievements</h2>
-            {resume.achievements?.map((ach, index) => (
-                <div key={index} className="bg-gray-50 border border-gray-200 rounded-xl p-4 relative group">
-                    <button onClick={() => removeArrayItem('achievements', index)} className="absolute top-4 right-4 text-gray-400 hover:text-red-500">
-                        <Trash2 size={16} />
+            <div className="flex items-center justify-between border-b pb-2 mb-4">
+                <div>
+                    <h2 className="text-xl font-bold text-gray-800">Achievements & Honors</h2>
+                    <p className="text-xs text-gray-500 mt-0.5">Showcase awards, hackathon wins, scholarships, and rankings.</p>
+                </div>
+                <button 
+                    onClick={handleAddAchievement}
+                    className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors shadow-sm"
+                >
+                    <Plus size={14} /> Add Achievement
+                </button>
+            </div>
+            
+            {(!resume.achievements || resume.achievements.length === 0) ? (
+                <div className="text-center py-10 bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl p-6">
+                    <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-3">
+                        <Medal size={24} />
+                    </div>
+                    <h3 className="font-bold text-gray-700 text-sm">No Achievements Added Yet</h3>
+                    <p className="text-xs text-gray-400 mt-1 max-w-sm mx-auto mb-4">Add your hackathon awards, competitive programming achievements, or employee recognitions.</p>
+                    <button 
+                        onClick={handleAddAchievement}
+                        className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2 rounded-lg inline-flex items-center gap-1.5 transition-colors shadow-sm"
+                    >
+                        <Plus size={14} /> Add First Achievement
                     </button>
-                    <div className="grid grid-cols-1 gap-4 mb-4 pr-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Achievement Title</label>
-                                <input className="w-full border border-gray-300 rounded-md p-1.5 text-sm" value={ach.achievementName} onChange={e => updateArrayItem('achievements', index, 'achievementName', e.target.value)} />
+                </div>
+            ) : (
+                resume.achievements.map((ach, index) => (
+                    <div key={index} className="bg-gray-50 border border-gray-200 rounded-xl p-4 relative group">
+                        <button onClick={() => removeArrayItem('achievements', index)} className="absolute top-4 right-4 text-gray-400 hover:text-red-500">
+                            <Trash2 size={16} />
+                        </button>
+                        <div className="grid grid-cols-1 gap-4 mb-4 pr-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Achievement Title</label>
+                                    <input className="w-full border border-gray-300 rounded-md p-1.5 text-sm" placeholder="e.g. Smart India Hackathon Winner" value={ach.achievementName} onChange={e => updateArrayItem('achievements', index, 'achievementName', e.target.value)} />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Organization / Event</label>
+                                    <input className="w-full border border-gray-300 rounded-md p-1.5 text-sm" placeholder="e.g. Ministry of Education" value={ach.organization} onChange={e => updateArrayItem('achievements', index, 'organization', e.target.value)} />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Date</label>
+                                    <input placeholder="MM/YYYY" className="w-full border border-gray-300 rounded-md p-1.5 text-sm" value={ach.date} onChange={e => updateArrayItem('achievements', index, 'date', e.target.value)} />
+                                </div>
                             </div>
                             <div>
-                                <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Organization / Event</label>
-                                <input className="w-full border border-gray-300 rounded-md p-1.5 text-sm" value={ach.organization} onChange={e => updateArrayItem('achievements', index, 'organization', e.target.value)} />
+                                <div className="flex items-center justify-between mb-1">
+                                    <label className="block text-[10px] font-bold text-gray-500 uppercase">Short Description & Bullets</label>
+                                    <button 
+                                        onClick={async () => {
+                                            const improved = await improveWithAI('achievements', ach.description, { title: ach.achievementName, org: ach.organization });
+                                            if(improved) updateArrayItem('achievements', index, 'description', improved);
+                                        }}
+                                        disabled={aiLoading}
+                                        className="text-[10px] font-bold text-violet-600 bg-violet-100 px-2 py-0.5 rounded flex items-center gap-1 hover:bg-violet-200"
+                                    >
+                                        <Sparkles size={10} /> Lumi Improve
+                                    </button>
+                                </div>
+                                <textarea rows={2} placeholder="- Brief summary of achievement, impact, or ranking." className="w-full border border-gray-300 rounded-md p-2 text-sm custom-scrollbar" value={ach.description} onChange={e => updateArrayItem('achievements', index, 'description', e.target.value)} />
                             </div>
-                            <div>
-                                <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Date</label>
-                                <input placeholder="MM/YYYY" className="w-full border border-gray-300 rounded-md p-1.5 text-sm" value={ach.date} onChange={e => updateArrayItem('achievements', index, 'date', e.target.value)} />
-                            </div>
-                        </div>
-                        <div>
-                            <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Short Description</label>
-                            <textarea rows={2} className="w-full border border-gray-300 rounded-md p-2 text-sm custom-scrollbar" value={ach.description} onChange={e => updateArrayItem('achievements', index, 'description', e.target.value)} />
                         </div>
                     </div>
-                </div>
-            ))}
-            <button 
-                onClick={() => addArrayItem('achievements', { achievementName: '', organization: '', date: '', description: '' })}
-                className="w-full py-3 border-2 border-dashed border-gray-300 text-gray-500 font-bold rounded-xl flex justify-center items-center gap-2 hover:border-blue-500 hover:text-blue-500 transition-colors"
-            >
-                <Plus size={18} /> Add Achievement
-            </button>
+                ))
+            )}
+            
+            {resume.achievements?.length > 0 && (
+                <button 
+                    onClick={handleAddAchievement}
+                    className="w-full py-3 border-2 border-dashed border-gray-300 text-gray-500 font-bold rounded-xl flex justify-center items-center gap-2 hover:border-blue-500 hover:text-blue-500 transition-colors"
+                >
+                    <Plus size={18} /> Add Another Achievement
+                </button>
+            )}
         </div>
     );
 
     const onDragEnd = (result) => {
         if (!result.destination) return;
-        const items = Array.from(resume.sectionOrder);
+        const allSections = ['summary', 'coursework', 'experience', 'projects', 'skills', 'education', 'certifications', 'achievements'];
+        const currentOrder = (Array.isArray(resume.sectionOrder) && resume.sectionOrder.length > 0)
+            ? resume.sectionOrder
+            : allSections;
+        const items = [...currentOrder];
+        allSections.forEach(s => {
+            if (!items.includes(s)) items.push(s);
+        });
         const [reorderedItem] = items.splice(result.source.index, 1);
         items.splice(result.destination.index, 0, reorderedItem);
         updateResume({ sectionOrder: items });
     };
 
+    const moveSection = (index, direction) => {
+        const allSections = ['summary', 'coursework', 'experience', 'projects', 'skills', 'education', 'certifications', 'achievements'];
+        const currentOrder = (Array.isArray(resume.sectionOrder) && resume.sectionOrder.length > 0)
+            ? resume.sectionOrder
+            : allSections;
+        const items = [...currentOrder];
+        allSections.forEach(s => {
+            if (!items.includes(s)) items.push(s);
+        });
+        const targetIndex = index + direction;
+        if (targetIndex < 0 || targetIndex >= items.length) return;
+        const [movedItem] = items.splice(index, 1);
+        items.splice(targetIndex, 0, movedItem);
+        updateResume({ sectionOrder: items });
+    };
+
+    const resetSectionOrder = () => {
+        const defaultOrder = ['summary', 'coursework', 'experience', 'projects', 'skills', 'education', 'certifications', 'achievements'];
+        updateResume({ sectionOrder: defaultOrder });
+        toast.success("Reset layout to default order");
+    };
+
+    const getSectionCount = (id) => {
+        switch(id) {
+            case 'summary': return resume.summary ? '1 item' : 'Empty';
+            case 'coursework': return `${resume.skills?.coursework?.length || 0} courses`;
+            case 'experience': return `${resume.experience?.length || 0} items`;
+            case 'projects': return `${resume.projects?.length || 0} items`;
+            case 'skills': {
+                const total = Object.values(resume.skills || {}).flat().length;
+                return `${total} skills`;
+            }
+            case 'education': return `${resume.education?.length || 0} items`;
+            case 'certifications': return `${resume.certifications?.length || 0} items`;
+            case 'achievements': return `${resume.achievements?.length || 0} items`;
+            default: return '';
+        }
+    };
+
     const sectionNames = {
-        summary: 'Professional Summary',
+        summary: 'Profile / Summary',
+        coursework: 'Relevant Coursework',
         experience: 'Work Experience',
         projects: 'Projects',
-        skills: 'Skills',
+        skills: 'Technical Skills',
         education: 'Education',
         certifications: 'Certifications',
         achievements: 'Achievements'
     };
 
-    const renderLayout = () => (
-        <div className="space-y-8 pb-10">
-            <div>
-                <h2 className="text-xl font-bold text-gray-800 border-b pb-2 mb-4">Design Settings</h2>
-                
-                <div className="space-y-4">
-                    <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Typography (Font Family)</label>
-                        <select 
-                            className="w-full border border-gray-300 rounded-lg p-2.5 focus:border-blue-500 outline-none text-sm bg-white"
-                            value={resume.design?.fontFamily || 'Inter'}
-                            onChange={(e) => updateResume({ design: { ...resume.design, fontFamily: e.target.value } })}
-                        >
-                            <option value="Inter">Inter (Clean & Modern)</option>
-                            <option value="Roboto">Roboto (Professional)</option>
-                            <option value="Merriweather">Merriweather (Classic Serif)</option>
-                            <option value="Outfit">Outfit (Geometric & Bold)</option>
-                        </select>
+    const renderLayout = () => {
+        const allSections = ['summary', 'coursework', 'experience', 'projects', 'skills', 'education', 'certifications', 'achievements'];
+        const currentOrder = (Array.isArray(resume.sectionOrder) && resume.sectionOrder.length > 0)
+            ? resume.sectionOrder
+            : allSections;
+        const activeOrder = [...currentOrder];
+        allSections.forEach(s => {
+            if (!activeOrder.includes(s)) activeOrder.push(s);
+        });
+
+        const fontFamilies = {
+            'Inter': "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+            'Roboto': "'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif",
+            'Merriweather': "'Merriweather', Georgia, Cambria, 'Times New Roman', serif",
+            'Outfit': "'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+        };
+        const currentFont = resume.design?.fontFamily || 'Inter';
+
+        return (
+            <div className="space-y-8 pb-10">
+                <div>
+                    <h2 className="text-xl font-bold text-gray-800 border-b pb-2 mb-4">Design & Typography</h2>
+                    
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Typography (Font Family)</label>
+                            <select 
+                                className="w-full border border-gray-300 rounded-lg p-2.5 focus:border-blue-500 outline-none text-sm bg-white"
+                                value={currentFont}
+                                onChange={(e) => updateResume({ design: { ...(resume.design || {}), fontFamily: e.target.value } })}
+                            >
+                                <option value="Inter">Inter (Clean & Modern Sans)</option>
+                                <option value="Roboto">Roboto (Professional Sans)</option>
+                                <option value="Merriweather">Merriweather (Classic Editorial Serif)</option>
+                                <option value="Outfit">Outfit (Geometric & Bold Sans)</option>
+                            </select>
+
+                            {/* Live Font Sample */}
+                            <div className="mt-2.5 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                                <span className="text-[10px] uppercase font-bold text-gray-400 block mb-1">Live Font Sample:</span>
+                                <p 
+                                    className="text-base font-semibold text-gray-800 tracking-wide transition-all"
+                                    style={{ fontFamily: fontFamilies[currentFont] || currentFont }}
+                                >
+                                    The quick brown fox jumps over the lazy dog (1234567890)
+                                </p>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <div>
-                <h2 className="text-xl font-bold text-gray-800 border-b pb-2 mb-4">Reorder Sections</h2>
-                <p className="text-sm text-gray-500 mb-6">Drag and drop the sections below to change their order in the generated resume.</p>
-                <DragDropContext onDragEnd={onDragEnd}>
-                    <Droppable droppableId="sections">
-                        {(provided) => (
-                            <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-2">
-                                {resume.sectionOrder?.map((sectionId, index) => (
-                                    <Draggable key={sectionId} draggableId={sectionId} index={index}>
-                                        {(provided, snapshot) => (
-                                            <div
-                                                ref={provided.innerRef}
-                                                {...provided.draggableProps}
-                                                {...provided.dragHandleProps}
-                                                className={`flex items-center gap-3 p-3 bg-white border rounded-xl shadow-sm transition-all ${snapshot.isDragging ? 'shadow-lg border-blue-500 scale-[1.02] z-50' : 'border-gray-200 hover:border-gray-300'}`}
-                                            >
-                                                <div className="text-gray-400"><GripVertical size={18} /></div>
-                                                <span className="font-bold text-gray-700">{sectionNames[sectionId] || sectionId}</span>
-                                            </div>
-                                        )}
-                                    </Draggable>
-                                ))}
-                                {provided.placeholder}
-                            </div>
-                        )}
-                    </Droppable>
-                </DragDropContext>
+                <div>
+                    <div className="flex items-center justify-between border-b pb-2 mb-4">
+                        <div>
+                            <h2 className="text-xl font-bold text-gray-800">Reorder Resume Sections</h2>
+                            <p className="text-xs text-gray-500 mt-0.5">Use the arrows or drag and drop to arrange section order flexibly on the resume.</p>
+                        </div>
+                        <button 
+                            onClick={resetSectionOrder}
+                            className="text-xs text-blue-600 hover:text-blue-800 font-semibold px-2 py-1 rounded hover:bg-blue-50 transition-colors"
+                        >
+                            Reset Order
+                        </button>
+                    </div>
+
+                    <DragDropContext onDragEnd={onDragEnd}>
+                        <Droppable droppableId="sections">
+                            {(provided) => (
+                                <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-2">
+                                    {activeOrder.map((sectionId, index) => (
+                                        <Draggable key={sectionId} draggableId={sectionId} index={index}>
+                                            {(provided, snapshot) => (
+                                                <div
+                                                    ref={provided.innerRef}
+                                                    {...provided.draggableProps}
+                                                    className={`flex items-center justify-between p-3 bg-white border rounded-xl shadow-sm transition-all ${snapshot.isDragging ? 'shadow-lg border-blue-500 scale-[1.02] z-50' : 'border-gray-200 hover:border-gray-300'}`}
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <div {...provided.dragHandleProps} className="text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing p-1">
+                                                            <GripVertical size={18} />
+                                                        </div>
+                                                        <div className="flex flex-col">
+                                                            <span className="font-bold text-gray-800 text-sm">{sectionNames[sectionId] || sectionId}</span>
+                                                            <span className="text-[11px] text-gray-400 font-medium">{getSectionCount(sectionId)}</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-1">
+                                                        <button 
+                                                            onClick={() => moveSection(index, -1)}
+                                                            disabled={index === 0}
+                                                            title="Move Up"
+                                                            className="w-7 h-7 rounded flex items-center justify-center text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                                                        >
+                                                            <ChevronUp size={16} />
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => moveSection(index, 1)}
+                                                            disabled={index === activeOrder.length - 1}
+                                                            title="Move Down"
+                                                            className="w-7 h-7 rounded flex items-center justify-center text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                                                        >
+                                                            <ChevronDown size={16} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setActiveTab(sectionId === 'summary' ? 'summary' : sectionId)}
+                                                            className="ml-2 text-xs text-blue-600 hover:underline font-semibold px-2 py-1"
+                                                        >
+                                                            Edit
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </Draggable>
+                                    ))}
+                                    {provided.placeholder}
+                                </div>
+                            )}
+                        </Droppable>
+                    </DragDropContext>
+                </div>
             </div>
-        </div>
-    );
+        );
+    };
 
     // --- Live Preview Frame ---
     // We build a simplified HTML string representing the selected template to inject into an iframe for pixel-perfect preview isolation.
@@ -884,18 +1071,32 @@ const ResumeBuilder = () => {
         };
 
         const defaultOrder = ['summary', 'experience', 'projects', 'skills', 'education', 'certifications', 'achievements'];
-        const activeOrder = resume.sectionOrder?.length > 0 ? resume.sectionOrder : defaultOrder;
+        const rawOrder = resume.sectionOrder?.length > 0 ? resume.sectionOrder : defaultOrder;
+        const activeOrder = [...rawOrder];
+        defaultOrder.forEach(sec => {
+            if (!activeOrder.includes(sec)) activeOrder.push(sec);
+        });
         
         const dynamicContent = activeOrder.map(section => renderSectionMap[section] || '').join('');
+
+        const customFont = resume.design?.fontFamily;
+        const fontStyleOverride = customFont ? `
+            body, body *, body.template-ats-classic, body.template-modern-professional, body.template-tech-professional, body.template-minimal-executive {
+                font-family: '${customFont}', ${customFont === 'Merriweather' ? 'serif' : 'sans-serif'} !important;
+            }
+        ` : '';
 
         return `
         <!DOCTYPE html>
         <html>
         <head>
-            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+            <link rel="preconnect" href="https://fonts.googleapis.com">
+            <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300;1,400&family=Outfit:wght@300;400;500;600;700;800;900&family=Roboto:wght@300;400;500;700;900&display=swap" rel="stylesheet">
             <style>
                 * { box-sizing: border-box; }
                 body { font-family: 'Inter', sans-serif; margin: 0; padding: 40px; color: #1f2937; background: #ffffff; font-size: 11px; line-height: 1.5; }
+                ${fontStyleOverride}
                 /* ----- ATS Classic Template ----- */
                 body.template-ats-classic {
                     font-family: "Times New Roman", Times, serif;

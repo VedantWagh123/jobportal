@@ -1,5 +1,17 @@
 import React from 'react';
-import { ZoomIn, ZoomOut, Maximize } from 'lucide-react';
+import { ZoomIn, ZoomOut, Maximize, Phone, Mail } from 'lucide-react';
+
+const LinkedInIcon = () => (
+    <svg className="w-3 h-3 inline-block shrink-0 fill-current" viewBox="0 0 24 24">
+        <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z"/>
+    </svg>
+);
+
+const GithubIcon = () => (
+    <svg className="w-3 h-3 inline-block shrink-0 fill-current" viewBox="0 0 24 24">
+        <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+    </svg>
+);
 
 const ResumeTemplateRenderer = ({ resume, onUpdate, onFocusSection, isMagnifier, onScaleChange, ...props }) => {
     
@@ -16,11 +28,6 @@ const ResumeTemplateRenderer = ({ resume, onUpdate, onFocusSection, isMagnifier,
     }, [activeScale, isMagnifier, onScaleChange]);
 
     React.useEffect(() => {
-        if (resume.template === 'Modern Professional') {
-            setScale(1);
-            return;
-        }
-        if (resume.template !== 'ATS Classic' && resume.template !== 'Tech Professional' && resume.template !== 'Minimal Executive') return;
         
         const updateScale = () => {
             if (containerRef.current && contentRef.current) {
@@ -58,18 +65,19 @@ const ResumeTemplateRenderer = ({ resume, onUpdate, onFocusSection, isMagnifier,
 
     const EditableText = ({ tag: Tag = 'span', path, value, placeholder, className, style, onClick, isLink, href }) => {
         const linkClass = isLink ? "text-blue-600 hover:underline" : "";
+        const hasContent = Boolean(value && String(value).trim().length > 0);
         
         if (isMagnifier) {
             if (isLink) {
                 return (
                     <a href={href || '#'} target="_blank" rel="noopener noreferrer" className={`${linkClass} ${className || ''}`} style={style}>
-                        {value || ''}
+                        {hasContent ? value : (placeholder || '')}
                     </a>
                 );
             }
             return (
                 <Tag className={`${className || ''}`} style={style}>
-                    {value || ''}
+                    {hasContent ? value : (placeholder || '')}
                 </Tag>
             );
         }
@@ -86,7 +94,7 @@ const ResumeTemplateRenderer = ({ resume, onUpdate, onFocusSection, isMagnifier,
                 suppressContentEditableWarning
                 onBlur={(e) => {
                     const text = e.target.innerText.trim();
-                    if(text !== value) {
+                    if(text !== (value || '')) {
                         handleEdit(path, text);
                     }
                 }}
@@ -96,7 +104,7 @@ const ResumeTemplateRenderer = ({ resume, onUpdate, onFocusSection, isMagnifier,
                 }}
                 data-placeholder={placeholder}
             >
-                {value || ''}
+                {hasContent ? value : (placeholder ? <span className="text-gray-400 italic opacity-60 pointer-events-none select-none">{placeholder}</span> : '')}
             </TagToUse>
         );
     };
@@ -109,57 +117,66 @@ const ResumeTemplateRenderer = ({ resume, onUpdate, onFocusSection, isMagnifier,
                 contentEditable
                 suppressContentEditableWarning
                 onBlur={(e) => {
-                    const html = e.target.innerHTML;
-                    // very basic parse back to text if they created divs/brs
                     let newText = e.target.innerText;
                     if(newText !== text) handleEdit(path, newText);
                 }}
                 onClick={(e) => e.stopPropagation()}
             >
-                {text.split('\n').map((line, i) => (
-                    <div key={i}>{line}</div>
-                ))}
+                {text.split('\n').map((line, i) => {
+                    const trimmed = line.trim();
+                    const isBullet = trimmed.startsWith('-') || trimmed.startsWith('•');
+                    const cleanLine = isBullet ? trimmed.replace(/^[-•]\s*/, '') : line;
+                    if (isBullet) {
+                        return (
+                            <div key={i} className="flex items-start gap-1.5 mb-0.5 text-justify">
+                                <span className="select-none font-bold text-gray-900 shrink-0 mt-[1px]">•</span>
+                                <span className="flex-1">{cleanLine}</span>
+                            </div>
+                        );
+                    }
+                    return <div key={i}>{line}</div>;
+                })}
             </div>
         );
     };
 
     const getHeaderClass = (tmpl) => {
-        if (tmpl === 'Modern Professional') return "text-lg font-bold uppercase bg-gray-800 text-white py-1 px-3 mb-4 inline-block tracking-wider";
+        if (tmpl === 'Modern Professional') return "text-[13px] font-bold font-serif border-b border-black pb-0.5 mb-1 text-gray-900";
         if (tmpl === 'Tech Professional') return "text-[12px] bg-gray-100 px-2 py-1 font-bold uppercase mt-4 mb-2 inline-block";
         if (tmpl === 'Minimal Executive') return "text-[12px] text-gray-400 uppercase tracking-widest mt-5 mb-2 border-b border-gray-100 pb-1";
         return "text-[13px] font-bold border-b-[1.5px] border-gray-800 uppercase mb-1.5 pb-0.5";
     };
 
     const getTitleClass = (tmpl) => {
-        if (tmpl === 'Modern Professional') return "font-bold text-gray-800 text-sm";
+        if (tmpl === 'Modern Professional') return "font-bold text-gray-900 text-[12px] font-serif";
         if (tmpl === 'Tech Professional') return "font-bold text-[12px]";
         if (tmpl === 'Minimal Executive') return "font-semibold text-gray-800 text-[11px] tracking-wide";
         return "font-bold text-[11px]"; 
     };
 
     const getSubtitleClass = (tmpl) => {
-        if (tmpl === 'Modern Professional') return "text-sm font-medium text-blue-600 mb-2";
+        if (tmpl === 'Modern Professional') return "text-[11px] font-serif text-gray-700 italic";
         if (tmpl === 'Tech Professional') return "text-[11px] italic mb-1";
         if (tmpl === 'Minimal Executive') return "text-[11px] text-gray-500 mb-1";
         return "italic text-[11px] text-gray-700"; 
     };
 
     const getDescClass = (tmpl) => {
-        if (tmpl === 'Modern Professional') return "text-sm text-gray-700 pl-4 border-l border-gray-200 mt-1";
+        if (tmpl === 'Modern Professional') return "text-[11px] font-serif leading-[1.45] text-gray-800 pl-2 mt-0.5";
         if (tmpl === 'Tech Professional') return "text-[11px] text-gray-700 mt-1";
         if (tmpl === 'Minimal Executive') return "text-[11px] text-gray-600 font-light leading-relaxed mt-1";
         return "text-[11px] leading-[1.5] pl-3"; 
     };
 
     const getItemContainerClass = (tmpl) => {
-        if (tmpl === 'Modern Professional') return "mb-4";
+        if (tmpl === 'Modern Professional') return "mb-2";
         if (tmpl === 'Tech Professional') return "mb-2 border-l-2 border-gray-200 pl-3";
         if (tmpl === 'Minimal Executive') return "mb-3";
         return "mb-2.5";
     }
 
     const getListContainerClass = (tmpl) => {
-        if (tmpl === 'Modern Professional') return "mb-6";
+        if (tmpl === 'Modern Professional') return "mb-2.5";
         if (tmpl === 'Tech Professional') return "mb-4";
         if (tmpl === 'Minimal Executive') return "mb-5";
         return "mb-3";
@@ -172,14 +189,26 @@ const ResumeTemplateRenderer = ({ resume, onUpdate, onFocusSection, isMagnifier,
             if (section === 'summary' && resume.summary) {
                 return (
                     <div key="summary" className={getListContainerClass(tmpl)}>
-                        <h2 className={getHeaderClass(tmpl)}>Professional Summary</h2>
-                        <EditableText 
-                            tag="div" 
-                            path="summary" 
-                            value={resume.summary} 
-                            className={tmpl === 'Modern Professional' ? "text-sm leading-relaxed" : (tmpl === 'Minimal Executive' ? "text-[11px] text-gray-600 font-light leading-relaxed text-justify" : "text-[11px] leading-[1.5] text-justify text-gray-800")}
-                            onClick={() => onFocusSection('summary')}
-                        />
+                        <h2 className={getHeaderClass(tmpl)}>{tmpl === 'Modern Professional' ? 'Profile Summary' : 'Professional Summary'}</h2>
+                        <div className={tmpl === 'Modern Professional' ? "text-[11px] font-serif leading-[1.45] text-gray-800" : (tmpl === 'Minimal Executive' ? "text-[11px] text-gray-600 font-light leading-relaxed text-justify" : "text-[11px] leading-[1.5] text-justify text-gray-800")}>
+                            {renderList(resume.summary, 'summary')}
+                        </div>
+                    </div>
+                );
+            }
+
+            if (section === 'coursework' && resume.skills?.coursework?.length > 0) {
+                return (
+                    <div key="coursework" className={getListContainerClass(tmpl)} onClick={() => onFocusSection('skills')}>
+                        <h2 className={getHeaderClass(tmpl)}>Relevant Coursework</h2>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1 text-[11px] font-serif text-gray-800 my-0.5">
+                            {resume.skills.coursework.map((course, idx) => (
+                                <div key={idx} className="flex items-center gap-1.5">
+                                    <span className="text-gray-700 font-bold select-none">•</span>
+                                    <EditableText path={`skills.coursework.${idx}`} value={course} placeholder="Course Name" />
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 );
             }
@@ -190,40 +219,23 @@ const ResumeTemplateRenderer = ({ resume, onUpdate, onFocusSection, isMagnifier,
                         <h2 className={getHeaderClass(tmpl)}>Experience</h2>
                         {resume.experience.map((exp, idx) => (
                             <div key={idx} className={getItemContainerClass(tmpl)}>
-                                <div className={`flex justify-between ${getTitleClass(tmpl)} text-gray-900`}>
-                                    <EditableText path={`experience.${idx}.jobTitle`} value={exp.jobTitle} />
-                                    <span className="font-normal text-gray-500 text-[10px] md:text-inherit">
-                                        <EditableText path={`experience.${idx}.startDate`} value={exp.startDate} /> - <EditableText path={`experience.${idx}.endDate`} value={exp.currentlyWorking ? 'Present' : exp.endDate} />
+                                <div className={`flex justify-between ${getTitleClass(tmpl)} text-gray-900 mb-0.5`}>
+                                    <div>
+                                        <EditableText path={`experience.${idx}.company`} value={exp.company} placeholder="Company" />
+                                        {exp.jobTitle && (
+                                            <span>
+                                                {tmpl === 'Modern Professional' ? ' - ' : ', '}
+                                                <EditableText path={`experience.${idx}.jobTitle`} value={exp.jobTitle} placeholder="Job Title" />
+                                            </span>
+                                        )}
+                                        {exp.location && <span className="ml-1 font-normal text-gray-600 font-serif">, <EditableText path={`experience.${idx}.location`} value={exp.location} placeholder="Location" /></span>}
+                                    </div>
+                                    <span className="font-normal text-gray-700 text-[11px] shrink-0 ml-2 font-serif">
+                                        <EditableText path={`experience.${idx}.startDate`} value={exp.startDate} placeholder="Start" /> – <EditableText path={`experience.${idx}.endDate`} value={exp.currentlyWorking ? 'Present' : exp.endDate} placeholder="End" />
                                     </span>
-                                </div>
-                                <div className={getSubtitleClass(tmpl)}>
-                                    <EditableText path={`experience.${idx}.company`} value={exp.company} /> 
-                                    {exp.location && <span className="ml-1 font-normal">(<EditableText path={`experience.${idx}.location`} value={exp.location} />)</span>}
                                 </div>
                                 <div className={getDescClass(tmpl)}>
                                     {renderList(exp.responsibilities, `experience.${idx}.responsibilities`)}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                );
-            }
-            
-            if (section === 'education' && resume.education?.length > 0) {
-                return (
-                    <div key="education" className={getListContainerClass(tmpl)} onClick={() => onFocusSection('education')}>
-                        <h2 className={getHeaderClass(tmpl)}>Education</h2>
-                        {resume.education.map((edu, idx) => (
-                            <div key={idx} className={getItemContainerClass(tmpl)}>
-                                <div className={`flex justify-between ${getTitleClass(tmpl)}`}>
-                                    <EditableText path={`education.${idx}.degree`} value={edu.degree} />
-                                    <span className="font-normal text-gray-500 text-[10px] md:text-inherit">
-                                        <EditableText path={`education.${idx}.startYear`} value={edu.startYear} /> - <EditableText path={`education.${idx}.endYear`} value={edu.endYear} />
-                                    </span>
-                                </div>
-                                <div className={getSubtitleClass(tmpl)}>
-                                    <EditableText path={`education.${idx}.institution`} value={edu.institution} />
-                                    {edu.score && <span className="ml-2 font-normal">(<EditableText path={`education.${idx}.score`} value={edu.score} />)</span>}
                                 </div>
                             </div>
                         ))}
@@ -237,15 +249,24 @@ const ResumeTemplateRenderer = ({ resume, onUpdate, onFocusSection, isMagnifier,
                         <h2 className={getHeaderClass(tmpl)}>Projects</h2>
                         {resume.projects.map((proj, idx) => (
                             <div key={idx} className={getItemContainerClass(tmpl)}>
-                                <div className={getTitleClass(tmpl)}>
-                                    <EditableText path={`projects.${idx}.projectName`} value={proj.projectName} />
-                                </div>
-                                <div className={`${getSubtitleClass(tmpl)} flex gap-3`}>
-                                    {(proj.technologies && proj.technologies.length > 0) && (
-                                        <span>Tech: {proj.technologies.join(', ')}</span>
-                                    )}
-                                    {proj.liveDemoUrl && <a href={proj.liveDemoUrl} target="_blank" rel="noreferrer" className="text-blue-600">Live Demo</a>}
-                                    {proj.githubUrl && <a href={proj.githubUrl} target="_blank" rel="noreferrer" className="text-blue-600">GitHub</a>}
+                                <div className="flex justify-between items-baseline mb-0.5 font-serif text-[11px]">
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                        <span className="font-bold text-[12px] text-gray-900">
+                                            <EditableText path={`projects.${idx}.projectName`} value={proj.projectName} placeholder="Project Name" />
+                                        </span>
+                                        {proj.technologies?.length > 0 && (
+                                            <span className="italic text-gray-700 font-serif">| {proj.technologies.join(', ')}</span>
+                                        )}
+                                        {proj.liveDemoUrl && (
+                                            <span>| <a href={proj.liveDemoUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">Live Dashboard</a></span>
+                                        )}
+                                        {proj.githubUrl && (
+                                            <span>| <a href={proj.githubUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">GitHub Repository</a></span>
+                                        )}
+                                    </div>
+                                    <span className="font-serif text-[11px] text-gray-800 font-normal shrink-0 ml-2">
+                                        <EditableText path={`projects.${idx}.role`} value={proj.role} placeholder="Month Year" />
+                                    </span>
                                 </div>
                                 <div className={getDescClass(tmpl)}>
                                     {renderList(proj.description, `projects.${idx}.description`)}
@@ -259,27 +280,58 @@ const ResumeTemplateRenderer = ({ resume, onUpdate, onFocusSection, isMagnifier,
             if (section === 'skills' && resume.skills && (resume.skills.technical?.length > 0 || resume.skills.programmingLanguages?.length > 0 || resume.skills.frameworks?.length > 0 || resume.skills.databases?.length > 0 || resume.skills.tools?.length > 0 || resume.skills.softSkills?.length > 0)) {
                 return (
                     <div key="skills" className={getListContainerClass(tmpl)} onClick={() => onFocusSection('skills')}>
-                        <h2 className={getHeaderClass(tmpl)}>Skills</h2>
-                        <div className={tmpl === 'Modern Professional' ? "text-sm space-y-3" : "text-[11px] leading-[1.4] space-y-0.5"}>
+                        <h2 className={getHeaderClass(tmpl)}>{tmpl === 'Modern Professional' ? 'Technical Skills' : 'Skills'}</h2>
+                        <div className="text-[11px] leading-relaxed space-y-0.5 font-serif">
+                            {resume.skills.tools?.length > 0 && (
+                                <div><strong className="text-gray-900">{tmpl === 'Modern Professional' ? 'Analytical Tools' : 'Tools'}:</strong> {resume.skills.tools.join(', ')}</div>
+                            )}
                             {resume.skills.programmingLanguages?.length > 0 && (
-                                <div><span className="font-bold text-gray-800">Languages:</span> {resume.skills.programmingLanguages.join(', ')}</div>
+                                <div><strong className="text-gray-900">Languages:</strong> {resume.skills.programmingLanguages.join(', ')}</div>
                             )}
                             {resume.skills.frameworks?.length > 0 && (
-                                <div><span className="font-bold text-gray-800">Frameworks:</span> {resume.skills.frameworks.join(', ')}</div>
+                                <div><strong className="text-gray-900">{tmpl === 'Modern Professional' ? 'Technologies/Frameworks' : 'Frameworks'}:</strong> {resume.skills.frameworks.join(', ')}</div>
                             )}
                             {resume.skills.technical?.length > 0 && (
-                                <div><span className="font-bold text-gray-800">Technical:</span> {resume.skills.technical.join(', ')}</div>
+                                <div><strong className="text-gray-900">Technical:</strong> {resume.skills.technical.join(', ')}</div>
                             )}
                             {resume.skills.databases?.length > 0 && (
-                                <div><span className="font-bold text-gray-800">Databases:</span> {resume.skills.databases.join(', ')}</div>
-                            )}
-                            {resume.skills.tools?.length > 0 && (
-                                <div><span className="font-bold text-gray-800">Tools:</span> {resume.skills.tools.join(', ')}</div>
+                                <div><strong className="text-gray-900">Databases:</strong> {resume.skills.databases.join(', ')}</div>
                             )}
                             {resume.skills.softSkills?.length > 0 && (
-                                <div><span className="font-bold text-gray-800">Soft Skills:</span> {resume.skills.softSkills.join(', ')}</div>
+                                <div><strong className="text-gray-900">Soft Skills:</strong> {resume.skills.softSkills.join(', ')}</div>
                             )}
                         </div>
+                    </div>
+                );
+            }
+
+            if (section === 'education' && resume.education?.length > 0) {
+                return (
+                    <div key="education" className={getListContainerClass(tmpl)} onClick={() => onFocusSection('education')}>
+                        <h2 className={getHeaderClass(tmpl)}>Education</h2>
+                        {resume.education.map((edu, idx) => (
+                            <div key={idx} className={getItemContainerClass(tmpl)}>
+                                <div className="flex justify-between items-baseline font-serif">
+                                    <span className="font-bold text-[12px] text-gray-900">
+                                        <EditableText path={`education.${idx}.institution`} value={edu.institution} placeholder="Institution" />
+                                    </span>
+                                    <span className="font-serif text-[11px] text-gray-800">
+                                        <EditableText path={`education.${idx}.startYear`} value={edu.startYear} placeholder="Start" /> – <EditableText path={`education.${idx}.endYear`} value={edu.endYear} placeholder="End" />
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-baseline italic text-gray-700 font-serif text-[11px]">
+                                    <span>
+                                        <EditableText path={`education.${idx}.degree`} value={edu.degree} placeholder="Degree" />
+                                        {edu.score && !edu.degree?.includes(edu.score) && <span className="ml-1 font-normal not-italic">({edu.score})</span>}
+                                    </span>
+                                    {edu.location && (
+                                        <span>
+                                            <EditableText path={`education.${idx}.location`} value={edu.location} placeholder="Location" />
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 );
             }
@@ -287,20 +339,17 @@ const ResumeTemplateRenderer = ({ resume, onUpdate, onFocusSection, isMagnifier,
             if (section === 'certifications' && resume.certifications?.length > 0) {
                 return (
                     <div key="certifications" className={getListContainerClass(tmpl)} onClick={() => onFocusSection('certifications')}>
-                        <h2 className={getHeaderClass(tmpl)}>Certifications</h2>
-                        <ul className={tmpl === 'Modern Professional' ? "text-sm list-none space-y-2 text-gray-700" : "list-none space-y-1.5 text-[11px]"}>
+                        <h2 className={getHeaderClass(tmpl)}>{tmpl === 'Modern Professional' ? 'Extracurricular / Certifications' : 'Certifications'}</h2>
+                        <ul className="list-none space-y-1 text-[11px] font-serif">
                             {resume.certifications.map((cert, idx) => (
-                                <li key={idx} className={getItemContainerClass(tmpl)}>
-                                    <div className={`flex justify-between ${getTitleClass(tmpl)}`}>
-                                        <EditableText path={`certifications.${idx}.certificateName`} value={cert.certificateName} />
-                                        <span className="font-normal text-gray-500 text-[10px]">
-                                            <EditableText path={`certifications.${idx}.issueDate`} value={cert.issueDate} />
-                                        </span>
+                                <li key={idx} className="flex items-start gap-1.5">
+                                    <span className="font-bold text-gray-700 select-none">•</span>
+                                    <div>
+                                        <EditableText path={`certifications.${idx}.certificateName`} value={cert.certificateName} placeholder="Certification Name" />
+                                        {cert.credentialUrl && (
+                                            <span>—<a href={cert.credentialUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">View Credentials</a></span>
+                                        )}
                                     </div>
-                                    <div className={getSubtitleClass(tmpl)}>
-                                        <EditableText path={`certifications.${idx}.issuingOrganization`} value={cert.issuingOrganization} />
-                                    </div>
-                                    {cert.credentialId && <div className={getDescClass(tmpl)}>ID: {cert.credentialId}</div>}
                                 </li>
                             ))}
                         </ul>
@@ -316,17 +365,24 @@ const ResumeTemplateRenderer = ({ resume, onUpdate, onFocusSection, isMagnifier,
                             {resume.achievements.map((ach, idx) => (
                                 <li key={idx} className={getItemContainerClass(tmpl)}>
                                     <div className={`flex justify-between ${getTitleClass(tmpl)}`}>
-                                        <EditableText path={`achievements.${idx}.achievementName`} value={ach.achievementName} />
+                                        <span>
+                                            <EditableText path={`achievements.${idx}.achievementName`} value={ach.achievementName} placeholder="Achievement Name" />
+                                            {(ach.organization || !ach.achievementName) && (
+                                                <span className="font-normal italic">
+                                                    {ach.achievementName ? ', ' : ''}
+                                                    <EditableText path={`achievements.${idx}.organization`} value={ach.organization} placeholder="Organization / Event" />
+                                                </span>
+                                            )}
+                                        </span>
                                         <span className="font-normal text-gray-500 text-[10px]">
-                                            <EditableText path={`achievements.${idx}.date`} value={ach.date} />
+                                            <EditableText path={`achievements.${idx}.date`} value={ach.date} placeholder="MM/YYYY" />
                                         </span>
                                     </div>
-                                    <div className={getSubtitleClass(tmpl)}>
-                                        <EditableText path={`achievements.${idx}.organization`} value={ach.organization} />
-                                    </div>
-                                    <div className={getDescClass(tmpl)}>
-                                        {renderList(ach.description, `achievements.${idx}.description`)}
-                                    </div>
+                                    {ach.description && (
+                                        <div className={getDescClass(tmpl)}>
+                                            {renderList(ach.description, `achievements.${idx}.description`)}
+                                        </div>
+                                    )}
                                 </li>
                             ))}
                         </ul>
@@ -339,121 +395,123 @@ const ResumeTemplateRenderer = ({ resume, onUpdate, onFocusSection, isMagnifier,
     };
 
     // Styling logic similar to PDF generator
-    let containerClass = "bg-white overflow-hidden shadow-xl mx-auto text-gray-900";
-    if (resume.template === 'Modern Professional') {
-        containerClass += " flex"; // Add flex for 2 columns
-    } else {
-        containerClass += " relative"; 
-    }
+    let containerClass = "bg-white overflow-hidden shadow-xl mx-auto text-gray-900 relative";
     
     // Add custom design options
-    const customStyle = { width: '210mm' }; // A4 dimensions
-    if (resume.template === 'Modern Professional') {
-        customStyle.minHeight = '297mm';
-    } else {
-        customStyle.height = '297mm'; // fixed height for auto-scaling
-    }
-    if(resume.design?.fontFamily) customStyle.fontFamily = resume.design.fontFamily;
+    const customStyle = { width: '210mm', height: '297mm' }; // fixed height for auto-scaling
+    const fontFamilies = {
+        'Inter': "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+        'Roboto': "'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif",
+        'Merriweather': "'Merriweather', Georgia, Cambria, 'Times New Roman', serif",
+        'Outfit': "'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+    };
 
-    const defaultOrder = ['summary', 'experience', 'projects', 'skills', 'education', 'certifications', 'achievements'];
-    const activeOrder = (resume.sectionOrder && resume.sectionOrder.length > 0) ? resume.sectionOrder : defaultOrder;
+    const chosenFont = resume.design?.fontFamily;
+    const activeFont = chosenFont && fontFamilies[chosenFont]
+        ? fontFamilies[chosenFont]
+        : (chosenFont ? `'${chosenFont}', sans-serif` : (resume.template === 'ATS Classic' || resume.template === 'Modern Professional' ? '"Times New Roman", Times, Georgia, serif' : "'Inter', sans-serif"));
 
-    if (resume.template === 'Modern Professional') {
-        return (
-            <div ref={containerRef} className={containerClass} style={customStyle} onClick={() => onFocusSection('personalInfo')}>
-                {/* Left Column */}
-                <div className="w-[35%] bg-gray-800 text-white p-6 shrink-0">
-                    <div className="text-center mb-8">
-                        <div className="w-32 h-32 bg-gray-600 rounded-full mx-auto mb-4 overflow-hidden border-2 border-gray-500">
-                            {resume.personalInfo?.profilePhoto && (
-                                <img src={resume.personalInfo.profilePhoto} alt="Profile" className="w-full h-full object-cover" />
-                            )}
-                        </div>
-                        <h2 className="text-xl font-bold uppercase tracking-wider mb-2">Contact</h2>
-                        <div className="w-full h-px bg-gray-600 mb-4"></div>
-                        <div className="text-sm space-y-3 text-left">
-                            <EditableText tag="div" path="personalInfo.phone" value={resume.personalInfo?.phone} placeholder="Phone" />
-                            <EditableText tag="div" path="personalInfo.email" value={resume.personalInfo?.email} placeholder="Email" isLink={true} href={`mailto:${resume.personalInfo?.email}`} />
-                            <EditableText tag="div" path="personalInfo.location" value={resume.personalInfo?.location} placeholder="Location" />
-                            <EditableText tag="div" path="personalInfo.linkedin" value={resume.personalInfo?.linkedin} placeholder="LinkedIn" isLink={true} href={resume.personalInfo?.linkedin?.startsWith('http') ? resume.personalInfo?.linkedin : `https://${resume.personalInfo?.linkedin}`} />
-                            <EditableText tag="div" path="personalInfo.portfolioUrl" value={resume.personalInfo?.portfolioUrl} placeholder="Portfolio/GitHub" isLink={true} href={resume.personalInfo?.portfolioUrl?.startsWith('http') ? resume.personalInfo?.portfolioUrl : `https://${resume.personalInfo?.portfolioUrl}`} />
-                        </div>
-                    </div>
-                    
-                    {(resume.skills && (resume.skills.technical?.length > 0 || resume.skills.programmingLanguages?.length > 0 || resume.skills.frameworks?.length > 0 || resume.skills.databases?.length > 0 || resume.skills.tools?.length > 0 || resume.skills.softSkills?.length > 0)) && (
-                        <div className="mb-8" onClick={() => onFocusSection('skills')}>
-                            <h2 className="text-xl font-bold uppercase tracking-wider mb-2 text-center">Skills</h2>
-                            <div className="w-full h-px bg-gray-600 mb-4"></div>
-                            <div className="text-sm space-y-3 text-left">
-                                {resume.skills.programmingLanguages?.length > 0 && (
-                                    <div><span className="font-bold text-gray-400 block mb-1">Languages</span> {resume.skills.programmingLanguages.join(', ')}</div>
-                                )}
-                                {resume.skills.frameworks?.length > 0 && (
-                                    <div><span className="font-bold text-gray-400 block mb-1">Frameworks</span> {resume.skills.frameworks.join(', ')}</div>
-                                )}
-                                {resume.skills.technical?.length > 0 && (
-                                    <div><span className="font-bold text-gray-400 block mb-1">Technical</span> {resume.skills.technical.join(', ')}</div>
-                                )}
-                                {resume.skills.databases?.length > 0 && (
-                                    <div><span className="font-bold text-gray-400 block mb-1">Databases</span> {resume.skills.databases.join(', ')}</div>
-                                )}
-                                {resume.skills.tools?.length > 0 && (
-                                    <div><span className="font-bold text-gray-400 block mb-1">Tools</span> {resume.skills.tools.join(', ')}</div>
-                                )}
-                                {resume.skills.softSkills?.length > 0 && (
-                                    <div><span className="font-bold text-gray-400 block mb-1">Soft Skills</span> {resume.skills.softSkills.join(', ')}</div>
-                                )}
-                            </div>
-                        </div>
-                    )}
-                </div>
-                {/* Right Column */}
-                <div className="w-[65%] p-8 bg-white text-gray-800 flex flex-col">
-                    <EditableText 
-                        tag="h1" 
-                        path="personalInfo.fullName" 
-                        value={resume.personalInfo?.fullName} 
-                        placeholder="Your Name"
-                        className="text-4xl font-bold text-blue-600 uppercase mb-1"
-                    />
-                    <EditableText 
-                        tag="h2" 
-                        path="personalInfo.professionalTitle" 
-                        value={resume.personalInfo?.professionalTitle} 
-                        placeholder="Professional Title"
-                        className="text-xl font-medium tracking-widest text-gray-500 mb-6 uppercase"
-                    />
-                    {renderDynamicSections(activeOrder.filter(s => s !== 'skills'))}
-                </div>
-            </div>
-        );
-    }
+    customStyle.fontFamily = activeFont;
+
+    const fontStyleBlock = (
+        <style>{`
+            .resume-canvas-scope, 
+            .resume-canvas-scope *,
+            .resume-canvas-scope h1,
+            .resume-canvas-scope h2,
+            .resume-canvas-scope h3,
+            .resume-canvas-scope div,
+            .resume-canvas-scope span,
+            .resume-canvas-scope p,
+            .resume-canvas-scope a,
+            .resume-canvas-scope li {
+                font-family: ${activeFont} !important;
+            }
+        `}</style>
+    );
+
+    const defaultOrder = ['summary', 'coursework', 'experience', 'projects', 'skills', 'education', 'certifications', 'achievements'];
+    const rawOrder = (resume.sectionOrder && resume.sectionOrder.length > 0) ? resume.sectionOrder : defaultOrder;
+    const activeOrder = [...rawOrder];
+    defaultOrder.forEach(sec => {
+        if (!activeOrder.includes(sec)) {
+            activeOrder.push(sec);
+        }
+    });
 
     let innerClass = "w-full";
     if (resume.template === 'ATS Classic') {
         innerClass += " px-14 py-10"; // Approx 0.6-0.75 inch margins
+    } else if (resume.template === 'Modern Professional') {
+        innerClass += " px-12 py-8";
     } else {
         innerClass += " p-8";
     }
 
     return (
-        <div ref={containerRef} className={containerClass} style={customStyle} onClick={() => onFocusSection('personalInfo')}>
+        <div ref={containerRef} className={`${containerClass} resume-canvas-scope`} style={customStyle} onClick={() => onFocusSection('personalInfo')}>
+            {fontStyleBlock}
             <div ref={contentRef} className={innerClass} style={{ transform: `scale(${activeScale})`, transformOrigin: 'top center', width: '100%' }}>
                 {/* Header based on Template */}
-                <div className={`text-center ${resume.template === 'Tech Professional' ? 'text-left border-b border-gray-200 pb-4 mb-6' : 'mb-6'}`}>
-                    <EditableText 
-                        tag="h1" 
-                        path="personalInfo.fullName" 
-                        value={resume.personalInfo?.fullName} 
-                        placeholder="Your Name"
-                        className={
-                            resume.template === 'Tech Professional' ? 'text-2xl font-black uppercase mb-1' :
-                            resume.template === 'Minimal Executive' ? 'text-3xl font-light tracking-widest uppercase mb-2' :
-                            'text-2xl font-bold uppercase tracking-wider mb-1'
-                        }
-                    />
+                <div className={`text-center ${resume.template === 'Tech Professional' ? 'text-left border-b border-gray-200 pb-4 mb-6' : 'mb-4'}`}>
+                    {resume.template === 'Modern Professional' ? (
+                        <>
+                            <div className="text-center mb-1">
+                                <EditableText 
+                                    tag="h1" 
+                                    path="personalInfo.fullName" 
+                                    value={resume.personalInfo?.fullName} 
+                                    placeholder="PRADEEP M"
+                                    className="font-serif text-[28px] tracking-[0.22em] font-normal uppercase text-gray-900 block"
+                                />
+                                {resume.personalInfo?.location && (
+                                    <div className="text-[12px] font-serif text-gray-800 mt-0.5">
+                                        <EditableText path="personalInfo.location" value={resume.personalInfo?.location} placeholder="Location" />
+                                    </div>
+                                )}
+                            </div>
+                            <div className="flex flex-wrap items-center justify-center gap-4 text-[11px] font-serif text-gray-800 mb-2">
+                                {resume.personalInfo?.phone && (
+                                    <span className="inline-flex items-center gap-1.5">
+                                        <Phone size={12} className="text-gray-900 fill-current" />
+                                        <EditableText path="personalInfo.phone" value={resume.personalInfo?.phone} placeholder="Phone" />
+                                    </span>
+                                )}
+                                {resume.personalInfo?.email && (
+                                    <span className="inline-flex items-center gap-1.5">
+                                        <Mail size={12} className="text-gray-900" />
+                                        <EditableText path="personalInfo.email" value={resume.personalInfo?.email} placeholder="Email" isLink={true} href={`mailto:${resume.personalInfo?.email}`} />
+                                    </span>
+                                )}
+                                {resume.personalInfo?.linkedin && (
+                                    <span className="inline-flex items-center gap-1.5">
+                                        <LinkedInIcon />
+                                        <EditableText path="personalInfo.linkedin" value={resume.personalInfo?.linkedin} placeholder="LinkedIn" isLink={true} href={resume.personalInfo?.linkedin?.startsWith('http') ? resume.personalInfo?.linkedin : `https://${resume.personalInfo?.linkedin}`} />
+                                    </span>
+                                )}
+                                {resume.personalInfo?.portfolioUrl && (
+                                    <span className="inline-flex items-center gap-1.5">
+                                        <GithubIcon />
+                                        <EditableText path="personalInfo.portfolioUrl" value={resume.personalInfo?.portfolioUrl} placeholder="Portfolio" isLink={true} href={resume.personalInfo?.portfolioUrl?.startsWith('http') ? resume.personalInfo?.portfolioUrl : `https://${resume.personalInfo?.portfolioUrl}`} />
+                                    </span>
+                                )}
+                            </div>
+                        </>
+                    ) : (
+                        <EditableText 
+                            tag="h1" 
+                            path="personalInfo.fullName" 
+                            value={resume.personalInfo?.fullName} 
+                            placeholder="Your Name"
+                            className={
+                                resume.template === 'Tech Professional' ? 'text-2xl font-black uppercase mb-1' :
+                                resume.template === 'Minimal Executive' ? 'text-3xl font-light tracking-widest uppercase mb-2' :
+                                'text-2xl font-bold uppercase tracking-wider mb-1'
+                            }
+                        />
+                    )}
                     
-                    {resume.template === 'ATS Classic' ? (
+                    {resume.template === 'Modern Professional' ? null : resume.template === 'ATS Classic' ? (
                         <>
                             <div className="text-[13px] flex flex-wrap gap-1 text-gray-700 justify-center mb-1">
                                 {resume.personalInfo?.professionalTitle && <EditableText path="personalInfo.professionalTitle" value={resume.personalInfo?.professionalTitle} placeholder="Professional Title" />}

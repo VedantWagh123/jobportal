@@ -202,21 +202,19 @@ export const downloadPdf = async (req, res) => {
             resumeData = resumeDoc.toObject();
         }
         
+        const finalResumeName = resumeData.resumeName || (resumeData.personalInfo?.fullName ? `${resumeData.personalInfo.fullName} Resume` : 'Resume');
+        
         const pdfBuffer = await generateResumePdf({
-            summary: '',
-            experience: [],
-            projects: [],
-            skills: { technical: [], programmingLanguages: [], frameworks: [], databases: [], tools: [], softSkills: [] },
-            education: [],
-            certifications: [],
             ...resumeData,
-            resumeName: resumeData.name || resumeData.personalInfo?.fullName ? `${resumeData.personalInfo?.fullName} Resume` : 'Resume',
+            resumeName: finalResumeName,
             template: resumeData.template || 'ATS Classic'
         });
         
+        const safeFileName = finalResumeName.replace(/[^a-zA-Z0-9_\-\. ]/g, '_');
+        
         res.set({
             'Content-Type': 'application/pdf',
-            'Content-Disposition': `attachment; filename="${resumeData.resumeName || 'Resume'}.pdf"`,
+            'Content-Disposition': `attachment; filename="${encodeURIComponent(safeFileName)}.pdf"`,
             'Content-Length': pdfBuffer.length
         });
         
@@ -258,6 +256,14 @@ Convert the input into strong, action-oriented, professional bullet points start
 CRITICAL RULE: DO NOT invent metrics, numbers, or technologies that are not explicitly stated. 
 Format as a bulleted list using the '-' character. Return ONLY the bullet points, no conversational filler.
 Project Name/Tech: ${JSON.stringify(context || {})}
+Input Description: "${content}"`;
+        }
+        else if (section === 'achievements') {
+            prompt = `You are an expert resume writer. Improve the following achievement description.
+Make it concise, professional, ATS-friendly, and impactful, highlighting key honors, awards, or rankings.
+CRITICAL RULE: DO NOT invent metrics, numbers, or awards that are not present in the input.
+Return ONLY the improved description, without any conversational filler.
+Achievement Context: ${JSON.stringify(context || {})}
 Input Description: "${content}"`;
         }
         else {

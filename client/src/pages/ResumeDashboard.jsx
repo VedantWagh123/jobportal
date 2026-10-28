@@ -1,7 +1,7 @@
 import { useContext, useEffect, useState, useRef } from 'react'
 console.log("HMR Bust");
 import { AppContext } from '../context/AppContext'
-import { defaultResumeData } from '../assets/defaultResumeData'
+import { defaultResumeData, pradeepResumeData, getTemplateDefaultData } from '../assets/defaultResumeData'
 import { useUser, useAuth } from '@clerk/clerk-react'
 import { useNavigate, Link } from 'react-router-dom'
 import axios from 'axios'
@@ -16,175 +16,129 @@ import {
 import moment from 'moment'
 
 const TemplateThumbnail = ({ type, className = "" }) => {
-    // ATS Classic
+    const [imgError, setImgError] = useState(false);
+
+    const templateImageMap = {
+        'ATS Classic': '/templates/ats-classic.png',
+        'Modern Professional': '/templates/modern-professional.png',
+        'Tech Professional': '/templates/tech-professional.png',
+        'Minimal Executive': '/templates/minimal-executive.png'
+    };
+
+    const imgSrc = templateImageMap[type] || '/templates/ats-classic.png';
+
+    if (!imgError) {
+        return (
+            <div className={`w-full h-full bg-white relative overflow-hidden flex items-start justify-center ${className}`}>
+                <img 
+                    src={imgSrc} 
+                    alt={type} 
+                    onError={() => setImgError(true)} 
+                    className="w-full h-full object-cover object-top transition-transform duration-300 group-hover:scale-105"
+                    loading="lazy"
+                />
+            </div>
+        );
+    }
+
+    // Realistic vector/HTML Fallback in case image fails to load
     if (type === 'ATS Classic') {
         return (
-            <div className={`w-full h-full bg-white p-[8%] flex flex-col gap-[3%] shadow-sm ${className}`}>
-                <div className="flex flex-col items-center gap-[4%] mb-[2%]">
-                    <div className="w-[60%] h-[4%] bg-slate-800 font-serif"></div>
-                    <div className="flex gap-[3%] mt-[2%] justify-center w-full">
-                        <div className="w-[15%] h-[1.5%] bg-slate-400"></div>
-                        <div className="w-[20%] h-[1.5%] bg-slate-400"></div>
-                        <div className="w-[15%] h-[1.5%] bg-slate-400"></div>
-                    </div>
+            <div className={`w-full h-full bg-white p-3 flex flex-col font-serif select-none pointer-events-none text-[6px] overflow-hidden ${className}`}>
+                <div className="text-center mb-1">
+                    <div className="font-bold text-[8px] tracking-wide text-gray-900 uppercase">ARJUN SHARMA</div>
+                    <div className="text-[5px] text-gray-600 font-sans mt-0.5">Software Engineer | Google | Bengaluru, India</div>
+                    <div className="text-[4px] text-blue-600 font-sans truncate mt-0.5">arjun.sharma@email.com • linkedin/in/arjunsharma</div>
                 </div>
-                
-                <div className="w-full h-[1px] bg-slate-800 my-[2%]"></div>
-                <div className="w-[25%] h-[2.5%] bg-slate-800 mb-[2%] uppercase"></div>
-                
-                <div className="flex justify-between mb-[1%]">
-                    <div className="w-[40%] h-[2%] bg-slate-700 font-bold"></div>
-                    <div className="w-[20%] h-[1.5%] bg-slate-400"></div>
+                <div className="border-b border-gray-900 my-1"></div>
+                <div className="font-bold text-[5.5px] uppercase text-gray-900 mb-0.5">Professional Summary</div>
+                <div className="text-[4.5px] text-gray-600 leading-tight line-clamp-2 font-sans mb-1">Software Engineer with 4+ years of experience building scalable backend services, cloud systems & distributed platforms at Google.</div>
+                <div className="border-b border-gray-900 my-1"></div>
+                <div className="font-bold text-[5.5px] uppercase text-gray-900 mb-0.5">Skills</div>
+                <div className="text-[4.5px] text-gray-600 font-sans truncate mb-1">Java, Python, C++, Go, Spring Boot, GCP, Kubernetes, Docker, Redis</div>
+                <div className="border-b border-gray-900 my-1"></div>
+                <div className="font-bold text-[5.5px] uppercase text-gray-900 mb-0.5">Experience</div>
+                <div className="flex justify-between font-sans font-bold text-[5px] text-gray-800">
+                    <span>Software Engineer, Google</span>
+                    <span className="font-normal text-gray-500">2022 - Present</span>
                 </div>
-                <div className="w-[30%] h-[1.5%] bg-slate-500 mb-[2%] italic"></div>
-                <div className="flex flex-col gap-[1.5%] pl-[3%] mb-[3%]">
-                    <div className="w-[95%] h-[1.2%] bg-slate-300"></div>
-                    <div className="w-[90%] h-[1.2%] bg-slate-300"></div>
-                    <div className="w-[85%] h-[1.2%] bg-slate-300"></div>
-                </div>
-
-                <div className="w-full h-[1px] bg-slate-800 my-[2%]"></div>
-                <div className="w-[25%] h-[2.5%] bg-slate-800 mb-[2%] uppercase"></div>
-                
-                <div className="flex justify-between mb-[1%]">
-                    <div className="w-[35%] h-[2%] bg-slate-700 font-bold"></div>
-                    <div className="w-[15%] h-[1.5%] bg-slate-400"></div>
-                </div>
-                <div className="w-[25%] h-[1.5%] bg-slate-500 mb-[2%] italic"></div>
+                <div className="text-[4.5px] text-gray-600 font-sans truncate">• Designed scalable microservices using Java & GCP</div>
+                <div className="text-[4.5px] text-gray-600 font-sans truncate">• Improved API p95 latency by ~32% with Redis caching</div>
+                <div className="border-b border-gray-900 my-1"></div>
+                <div className="font-bold text-[5.5px] uppercase text-gray-900 mb-0.5">Education</div>
+                <div className="text-[4.5px] text-gray-700 font-sans truncate">B.Tech in Computer Science & Engineering — SPPU</div>
             </div>
         );
     }
-    
-    // Modern Professional
+
     if (type === 'Modern Professional') {
         return (
-            <div className={`w-full h-full bg-white flex ${className}`}>
-                {/* Left Column */}
-                <div className="w-[35%] h-full bg-slate-800 p-[6%] flex flex-col gap-[3%]">
-                    <div className="w-[80%] aspect-square rounded-full bg-slate-600 mx-auto mb-[6%]"></div>
-                    
-                    <div className="w-[80%] h-[2%] bg-slate-400 mb-[1%] uppercase"></div>
-                    <div className="w-full h-[1px] bg-slate-600 mb-[2%]"></div>
-                    <div className="w-[90%] h-[1.5%] bg-slate-300 mb-[1%]"></div>
-                    <div className="w-[85%] h-[1.5%] bg-slate-300 mb-[1%]"></div>
-                    <div className="w-[95%] h-[1.5%] bg-slate-300 mb-[4%]"></div>
-                    
-                    <div className="w-[80%] h-[2%] bg-slate-400 mb-[1%] uppercase mt-[4%]"></div>
-                    <div className="w-full h-[1px] bg-slate-600 mb-[2%]"></div>
-                    <div className="flex flex-wrap gap-[4%] mt-[2%]">
-                        <div className="w-[45%] h-[1.5%] bg-slate-300 mb-[4%]"></div>
-                        <div className="w-[45%] h-[1.5%] bg-slate-300 mb-[4%]"></div>
-                        <div className="w-[45%] h-[1.5%] bg-slate-300 mb-[4%]"></div>
-                        <div className="w-[45%] h-[1.5%] bg-slate-300 mb-[4%]"></div>
-                    </div>
+            <div className={`w-full h-full bg-white p-3 flex flex-col font-serif select-none pointer-events-none text-[6px] overflow-hidden ${className}`}>
+                <div className="text-center mb-1">
+                    <div className="font-serif text-[8.5px] tracking-widest text-gray-900 uppercase font-normal">PRADEEP M</div>
+                    <div className="text-[5px] text-gray-600 font-serif mt-0.5">Hyderabad, Telangana</div>
+                    <div className="text-[4px] text-gray-700 font-serif truncate mt-0.5">+91-99999 99999 • pradeepm.analyst@gmail.com • LinkedIn • Portfolio</div>
                 </div>
-                {/* Right Column */}
-                <div className="w-[65%] h-full bg-white p-[6%] flex flex-col gap-[2%]">
-                    <div className="w-[80%] h-[5%] bg-blue-600 font-bold mb-[2%]"></div>
-                    <div className="w-[50%] h-[2%] bg-blue-400 mb-[4%] tracking-widest"></div>
-                    
-                    <div className="w-[100%] h-[1.2%] bg-slate-300 mb-[1%]"></div>
-                    <div className="w-[95%] h-[1.2%] bg-slate-300 mb-[1%]"></div>
-                    <div className="w-[85%] h-[1.2%] bg-slate-300 mb-[6%]"></div>
-                    
-                    <div className="w-[40%] h-[2.5%] bg-slate-800 mb-[2%] uppercase flex items-center gap-[4%]">
-                        <div className="w-[8%] aspect-square bg-blue-500 rounded-sm"></div>
-                    </div>
-                    
-                    <div className="flex justify-between mb-[1%] mt-[1%]">
-                        <div className="w-[45%] h-[2%] bg-slate-700 font-bold"></div>
-                        <div className="w-[20%] h-[1.5%] bg-slate-400"></div>
-                    </div>
-                    <div className="w-[35%] h-[1.5%] bg-slate-500 mb-[2%]"></div>
-                    <div className="flex flex-col gap-[1.5%] pl-[3%] mb-[3%]">
-                        <div className="w-[95%] h-[1.2%] bg-slate-300"></div>
-                        <div className="w-[90%] h-[1.2%] bg-slate-300"></div>
-                    </div>
+                <div className="border-b border-gray-400 my-0.5"></div>
+                <div className="font-bold text-[5.5px] text-gray-900 mb-0.5">Profile Summary</div>
+                <div className="text-[4px] text-gray-600 leading-tight line-clamp-2 font-serif mb-1">• Proven ability in analyzing large datasets, debugging SQL queries, and transforming data to drive business decisions.</div>
+                <div className="border-b border-gray-400 my-0.5"></div>
+                <div className="font-bold text-[5.5px] text-gray-900 mb-0.5">Relevant Coursework</div>
+                <div className="text-[4px] text-gray-700 font-serif truncate mb-1">• Data Integrity • Data Governance • Generative AI • Data Mining</div>
+                <div className="border-b border-gray-400 my-0.5"></div>
+                <div className="font-bold text-[5.5px] text-gray-900 mb-0.5">Experience</div>
+                <div className="flex justify-between font-serif font-bold text-[5px] text-gray-800">
+                    <span>Deloitte - Data Integrity & Reporting Analyst</span>
+                    <span className="font-normal text-gray-500">June 2024 – Present</span>
                 </div>
+                <div className="text-[4px] text-gray-600 font-serif truncate">• Manage and enhance client data across multiple CRM tools.</div>
+                <div className="border-b border-gray-400 my-0.5"></div>
+                <div className="font-bold text-[5.5px] text-gray-900 mb-0.5">Projects</div>
+                <div className="text-[4px] text-gray-700 font-serif truncate">Festive Campaign Analysis | SQL, Power BI, PowerPoint</div>
             </div>
         );
     }
 
-    // Tech Professional
     if (type === 'Tech Professional') {
         return (
-            <div className={`w-full h-full bg-white flex flex-col ${className}`}>
-                {/* Header block */}
-                <div className="w-full h-[22%] bg-indigo-900 p-[6%] flex flex-col justify-center gap-[6%]">
-                    <div className="w-[50%] h-[25%] bg-white font-bold rounded-sm"></div>
-                    <div className="w-[30%] h-[10%] bg-indigo-300 rounded-sm"></div>
-                    <div className="flex gap-[4%] mt-[2%]">
-                        <div className="w-[15%] h-[8%] bg-indigo-400/50 rounded-sm"></div>
-                        <div className="w-[20%] h-[8%] bg-indigo-400/50 rounded-sm"></div>
-                        <div className="w-[15%] h-[8%] bg-indigo-400/50 rounded-sm"></div>
+            <div className={`w-full h-full bg-white flex flex-col select-none pointer-events-none text-[5px] overflow-hidden ${className}`}>
+                <div className="bg-indigo-950 text-white p-2 flex justify-between items-center">
+                    <div>
+                        <div className="font-black text-white text-[8px] leading-none uppercase">ARJUN SHARMA</div>
+                        <div className="text-indigo-300 text-[4.5px] mt-0.5">Full Stack & Cloud Engineer</div>
                     </div>
+                    <div className="text-[4px] text-indigo-200 text-right">Bengaluru, IN</div>
                 </div>
-                
-                <div className="flex-1 p-[8%] flex flex-col gap-[2%]">
-                    <div className="w-[35%] h-[2.5%] bg-indigo-800 uppercase mb-[2%] border-l-[3px] border-indigo-500 pl-[4%]"></div>
-                    
-                    <div className="flex gap-[3%] flex-wrap mb-[6%]">
-                        <div className="px-[3%] py-[1.5%] w-[18%] h-[2%] bg-indigo-50 border border-indigo-100 rounded-sm"></div>
-                        <div className="px-[3%] py-[1.5%] w-[22%] h-[2%] bg-indigo-50 border border-indigo-100 rounded-sm"></div>
-                        <div className="px-[3%] py-[1.5%] w-[15%] h-[2%] bg-indigo-50 border border-indigo-100 rounded-sm"></div>
-                        <div className="px-[3%] py-[1.5%] w-[25%] h-[2%] bg-indigo-50 border border-indigo-100 rounded-sm mt-[2%]"></div>
-                        <div className="px-[3%] py-[1.5%] w-[20%] h-[2%] bg-indigo-50 border border-indigo-100 rounded-sm mt-[2%]"></div>
+                <div className="p-2 flex-1 flex flex-col gap-1">
+                    <div className="text-[5.5px] font-bold uppercase text-indigo-900 border-l-2 border-indigo-500 pl-1">Tech Stack</div>
+                    <div className="flex flex-wrap gap-0.5">
+                        <span className="bg-indigo-50 text-indigo-700 border border-indigo-100 text-[4px] px-1 py-0.5 rounded">Java</span>
+                        <span className="bg-indigo-50 text-indigo-700 border border-indigo-100 text-[4px] px-1 py-0.5 rounded">Python</span>
+                        <span className="bg-indigo-50 text-indigo-700 border border-indigo-100 text-[4px] px-1 py-0.5 rounded">Kubernetes</span>
+                        <span className="bg-indigo-50 text-indigo-700 border border-indigo-100 text-[4px] px-1 py-0.5 rounded">GCP</span>
                     </div>
-
-                    <div className="w-[30%] h-[2.5%] bg-indigo-800 uppercase mb-[2%] border-l-[3px] border-indigo-500 pl-[4%]"></div>
-                    
-                    <div className="flex justify-between mb-[1%]">
-                        <div className="w-[45%] h-[2%] bg-slate-800 font-bold"></div>
-                        <div className="w-[20%] h-[1.5%] bg-slate-400"></div>
-                    </div>
-                    <div className="w-[100%] h-[1.2%] bg-slate-300 mt-[1%]"></div>
-                    <div className="w-[95%] h-[1.2%] bg-slate-300 mt-[1.5%]"></div>
-                    <div className="w-[85%] h-[1.2%] bg-slate-300 mt-[1.5%] mb-[4%]"></div>
+                    <div className="text-[5.5px] font-bold uppercase text-indigo-900 border-l-2 border-indigo-500 pl-1 mt-1">Experience</div>
+                    <div className="font-bold text-[5px] text-gray-800">Google — Software Engineer</div>
+                    <div className="text-[4.5px] text-gray-600 line-clamp-2">Architected cloud backend services, gRPC systems, and automated CI/CD pipelines.</div>
                 </div>
             </div>
         );
     }
 
-    // Minimal Executive
     return (
-        <div className={`w-full h-full bg-white p-[8%] flex flex-col ${className}`}>
-            <div className="flex justify-between items-end mb-[4%]">
-                <div className="w-[55%] h-[4.5%] bg-slate-900 tracking-tight"></div>
-                <div className="flex flex-col items-end gap-[8%] w-[40%]">
-                    <div className="w-[45%] h-[1.2%] bg-slate-400"></div>
-                    <div className="w-[60%] h-[1.2%] bg-slate-400 mt-[3%]"></div>
-                    <div className="w-[50%] h-[1.2%] bg-slate-400 mt-[3%]"></div>
+        <div className={`w-full h-full bg-white p-2.5 flex flex-col select-none pointer-events-none text-[5px] overflow-hidden ${className}`}>
+            <div className="flex justify-between items-baseline border-b border-gray-200 pb-1 mb-1.5">
+                <div>
+                    <div className="font-light tracking-widest text-[8px] text-gray-900 uppercase">ARJUN SHARMA</div>
+                    <div className="text-[4.5px] text-gray-400">Software Engineer</div>
                 </div>
+                <div className="text-[4px] text-gray-400 text-right">arjun.sharma@email.com</div>
             </div>
-            
-            <div className="w-full h-[1.5px] bg-slate-200 mb-[6%]"></div>
-            
-            <div className="flex gap-[6%] mb-[6%]">
-                <div className="w-[20%] h-[2%] bg-slate-800 uppercase text-right tracking-widest shrink-0 mt-[1%]"></div>
-                <div className="flex-1 flex flex-col gap-[2%]">
-                    <div className="w-full h-[1.2%] bg-slate-400"></div>
-                    <div className="w-[95%] h-[1.2%] bg-slate-400 mt-[1.5%]"></div>
-                    <div className="w-[85%] h-[1.2%] bg-slate-400 mt-[1.5%]"></div>
-                </div>
-            </div>
-
-            <div className="flex gap-[6%]">
-                <div className="w-[20%] h-[2%] bg-slate-800 uppercase text-right tracking-widest shrink-0 mt-[1%]"></div>
-                <div className="flex-1 flex flex-col gap-[2%]">
-                    <div className="flex justify-between mb-[1%]">
-                        <div className="w-[50%] h-[2%] bg-slate-800 font-semibold"></div>
-                        <div className="w-[25%] h-[1.5%] bg-slate-400"></div>
-                    </div>
-                    <div className="w-[40%] h-[1.5%] bg-slate-500 mb-[2%] italic"></div>
-                    
-                    <div className="flex items-start gap-[3%] mt-[1%]">
-                        <div className="w-[2%] aspect-square bg-slate-400 rounded-full mt-[1.5%]"></div>
-                        <div className="w-[95%] h-[1.2%] bg-slate-400"></div>
-                    </div>
-                    <div className="flex items-start gap-[3%] mt-[1.5%]">
-                        <div className="w-[2%] aspect-square bg-slate-400 rounded-full mt-[1.5%]"></div>
-                        <div className="w-[85%] h-[1.2%] bg-slate-400"></div>
-                    </div>
+            <div className="flex gap-2">
+                <div className="w-[28%] text-[5px] uppercase font-bold text-gray-400 tracking-wider">Experience</div>
+                <div className="flex-1">
+                    <div className="font-semibold text-[5px] text-gray-800">Software Engineer — Google</div>
+                    <div className="text-[4.5px] text-gray-600 leading-tight">Led development of high scalability services with distributed microservices.</div>
                 </div>
             </div>
         </div>
@@ -202,6 +156,7 @@ const ResumeDashboard = () => {
     const [resumeToDelete, setResumeToDelete] = useState(null)
     const [isCreationModalOpen, setIsCreationModalOpen] = useState(false)
     const [isResumesScrollable, setIsResumesScrollable] = useState(false)
+    const [selectedTemplate, setSelectedTemplate] = useState('ATS Classic')
     
     // Upload State
     const [isUploading, setIsUploading] = useState(false)
@@ -336,12 +291,18 @@ const ResumeDashboard = () => {
         }
     }, [user])
 
-    const createNewResume = async () => {
+    const createNewResume = async (templateToUse = selectedTemplate) => {
         try {
-            const toastId = toast.loading("Creating new resume...")
+            const toastId = toast.loading(`Creating ${templateToUse} resume...`)
             const token = await getToken()
+            const templateData = getTemplateDefaultData(templateToUse)
+            const resumeTitle = templateToUse === 'Modern Professional' 
+                ? 'Pradeep M Resume' 
+                : (templateToUse === 'ATS Classic' ? 'Arjun Sharma Resume' : `Arjun Sharma (${templateToUse})`);
             const { data } = await axios.post(backendUrl + '/api/resumes', {
-                ...defaultResumeData,
+                ...templateData,
+                template: templateToUse,
+                resumeName: resumeTitle,
                 isImport: true
             }, {
                 headers: { Authorization: `Bearer ${token}` }
@@ -745,19 +706,48 @@ const ResumeDashboard = () => {
                             <div className="grid grid-cols-2 gap-4">
                                 {/* Template Mockups */}
                                 {['ATS Classic', 'Modern Professional', 'Tech Professional', 'Minimal Executive'].map((tplName, i) => {
-                                    const isActive = tplName === 'ATS Classic';
+                                    const isActive = selectedTemplate === tplName;
                                     return (
                                     <div key={i} className="flex flex-col group">
-                                        <div onClick={() => createNewResume(tplName)} className={`cursor-pointer aspect-[1/1.3] rounded-xl border-2 transition-all relative overflow-hidden mb-3 flex flex-col shadow-sm ${isActive ? 'border-[#2563EB] ring-4 ring-blue-50 shadow-blue-100' : 'border-gray-100 hover:border-gray-300'} bg-white`}>
+                                        <div 
+                                            onClick={() => {
+                                                setSelectedTemplate(tplName);
+                                                createNewResume(tplName);
+                                            }} 
+                                            className={`cursor-pointer aspect-[1/1.3] rounded-xl border-2 transition-all relative overflow-hidden mb-2.5 flex flex-col shadow-sm ${isActive ? 'border-[#2563EB] ring-4 ring-blue-50 shadow-blue-100' : 'border-gray-200 hover:border-blue-400 hover:shadow-md'} bg-white group/card`}
+                                        >
                                             <TemplateThumbnail type={tplName} />
-                                            {isActive && <div className="absolute bottom-3 right-3 bg-[#2563EB] rounded-full shadow-md"><CheckCircle2 size={20} className="text-white p-1" strokeWidth={3} /></div>}
+                                            
+                                            {/* Hover Overlay with Quick Edit button */}
+                                            <div className="absolute inset-0 bg-blue-900/10 opacity-0 group-hover/card:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[0.5px]">
+                                                <span className="bg-blue-600 text-white font-bold text-[11px] px-3 py-1.5 rounded-lg shadow-md flex items-center gap-1.5 transform translate-y-2 group-hover/card:translate-y-0 transition-transform">
+                                                    <Sparkles size={12} /> Edit Template
+                                                </span>
+                                            </div>
+
+                                            {isActive && (
+                                                <div className="absolute top-2.5 right-2.5 bg-[#2563EB] text-white rounded-full shadow-md p-1 z-10 flex items-center justify-center">
+                                                    <CheckCircle2 size={16} strokeWidth={3} />
+                                                </div>
+                                            )}
                                         </div>
-                                        <p className="text-center text-[11px] font-bold text-gray-800 mb-3">{tplName}</p>
-                                        {isActive ? (
-                                            <button onClick={() => createNewResume(tplName)} className="w-full bg-[#2563EB] hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl text-[11px] transition-colors shadow-sm">Use Template</button>
-                                        ) : (
-                                            <button onClick={() => createNewResume(tplName)} className="w-full bg-white hover:bg-blue-50 text-[#2563EB] font-bold py-2.5 rounded-xl border border-blue-100 text-[11px] transition-colors shadow-sm opacity-0 group-hover:opacity-100">Preview</button>
-                                        )}
+                                        <div className="flex items-center justify-between px-1 mb-2">
+                                            <p className={`text-[12px] font-bold ${isActive ? 'text-blue-600' : 'text-gray-800'}`}>{tplName}</p>
+                                            {isActive && <span className="text-[10px] bg-blue-50 text-blue-600 font-extrabold px-1.5 py-0.5 rounded">Active</span>}
+                                        </div>
+                                        <button 
+                                            onClick={() => {
+                                                setSelectedTemplate(tplName);
+                                                createNewResume(tplName);
+                                            }} 
+                                            className={`w-full font-bold py-2.5 rounded-xl text-[11px] transition-all flex items-center justify-center gap-1.5 shadow-sm ${
+                                                isActive 
+                                                    ? 'bg-[#2563EB] hover:bg-blue-700 text-white shadow-blue-200' 
+                                                    : 'bg-white hover:bg-blue-600 hover:text-white text-gray-700 border border-gray-200 hover:border-blue-600'
+                                            }`}
+                                        >
+                                            <Sparkles size={13} /> {isActive ? "Use Template" : "Select & Edit"}
+                                        </button>
                                     </div>
                                     )
                                 })}
