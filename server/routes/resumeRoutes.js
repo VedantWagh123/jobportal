@@ -11,6 +11,8 @@ import {
     improveWithAI, 
     analyzeJobDescription,
     generateAtsScore,
+    optimizeSectionOrder,
+    enhanceResumeWithAi,
     uploadResumeAndExtract
 } from '../controllers/resumeController.js';
 import { requireUser } from '../middleware/requireUser.js';
@@ -44,5 +46,7 @@ router.post('/:id/pdf', downloadPdf);
 router.post('/ai/improve', improveWithAI);
 router.post('/ai/analyze-job', analyzeJobDescription);
 router.post('/ai/ats-score', generateAtsScore);
+router.post('/ai/order', optimizeSectionOrder);
+router.post('/ai/enhance-ats', enhanceResumeWithAi);
 
 export default router;
